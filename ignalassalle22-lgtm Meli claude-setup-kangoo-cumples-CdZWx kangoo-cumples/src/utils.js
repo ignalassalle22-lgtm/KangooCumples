@@ -12,9 +12,9 @@ export const fmtFechaHora = (fecha, hora) => {
 
 export const DEFAULT_CONFIG = {
   menus: [
-    { id: 1, n: 'Menú Clásico', p: 3500 },
-    { id: 2, n: 'Menú Vegano', p: 4000 },
-    { id: 3, n: 'Menú Sin TACC', p: 4200 },
+    { id: 1, n: 'Menú Clásico' },
+    { id: 2, n: 'Menú Vegano' },
+    { id: 3, n: 'Menú Sin TACC' },
   ],
   salones: ['Salón Naranja', 'Salón Azul', 'Salón Verde'],
   promos: [

@@ -1,9 +1,8 @@
 import React, { useState } from 'react'
-import { fmt } from '../utils'
+
 
 export default function Config({ config, updateConfig, addToast }) {
   const [nmN, setNmN] = useState('')
-  const [nmP, setNmP] = useState('')
   const [nsN, setNsN] = useState('')
   const [npD, setNpD] = useState('')
   const [npP, setNpP] = useState('')
@@ -16,11 +15,11 @@ export default function Config({ config, updateConfig, addToast }) {
 
   // ── Menús ──
   const addMenu = () => {
-    const n = nmN.trim(); const p = parseFloat(nmP)
-    if (!n || !p) { addToast('Completá nombre y precio del menú', 'err'); return }
-    const updated = [...config.menus, { id: Date.now(), n, p }]
+    const n = nmN.trim()
+    if (!n) { addToast('Completá el nombre del menú', 'err'); return }
+    const updated = [...config.menus, { id: Date.now(), n }]
     updateConfig('menus', updated)
-    setNmN(''); setNmP('')
+    setNmN('')
     addToast('Menú agregado ✓')
   }
   const delMenu = id => { updateConfig('menus', config.menus.filter(m => m.id !== id)); addToast('Menú eliminado') }
@@ -98,16 +97,12 @@ export default function Config({ config, updateConfig, addToast }) {
             : config.menus.map(m => (
               <div key={m.id} className="li">
                 <div><span className="lin">{m.n}</span></div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span className="lip">{fmt(m.p)}</span>
-                  <button className="bdng" onClick={() => delMenu(m.id)}>✕</button>
-                </div>
+                <button className="bdng" onClick={() => delMenu(m.id)}>✕</button>
               </div>
             ))
           }
           <div className="ar">
             <input type="text" value={nmN} onChange={e => setNmN(e.target.value)} placeholder="Nombre del menú" style={{ flex: 2 }} />
-            <input type="number" value={nmP} onChange={e => setNmP(e.target.value)} placeholder="$ precio" style={{ width: 120, flex: 'none' }} />
             <button className="bp bsm" onClick={addMenu}>+ Agregar</button>
           </div>
         </div>

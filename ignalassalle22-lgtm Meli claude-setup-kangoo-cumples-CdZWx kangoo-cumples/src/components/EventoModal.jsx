@@ -80,10 +80,7 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
     const chi = parseInt(form.chi) || 0
     const adu = parseInt(form.adu) || 0
     const base = chi * (config.pChico || 0) + adu * (config.pAdulto || 0)
-    const mTot = mrows.reduce((acc, r) => {
-      const m = config.menus.find(x => String(x.id) === String(r.mid))
-      return acc + (m ? m.p * (parseInt(r.qty) || 0) : 0)
-    }, 0)
+    const mTot = 0
     const eTot = Object.entries(extraQtys).reduce((acc, [eid, qty]) => {
       const ex = config.extras.find(x => String(x.id) === String(eid))
       return acc + (ex ? ex.p * (qty || 0) : 0)
@@ -96,7 +93,7 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
     const total = base + mTot + eTot - dto
     const monto = parseFloat(form.monto) || 0
     return { base, mTot, eTot, dto, total, monto, rest: Math.max(0, total - monto) }
-  }, [form.chi, form.adu, form.promoId, form.monto, mrows, extraQtys, config])
+  }, [form.chi, form.adu, form.promoId, form.monto, extraQtys, config])
 
   // Duplicate check
   const dupAlert = useMemo(() => {
@@ -300,32 +297,27 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
         {/* Menús */}
         <div className="sdv">Menús por chico</div>
         <div className="mrc">
-          {mrows.map(r => {
-            const m = config.menus.find(x => String(x.id) === String(r.mid))
-            const sub = m ? m.p * (parseInt(r.qty) || 0) : 0
-            return (
-              <div key={r.rid} className="mr">
-                <select
-                  value={r.mid}
-                  onChange={e => updateMRow(r.rid, 'mid', e.target.value)}
-                >
-                  <option value="">Seleccionar menú...</option>
-                  {config.menus.map(m => (
-                    <option key={m.id} value={String(m.id)}>{m.n} ({fmt(m.p)})</option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min={1}
-                  value={r.qty}
-                  onChange={e => updateMRow(r.rid, 'qty', e.target.value)}
-                  placeholder="Cant."
-                />
-                <div className="mrp">{sub > 0 ? fmt(sub) : '$0'}</div>
-                <button className="bdng" style={{ padding: '5px 10px' }} onClick={() => removeMRow(r.rid)}>✕</button>
-              </div>
-            )
-          })}
+          {mrows.map(r => (
+            <div key={r.rid} className="mr">
+              <select
+                value={r.mid}
+                onChange={e => updateMRow(r.rid, 'mid', e.target.value)}
+              >
+                <option value="">Seleccionar menú...</option>
+                {config.menus.map(m => (
+                  <option key={m.id} value={String(m.id)}>{m.n}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min={1}
+                value={r.qty}
+                onChange={e => updateMRow(r.rid, 'qty', e.target.value)}
+                placeholder="Cant."
+              />
+              <button className="bdng" style={{ padding: '5px 10px' }} onClick={() => removeMRow(r.rid)}>✕</button>
+            </div>
+          ))}
         </div>
         <button className="bg2 bsm" style={{ marginTop: 10 }} onClick={addMRow}>+ Agregar fila de menú</button>
 
@@ -412,7 +404,6 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
         {/* Total box */}
         <div className="tb">
           <div className="tr"><span className="tl">Precio base (chicos + adultos)</span><span className="tv">{fmt(calc.base)}</span></div>
-          <div className="tr"><span className="tl">Menús seleccionados</span><span className="tv">{fmt(calc.mTot)}</span></div>
           {calc.eTot > 0 && (
             <div className="tr"><span className="tl">Extras</span><span className="tv">{fmt(calc.eTot)}</span></div>
           )}
