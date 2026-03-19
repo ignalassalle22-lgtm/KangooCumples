@@ -9,6 +9,16 @@ const EMPTY_FORM = {
   privado: false, obs: '',
   promoId: '',
   pago: 'none', monto: 0, met: '',
+  extendido: false,
+}
+
+function addMinutesToHora(hora, mins) {
+  if (!hora || !/^\d{1,2}:\d{2}$/.test(hora)) return ''
+  const [hh, mm] = hora.split(':').map(Number)
+  const total = hh * 60 + mm + mins
+  const rh = Math.floor(total / 60) % 24
+  const rm = total % 60
+  return String(rh).padStart(2, '0') + ':' + String(rm).padStart(2, '0')
 }
 
 // Compute hora string from form fields
@@ -50,6 +60,7 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
         pago: evento.pago || 'none',
         monto: evento.monto || 0,
         met: evento.met || '',
+        extendido: evento.extendido || false,
       })
       // Restore menu rows
       const rows = (evento.mrows || []).map(r => ({ rid: Date.now() + Math.random(), mid: String(r.mid), qty: r.qty || 1 }))
@@ -136,10 +147,14 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
       .filter(([, qty]) => qty > 0)
       .map(([eid, qty]) => ({ eid, qty }))
 
+    const horaHasta = addMinutesToHora(hora, form.extendido ? 180 : 150)
+
     const ev = {
       id: evento?.id,
       fecha: form.fecha,
       hora,
+      hora_hasta: horaHasta,
+      extendido: form.extendido,
       salon: form.salon,
       tipo: form.tipo,
       reservante: form.reservante.trim(),
@@ -215,15 +230,16 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
             <label>Fecha</label>
             <input type="date" value={form.fecha} onChange={e => set('fecha', e.target.value)} />
           </div>
-          <div className="fgg">
+          <div className="fgg" style={{ gridColumn: '1/-1' }}>
             <label>Horario</label>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <select value={form.horaH} onChange={e => set('horaH', e.target.value)} style={{ flex: 1 }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12, color: 'var(--mu)', fontWeight: 700, minWidth: 38 }}>Desde</span>
+              <select value={form.horaH} onChange={e => set('horaH', e.target.value)} style={{ flex: 1, minWidth: 60 }}>
                 <option value="">HH</option>
                 {HORAS.map(h => <option key={h} value={h}>{h}</option>)}
               </select>
               <span style={{ color: 'var(--mu)', fontWeight: 700 }}>:</span>
-              <select value={form.horaM} onChange={e => set('horaM', e.target.value)} style={{ flex: 1 }}>
+              <select value={form.horaM} onChange={e => set('horaM', e.target.value)} style={{ flex: 1, minWidth: 60 }}>
                 {['00', '15', '30', '45'].map(m => <option key={m} value={m}>{m}</option>)}
               </select>
               <input
@@ -231,9 +247,43 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
                 value={form.horaLibre}
                 onChange={e => set('horaLibre', e.target.value)}
                 placeholder="o escribí HH:MM"
-                style={{ flex: 1.4, fontSize: 13 }}
+                style={{ flex: 1.4, fontSize: 13, minWidth: 100 }}
                 title="También podés escribir la hora manualmente, ej: 14:30"
               />
+              {getHora(form) && (
+                <>
+                  <span style={{ fontSize: 12, color: 'var(--mu)', fontWeight: 700, minWidth: 28 }}>Hasta</span>
+                  <span style={{
+                    padding: '7px 14px', borderRadius: 8,
+                    background: 'var(--bg2, #f0f0f0)', fontWeight: 700,
+                    fontSize: 15, color: 'var(--nv)', border: '1.5px solid var(--bd2)',
+                    minWidth: 64, textAlign: 'center'
+                  }}>
+                    {addMinutesToHora(getHora(form), form.extendido ? 180 : 150)}
+                  </span>
+                </>
+              )}
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => set('extendido', !form.extendido)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  padding: '7px 18px', borderRadius: 22,
+                  border: `1.5px solid ${form.extendido ? 'var(--nv)' : 'var(--bd2)'}`,
+                  background: form.extendido ? 'var(--nv3)' : 'var(--wh)',
+                  color: form.extendido ? 'var(--nv)' : 'var(--mu)',
+                  cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                  fontFamily: "'Nunito', sans-serif", transition: 'all .2s',
+                }}
+              >
+                <span style={{ fontSize: 16 }}>{form.extendido ? '⏱' : '⏱'}</span>
+                <span>{form.extendido ? 'Extendido (3 hs)' : 'Extendido'}</span>
+              </button>
+              <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--mu)' }}>
+                {form.extendido ? '+30 min adicionales' : 'Duración estándar: 2:30 hs'}
+              </span>
             </div>
           </div>
           <div className="fgg">
