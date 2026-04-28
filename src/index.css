@@ -538,3 +538,30 @@ h1,h2,h3,h4,.logo-name { font-family: 'Nunito', sans-serif; }
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--mu2); border-radius: 3px; }
+
+/* ── TOPBAR DOBLE FILA ── */
+.topbar { height: auto !important; }
+.content { padding-top: 20px; }
+
+/* ── TABLA GENÉRICA ── */
+.vtable-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--bd); box-shadow: var(--sh); background: var(--wh); }
+.vtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.vtable th {
+  text-align: left; padding: 10px 14px;
+  font-size: 11px; font-weight: 700; color: var(--mu);
+  text-transform: uppercase; letter-spacing: .06em;
+  border-bottom: 2px solid var(--bd); background: var(--bg);
+  white-space: nowrap;
+}
+.vtable th.num { text-align: right; }
+.vtable td { padding: 11px 14px; border-bottom: 1px solid var(--bd); color: var(--tx); vertical-align: middle; }
+.vtable td.num { text-align: right; font-family: 'Nunito', sans-serif; }
+.vtable tbody tr:last-child td { border-bottom: none; }
+.vtable tbody tr:hover td { background: var(--nv3); }
+.vtable tfoot td { font-weight: 800; background: var(--nv3); color: var(--nv); border-top: 2px solid var(--bd2); font-family: 'Nunito', sans-serif; }
+
+/* ── RESPONSIVE VENTAS ── */
+@media (max-width: 720px) {
+  .vtable-wrap { border-radius: 10px; }
+  .vtable th, .vtable td { padding: 8px 10px; font-size: 12px; }
+}
