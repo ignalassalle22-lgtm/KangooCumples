@@ -269,6 +269,7 @@ export default function App() {
           cajasAbiertas={cajasAbiertas}
           cajaSeleccionadaId={cajaSeleccionadaId}
           onCajaChange={setCajaSeleccionadaId}
+          metodosPago={config.mets_caja}
           onSave={handleSaveVenta}
           onClose={() => setTicketModalOpen(false)}
           addToast={addToast}
@@ -278,6 +279,7 @@ export default function App() {
       {compraModalOpen && (
         <CompraModal
           productos={productos}
+          metodosPago={config.mets_caja}
           onSave={handleSaveCompra} onClose={() => setCompraModalOpen(false)}
           addToast={addToast}
         />

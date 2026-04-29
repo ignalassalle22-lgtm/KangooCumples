@@ -3,10 +3,11 @@ import React, { useState } from 'react'
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 const hoy = () => new Date().toISOString().slice(0, 10)
 
-export default function CompraModal({ productos, onSave, onClose, addToast }) {
+export default function CompraModal({ productos, metodosPago = [], onSave, onClose, addToast }) {
   const [proveedor, setProveedor] = useState('')
   const [fecha, setFecha] = useState(hoy())
   const [remito, setRemito] = useState('')
+  const [metodo, setMetodo] = useState('Efectivo')
   const [obs, setObs] = useState('')
   const [items, setItems] = useState([])
   const [busca, setBusca] = useState('')
@@ -46,7 +47,7 @@ export default function CompraModal({ productos, onSave, onClose, addToast }) {
     if (items.length === 0) { addToast('Agregá al menos un producto', 'err'); return }
     setSaving(true)
     try {
-      await onSave({ proveedor, fecha, numero_remito: remito, total, obs }, items)
+      await onSave({ proveedor, fecha, numero_remito: remito, total, metodo_pago: metodo, obs }, items)
     } catch (e) {
       addToast('Error: ' + e.message, 'err')
     } finally {
@@ -75,6 +76,14 @@ export default function CompraModal({ productos, onSave, onClose, addToast }) {
           <div className="fgg">
             <label>Fecha</label>
             <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
+          </div>
+          <div className="fgg">
+            <label>Método de pago</label>
+            <select value={metodo} onChange={e => setMetodo(e.target.value)}>
+              {(metodosPago.length ? metodosPago : ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']).map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
           </div>
           <div className="fgg">
             <label>Observaciones</label>

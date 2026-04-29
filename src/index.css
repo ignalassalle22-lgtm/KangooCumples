@@ -567,3 +567,33 @@ h1,h2,h3,h4,.logo-name { font-family: 'Nunito', sans-serif; }
   .vtable-wrap { border-radius: 10px; }
   .vtable th, .vtable td { padding: 8px 10px; font-size: 12px; }
 }
+
+/* ── IMPRESIÓN DE TICKET (impresora térmica 80mm) ── */
+@media print {
+  body * { visibility: hidden !important; }
+  .dm, .dm * { visibility: visible !important; }
+  .dm {
+    position: fixed !important; inset: 0 !important;
+    width: 80mm !important; max-width: 80mm !important;
+    margin: 0 auto !important; padding: 8px !important;
+    box-shadow: none !important; border: none !important;
+    background: white !important; color: black !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 11pt !important;
+  }
+  .dm .moh { border-bottom: 1px dashed #000 !important; padding-bottom: 6px !important; margin-bottom: 8px !important; }
+  .dm .moh button { display: none !important; }
+  .dm .mot-icon { display: none !important; }
+  .dm .mot span { font-size: 13pt !important; font-weight: bold !important; }
+  .dm .dm-row { display: flex !important; justify-content: space-between !important; margin-bottom: 3px !important; }
+  .dm .dm-label { font-size: 9pt !important; color: #555 !important; }
+  .dm .dm-val { font-size: 10pt !important; font-weight: bold !important; }
+  .dm .sdv { border-top: 1px dashed #000 !important; margin: 6px 0 !important; font-size: 8pt !important; color: #555 !important; }
+  .dm .tb { border-top: 1px dashed #000 !important; margin-top: 6px !important; background: transparent !important; }
+  .dm .tr { color: white !important; }
+  .dm .tl, .dm .tv { color: black !important; font-size: 10pt !important; }
+  .dm .tr.big .tv { font-size: 14pt !important; font-weight: 900 !important; }
+  .dm .tsep { border: none !important; border-top: 1px dashed #000 !important; }
+  .dm button { display: none !important; }
+  .dm p { margin: 6px 0 !important; font-size: 9pt !important; color: #555 !important; }
+}

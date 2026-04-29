@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef } from 'react'
+import * as XLSX from 'xlsx'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 
@@ -8,6 +9,8 @@ export default function Productos({ productos, categorias, loading, onNuevo, onE
   const [tipoFiltro, setTipoFiltro] = useState('')
   const [showBulk, setShowBulk] = useState(false)
   const [bulkData, setBulkData] = useState([])
+  const [excelPreview, setExcelPreview] = useState(null) // {rows, errors}
+  const fileRef = useRef()
 
   const catMap = useMemo(() => Object.fromEntries((categorias || []).map(c => [c.id, c.nombre])), [categorias])
 
@@ -30,6 +33,58 @@ export default function Productos({ productos, categorias, loading, onNuevo, onE
       id: p.id, nombre: p.nombre, precio_venta: p.precio_venta || 0, precio_costo: p.precio_costo || 0, _nuevo_venta: '', _nuevo_costo: ''
     })))
     setShowBulk(true)
+  }
+
+  function handleExcel(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const wb = XLSX.read(ev.target.result, { type: 'binary' })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' })
+        // Normalizar columnas: buscar "codigo"/"código" y "precio"/"precio_venta"
+        const normalize = (key) => key?.toString().toLowerCase().trim()
+          .replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i')
+          .replace(/[óòö]/g,'o').replace(/[úùü]/g,'u')
+        const parsed = []
+        const errors = []
+        rows.forEach((row, i) => {
+          const keys = Object.keys(row)
+          const codigoKey = keys.find(k => normalize(k) === 'codigo')
+          const precioKey = keys.find(k => ['precio', 'precio_venta', 'precio venta'].includes(normalize(k)))
+          if (!codigoKey || !precioKey) {
+            if (i === 0) errors.push('No se encontraron columnas "codigo" y "precio". Revisá el encabezado.')
+            return
+          }
+          const codigo = String(row[codigoKey]).trim()
+          const precio = parseFloat(String(row[precioKey]).replace(',', '.'))
+          if (!codigo) { errors.push(`Fila ${i + 2}: código vacío`); return }
+          if (isNaN(precio)) { errors.push(`Fila ${i + 2}: precio inválido ("${row[precioKey]}")`); return }
+          const prod = productos.find(p => (p.codigo || '').trim().toLowerCase() === codigo.toLowerCase())
+          parsed.push({ codigo, precio, producto: prod || null, encontrado: !!prod })
+        })
+        setExcelPreview({ rows: parsed, errors })
+      } catch (err) {
+        addToast('Error al leer el archivo: ' + err.message, 'err')
+      }
+    }
+    reader.readAsBinaryString(file)
+    e.target.value = ''
+  }
+
+  async function aplicarExcel() {
+    if (!excelPreview) return
+    const updates = excelPreview.rows
+      .filter(r => r.encontrado)
+      .map(r => ({ id: r.producto.id, precio_venta: r.precio }))
+    if (!updates.length) { addToast('No hay productos reconocidos para actualizar', 'err'); return }
+    try {
+      await bulkUpdatePrecios(updates)
+      addToast(`✓ ${updates.length} precios actualizados desde Excel`)
+      setExcelPreview(null)
+    } catch (e) { addToast('Error: ' + e.message, 'err') }
   }
 
   async function guardarBulk() {
@@ -64,6 +119,8 @@ export default function Productos({ productos, categorias, loading, onNuevo, onE
           <div className="ps">Gestión de artículos, stock y precios</div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
+          <button className="bg2" onClick={() => fileRef.current?.click()}>📊 Importar Excel</button>
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={handleExcel} />
           <button className="bg2" onClick={abrirBulk}>📋 Actualizar precios</button>
           <button className="bp" onClick={() => onNuevo()}>＋ Nuevo producto</button>
         </div>
@@ -146,6 +203,64 @@ export default function Productos({ productos, categorias, loading, onNuevo, onE
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal importación Excel */}
+      {excelPreview && (
+        <div className="ov op" onClick={e => e.target === e.currentTarget && setExcelPreview(null)}>
+          <div className="mo" style={{ maxWidth: 700 }}>
+            <div className="moh">
+              <div className="mot"><div className="mot-icon">📊</div>Importar precios desde Excel</div>
+              <button className="xcl" onClick={() => setExcelPreview(null)}>✕</button>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 14 }}>
+              El archivo debe tener columnas <b>codigo</b> y <b>precio</b>. Solo se actualiza el precio de venta.
+            </p>
+            {excelPreview.errors.length > 0 && (
+              <div style={{ background: 'var(--rdb)', border: '1px solid var(--rd)', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
+                {excelPreview.errors.map((e, i) => <div key={i} style={{ fontSize: 13, color: 'var(--rd)' }}>⚠ {e}</div>)}
+              </div>
+            )}
+            <div className="vtable-wrap" style={{ maxHeight: 380, overflowY: 'auto' }}>
+              <table className="vtable">
+                <thead>
+                  <tr>
+                    <th>Código (Excel)</th>
+                    <th>Precio nuevo</th>
+                    <th>Producto encontrado</th>
+                    <th>Precio actual</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {excelPreview.rows.map((r, i) => (
+                    <tr key={i} style={{ opacity: r.encontrado ? 1 : 0.5 }}>
+                      <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{r.codigo}</td>
+                      <td className="num" style={{ fontWeight: 700, color: 'var(--gn)' }}>{fmt(r.precio)}</td>
+                      <td>
+                        {r.encontrado
+                          ? <span style={{ color: 'var(--gn)', fontWeight: 600 }}>✓ {r.producto.nombre}</span>
+                          : <span style={{ color: 'var(--rd)', fontSize: 12 }}>✗ No encontrado</span>}
+                      </td>
+                      <td className="num" style={{ color: 'var(--mu)' }}>
+                        {r.encontrado ? fmt(r.producto.precio_venta) : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ marginTop: 14, fontSize: 13, color: 'var(--mu)' }}>
+              {excelPreview.rows.filter(r => r.encontrado).length} de {excelPreview.rows.length} productos reconocidos por código
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+              <button className="bg2" onClick={() => setExcelPreview(null)}>Cancelar</button>
+              <button className="bp" onClick={aplicarExcel}
+                disabled={!excelPreview.rows.some(r => r.encontrado)}>
+                ✓ Aplicar {excelPreview.rows.filter(r => r.encontrado).length} cambios
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

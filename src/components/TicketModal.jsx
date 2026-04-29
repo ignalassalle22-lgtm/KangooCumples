@@ -4,9 +4,10 @@ const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', c
 const hoy = () => new Date().toISOString().slice(0, 10)
 const hora = () => new Date().toTimeString().slice(0, 5)
 
-const METODOS = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
+const METODOS_DEFAULT = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
-export default function TicketModal({ productos, cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, onSave, onClose, addToast }) {
+export default function TicketModal({ productos, cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, metodosPago, onSave, onClose, addToast }) {
+  const METODOS = metodosPago?.length ? metodosPago : METODOS_DEFAULT
   const [items, setItems] = useState([])
   const [busca, setBusca] = useState('')
   const [cliente, setCliente] = useState('')

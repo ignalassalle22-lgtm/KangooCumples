@@ -4,11 +4,50 @@ const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', c
 
 const METODOS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
+function TicketDetalle({ venta, onClose }) {
+  const fmt2 = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
+  return (
+    <div className="ov op" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="dm" style={{ maxWidth: 420 }}>
+        <div className="moh">
+          <div className="mot"><div className="mot-icon">🧾</div>Ticket {venta.numero}</div>
+          <button className="xcl" onClick={onClose}>✕</button>
+        </div>
+        <div style={{ marginTop: 14 }}>
+          <div className="dm-row"><span className="dm-label">Fecha / Hora</span><span className="dm-val">{venta.fecha} {venta.hora}</span></div>
+          {venta.cliente && <div className="dm-row"><span className="dm-label">Cliente</span><span className="dm-val">{venta.cliente}</span></div>}
+          <div className="dm-row"><span className="dm-label">Método de pago</span><span className="dm-val">{venta.metodo_pago || '—'}</span></div>
+          <div className="sdv" style={{ marginTop: 14 }}>Artículos</div>
+          {(venta.venta_items || []).map((it, i) => (
+            <div key={i} className="dm-row">
+              <span className="dm-label">{it.nombre_producto} ×{it.cantidad}</span>
+              <span className="dm-val" style={{ color: 'var(--gn)', fontWeight: 700 }}>{fmt2(it.subtotal)}</span>
+            </div>
+          ))}
+          <div className="tb" style={{ marginTop: 14 }}>
+            <div className="tr"><span className="tl">Subtotal</span><span className="tv">{fmt2(venta.subtotal)}</span></div>
+            {venta.descuento > 0 && <div className="tr"><span className="tl">Descuento</span><span className="tv" style={{ color: '#ff9f7a' }}>-{fmt2(venta.descuento)}</span></div>}
+            <hr className="tsep" />
+            <div className="tr big"><span className="tl">TOTAL</span><span className="tv">{fmt2(venta.total)}</span></div>
+          </div>
+          {venta.obs && <p style={{ marginTop: 12, fontSize: 13, color: 'var(--mu)' }}>{venta.obs}</p>}
+        </div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
+          <button className="bg2" onClick={onClose}>Cerrar</button>
+          <button className="bp" onClick={() => { window.print() }}>🖨 Imprimir</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CajaCard({ caja, ventas, onCerrar, addToast }) {
   const [cerrando, setCerrando] = useState(false)
   const [saldoFinal, setSaldoFinal] = useState('')
   const [obs, setObs] = useState('')
   const [saving, setSaving] = useState(false)
+  const [verTickets, setVerTickets] = useState(false)
+  const [ticketDetalle, setTicketDetalle] = useState(null)
 
   const ventasCaja = useMemo(() =>
     ventas.filter(v => v.caja_id === caja.id && v.estado !== 'anulada'),
@@ -61,9 +100,14 @@ function CajaCard({ caja, ventas, onCerrar, addToast }) {
             {caja.fecha} · apertura {caja.hora_apertura} hs · saldo inicial {fmt(caja.saldo_inicial)}
           </div>
         </div>
-        <button className="bg2 bsm" onClick={() => setCerrando(!cerrando)}>
-          {cerrando ? '✕ Cancelar' : '🔐 Cerrar caja'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="bg2 bsm" onClick={() => setVerTickets(!verTickets)}>
+            {verTickets ? '▲ Ocultar tickets' : `🧾 Ver tickets (${ventasCaja.length})`}
+          </button>
+          <button className="bg2 bsm" onClick={() => setCerrando(!cerrando)}>
+            {cerrando ? '✕ Cancelar' : '🔐 Cerrar caja'}
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -86,6 +130,57 @@ function CajaCard({ caja, ventas, onCerrar, addToast }) {
           }
         </div>
       </div>
+
+      {verTickets && (
+        <div style={{ marginTop: 16, borderTop: '1px solid var(--bd)', paddingTop: 14 }}>
+          <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+            Tickets de esta caja
+          </div>
+          {ventasCaja.length === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--mu2)' }}>Sin ventas registradas aún.</p>
+          ) : (
+            <div className="vtable-wrap">
+              <table className="vtable">
+                <thead>
+                  <tr>
+                    <th>N° Ticket</th>
+                    <th>Hora</th>
+                    <th>Cliente</th>
+                    <th>Método</th>
+                    <th>Items</th>
+                    <th className="num">Total</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ventasCaja.map(v => (
+                    <tr key={v.id}>
+                      <td style={{ fontWeight: 700, color: 'var(--nv)', fontFamily: 'Nunito' }}>{v.numero}</td>
+                      <td style={{ fontSize: 12, color: 'var(--mu)' }}>{v.hora}</td>
+                      <td>{v.cliente || <span style={{ color: 'var(--mu2)' }}>—</span>}</td>
+                      <td style={{ fontSize: 13 }}>{v.metodo_pago || '—'}</td>
+                      <td style={{ fontSize: 13, color: 'var(--mu)' }}>{(v.venta_items || []).length} art.</td>
+                      <td className="num" style={{ fontWeight: 800, color: 'var(--gn)' }}>{fmt(v.total)}</td>
+                      <td>
+                        <button className="bg2 bsm" onClick={() => setTicketDetalle(v)}>Ver</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={5} className="num" style={{ fontSize: 12 }}>Total</td>
+                    <td className="num">{fmt(totalVentas)}</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {ticketDetalle && <TicketDetalle venta={ticketDetalle} onClose={() => setTicketDetalle(null)} />}
 
       {cerrando && (
         <div style={{ marginTop: 16, borderTop: '1px solid var(--bd)', paddingTop: 16 }}>

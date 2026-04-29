@@ -8,6 +8,7 @@ export default function Config({ config, updateConfig, addToast }) {
   const [npD, setNpD] = useState('')
   const [npP, setNpP] = useState('')
   const [nmetN, setNmetN] = useState('')
+  const [nmetCajaN, setNmetCajaN] = useState('')
   const [neN, setNeN] = useState('')
   const [neP, setNeP] = useState('')
   const [cfgPc, setCfgPc] = useState(config.pChico)
@@ -51,7 +52,7 @@ export default function Config({ config, updateConfig, addToast }) {
   }
   const delPromo = id => { updateConfig('promos', config.promos.filter(p => p.id !== id)); addToast('Promo eliminada') }
 
-  // ── Métodos pago ──
+  // ── Métodos pago (cumpleaños) ──
   const addMet = () => {
     const n = nmetN.trim()
     if (!n) return
@@ -61,6 +62,18 @@ export default function Config({ config, updateConfig, addToast }) {
     addToast('Método de pago agregado ✓')
   }
   const delMet = m => { updateConfig('mets', config.mets.filter(x => x !== m)); addToast('Método eliminado') }
+
+  // ── Métodos pago (caja/ventas) ──
+  const metsCaja = config.mets_caja || []
+  const addMetCaja = () => {
+    const n = nmetCajaN.trim()
+    if (!n) return
+    if (metsCaja.includes(n)) { addToast('Ese método ya existe', 'err'); return }
+    updateConfig('mets_caja', [...metsCaja, n])
+    setNmetCajaN('')
+    addToast('Método de pago agregado ✓')
+  }
+  const delMetCaja = m => { updateConfig('mets_caja', metsCaja.filter(x => x !== m)); addToast('Método eliminado') }
 
   // ── Extras ──
   const addExtra = () => {
@@ -177,9 +190,9 @@ export default function Config({ config, updateConfig, addToast }) {
           </div>
         </div>
 
-        {/* Métodos pago */}
+        {/* Métodos pago cumpleaños */}
         <div className="cc">
-          <div className="ct"><div className="ct-icon">💳</div>Métodos de pago</div>
+          <div className="ct"><div className="ct-icon">💳</div>Métodos de pago (cumpleaños)</div>
           {config.mets.map(m => (
             <div key={m} className="li">
               <span className="lin">{m}</span>
@@ -189,6 +202,27 @@ export default function Config({ config, updateConfig, addToast }) {
           <div className="ar">
             <input type="text" value={nmetN} onChange={e => setNmetN(e.target.value)} placeholder="Ej: Efectivo, Transferencia..." />
             <button className="bp bsm" onClick={addMet}>+ Agregar</button>
+          </div>
+        </div>
+
+        {/* Métodos pago caja/ventas */}
+        <div className="cc">
+          <div className="ct"><div className="ct-icon">🏧</div>Métodos de pago (caja / ventas)</div>
+          <div style={{ fontSize: 12, color: 'var(--mu)', marginBottom: 10 }}>
+            Usados en ventas de caja y compras a proveedores.
+          </div>
+          {metsCaja.length === 0
+            ? <div style={{ fontSize: 13, color: 'var(--mu)', padding: '8px 0' }}>Sin métodos cargados</div>
+            : metsCaja.map(m => (
+              <div key={m} className="li">
+                <span className="lin">{m}</span>
+                <button className="bdng" onClick={() => delMetCaja(m)}>✕</button>
+              </div>
+            ))
+          }
+          <div className="ar">
+            <input type="text" value={nmetCajaN} onChange={e => setNmetCajaN(e.target.value)} placeholder="Ej: Efectivo, Transferencia..." />
+            <button className="bp bsm" onClick={addMetCaja}>+ Agregar</button>
           </div>
         </div>
 

@@ -32,4 +32,5 @@ export const DEFAULT_CONFIG = {
   ],
   pChico: 5000,
   pAdulto: 2500,
+  mets_caja: ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro'],
 }

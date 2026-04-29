@@ -164,6 +164,10 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
               </div>
               {showDetalle.obs && <p style={{ marginTop: 12, fontSize: 13, color: 'var(--mu)' }}>{showDetalle.obs}</p>}
             </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="bg2" onClick={() => setShowDetalle(null)}>Cerrar</button>
+              <button className="bp" onClick={() => window.print()}>🖨 Imprimir ticket</button>
+            </div>
           </div>
         </div>
       )}

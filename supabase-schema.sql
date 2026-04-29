@@ -119,9 +119,11 @@ CREATE TABLE IF NOT EXISTS public.compras (
   proveedor     TEXT,
   numero_remito TEXT,
   total         NUMERIC DEFAULT 0,
+  metodo_pago   TEXT,
   obs           TEXT,
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
+-- Migración: ALTER TABLE public.compras ADD COLUMN IF NOT EXISTS metodo_pago TEXT;
 
 -- Items de compra
 CREATE TABLE IF NOT EXISTS public.compra_items (
