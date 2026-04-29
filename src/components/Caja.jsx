@@ -185,13 +185,12 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, onAbri
               </div>
               <div className="fgg">
                 <label>Turno</label>
-                <input
-                  type="text"
-                  value={turno}
-                  onChange={e => setTurno(e.target.value)}
-                  placeholder="Ej: Mañana, Tarde, Noche..."
-                  onKeyDown={e => e.key === 'Enter' && handleAbrir()}
-                />
+                <select value={turno} onChange={e => setTurno(e.target.value)}>
+                  <option value="">Sin turno</option>
+                  <option value="Mañana">Mañana</option>
+                  <option value="Tarde">Tarde</option>
+                  <option value="Noche">Noche</option>
+                </select>
               </div>
               <div className="fgg">
                 <label>Saldo inicial en efectivo $</label>

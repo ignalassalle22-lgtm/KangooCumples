@@ -11,6 +11,7 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
   const [busca, setBusca] = useState('')
   const [cliente, setCliente] = useState('')
   const [descuento, setDescuento] = useState('')
+  const [descuentoTipo, setDescuentoTipo] = useState('monto') // 'monto' | 'pct'
   const [metodo, setMetodo] = useState('Efectivo')
   const [obs, setObs] = useState('')
   const [saving, setSaving] = useState(false)
@@ -73,7 +74,9 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
   }
 
   const subtotal = items.reduce((s, it) => s + it.subtotal, 0)
-  const descuentoNum = parseFloat(descuento) || 0
+  const descuentoNum = descuentoTipo === 'pct'
+    ? subtotal * (parseFloat(descuento) || 0) / 100
+    : parseFloat(descuento) || 0
   const total = Math.max(0, subtotal - descuentoNum)
 
   async function handleGuardar() {
@@ -235,12 +238,33 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
               ))}
             </div>
 
-            <div className="sdv">Descuento $</div>
-            <input type="number" min="0" step="0.01" value={descuento}
-              onChange={e => setDescuento(e.target.value)}
-              placeholder="0"
-              style={{ border: '1px solid var(--bd2)', borderRadius: 10, padding: '9px 13px', fontSize: 14 }}
-            />
+            <div className="sdv">Descuento</div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+              {['monto', 'pct'].map(t => (
+                <button key={t} type="button"
+                  className={`rp${descuentoTipo === t ? ' spaid' : ''}`}
+                  onClick={() => { setDescuentoTipo(t); setDescuento('') }}
+                  style={{ flex: 1, textAlign: 'center', padding: '7px 8px', fontSize: 13 }}
+                >
+                  {t === 'monto' ? '$ Monto fijo' : '% Porcentaje'}
+                </button>
+              ))}
+            </div>
+            <div style={{ position: 'relative' }}>
+              <input type="number" min="0" step="0.01" value={descuento}
+                onChange={e => setDescuento(e.target.value)}
+                placeholder="0"
+                style={{ border: '1px solid var(--bd2)', borderRadius: 10, padding: '9px 36px 9px 13px', fontSize: 14, width: '100%' }}
+              />
+              <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: 'var(--mu)', fontWeight: 700, pointerEvents: 'none' }}>
+                {descuentoTipo === 'pct' ? '%' : '$'}
+              </span>
+            </div>
+            {descuentoTipo === 'pct' && descuento > 0 && subtotal > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--mu)', marginTop: 4 }}>
+                = {fmt(descuentoNum)} de descuento
+              </div>
+            )}
 
             <div className="fgg">
               <label>Observaciones</label>
