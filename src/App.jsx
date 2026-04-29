@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import Topbar from './components/Topbar'
 
 // Cumpleaños
@@ -37,6 +37,18 @@ export default function App() {
   const { compras, loading: comprasLoading, saveCompra } = useCompras()
   const { cajasAbiertas, historial: cajaHistorial, loading: cajaLoading, abrirCaja, cerrarCaja } = useCaja()
   const cajaActual = cajasAbiertas[0] || null
+
+  // Caja seleccionada para ventas: se persiste entre tickets, se limpia si la caja se cierra
+  const [cajaSeleccionadaId, setCajaSeleccionadaId] = useState(null)
+  useEffect(() => {
+    const ids = cajasAbiertas.map(c => c.id)
+    if (cajasAbiertas.length === 0) {
+      setCajaSeleccionadaId(null)
+    } else if (!cajaSeleccionadaId || !ids.includes(cajaSeleccionadaId)) {
+      // Si la caja seleccionada se cerró o no hay ninguna, tomar la primera disponible
+      setCajaSeleccionadaId(cajasAbiertas[0].id)
+    }
+  }, [cajasAbiertas])
 
   // ── UI State ──
   const [activeSection, setActiveSection] = useState('eventos')
@@ -253,8 +265,12 @@ export default function App() {
 
       {ticketModalOpen && (
         <TicketModal
-          productos={productos} cajaId={cajaActual?.id} cajasAbiertas={cajasAbiertas}
-          onSave={handleSaveVenta} onClose={() => setTicketModalOpen(false)}
+          productos={productos}
+          cajasAbiertas={cajasAbiertas}
+          cajaSeleccionadaId={cajaSeleccionadaId}
+          onCajaChange={setCajaSeleccionadaId}
+          onSave={handleSaveVenta}
+          onClose={() => setTicketModalOpen(false)}
           addToast={addToast}
         />
       )}

@@ -6,7 +6,7 @@ const hora = () => new Date().toTimeString().slice(0, 5)
 
 const METODOS = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
-export default function TicketModal({ productos, cajaId, cajasAbiertas = [], onSave, onClose, addToast }) {
+export default function TicketModal({ productos, cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, onSave, onClose, addToast }) {
   const [items, setItems] = useState([])
   const [busca, setBusca] = useState('')
   const [cliente, setCliente] = useState('')
@@ -14,8 +14,12 @@ export default function TicketModal({ productos, cajaId, cajasAbiertas = [], onS
   const [metodo, setMetodo] = useState('Efectivo')
   const [obs, setObs] = useState('')
   const [saving, setSaving] = useState(false)
-  const [cajaSeleccionada, setCajaSeleccionada] = useState(cajaId || null)
   const buscaRef = useRef()
+
+  function handleCajaChange(id) {
+    const parsed = id ? Number(id) : null
+    if (onCajaChange) onCajaChange(parsed)
+  }
 
   const prodsFiltrados = useMemo(() => {
     if (!busca) return []
@@ -84,7 +88,7 @@ export default function TicketModal({ productos, cajaId, cajasAbiertas = [], onS
     setSaving(true)
     try {
       await onSave(
-        { fecha: hoy(), hora: hora(), cliente, subtotal, descuento: descuentoNum, total, metodo_pago: metodo, caja_id: cajaSeleccionada || null, obs },
+        { fecha: hoy(), hora: hora(), cliente, subtotal, descuento: descuentoNum, total, metodo_pago: metodo, caja_id: cajaSeleccionadaId || null, obs },
         items
       )
     } catch (e) {
@@ -202,15 +206,15 @@ export default function TicketModal({ productos, cajaId, cajasAbiertas = [], onS
               <input value={cliente} onChange={e => setCliente(e.target.value)} placeholder="Nombre o número" />
             </div>
 
-            {cajasAbiertas.length > 1 && (
+            {cajasAbiertas.length > 0 && (
               <>
                 <div className="sdv">Caja</div>
                 <select
-                  value={cajaSeleccionada || ''}
-                  onChange={e => setCajaSeleccionada(e.target.value ? Number(e.target.value) : null)}
+                  value={cajaSeleccionadaId || ''}
+                  onChange={e => handleCajaChange(e.target.value)}
                   style={{ border: '1px solid var(--bd2)', borderRadius: 10, padding: '9px 13px', fontSize: 13, background: 'var(--bg)', color: 'var(--tx)', width: '100%' }}
                 >
-                  <option value="">Sin caja asignada</option>
+                  <option value="">Sin caja</option>
                   {cajasAbiertas.map(c => (
                     <option key={c.id} value={c.id}>
                       {c.nombre || 'Caja'}{c.turno ? ` · ${c.turno}` : ''}
