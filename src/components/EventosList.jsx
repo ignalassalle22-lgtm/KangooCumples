@@ -103,6 +103,7 @@ export default function EventosList({ eventos, loading, onEditar, onEliminar, on
           <option value="none">Sin pago</option>
           <option value="sena">Seña dejada</option>
           <option value="paid">Pagado</option>
+          <option value="cancelado">Cancelado</option>
         </select>
         <input
           type="date"
@@ -139,8 +140,8 @@ export default function EventosList({ eventos, loading, onEditar, onEliminar, on
         ) : (
           filtered.map(ev => {
             const isPast = ev.fecha && new Date(ev.fecha + 'T12:00:00') < now
-            const bc = ev.pago === 'paid' ? 'bpd' : ev.pago === 'sena' ? 'bsn' : 'bnp'
-            const bt = ev.pago === 'paid' ? '✓ Pagado' : ev.pago === 'sena' ? '◑ Seña' : '✗ Sin pago'
+            const bc = ev.pago === 'paid' ? 'bpd' : ev.pago === 'sena' ? 'bsn' : ev.pago === 'cancelado' ? 'bcn' : 'bnp'
+            const bt = ev.pago === 'paid' ? '✓ Pagado' : ev.pago === 'sena' ? '◑ Seña' : ev.pago === 'cancelado' ? '✕ Cancelado' : '✗ Sin pago'
             const rest = (ev.total || 0) - (ev.monto || 0)
             const cd = cumpleDisplay(ev)
             return (
@@ -152,7 +153,7 @@ export default function EventosList({ eventos, loading, onEditar, onEliminar, on
                       : '—'}
                   </div>
                   <div className="dtime">
-                    🕐 {ev.hora || '—'} hs{cd ? ` · 🎂 ${cd}` : ''}
+                    🕐 {ev.hora || '—'}{ev.hora_hasta ? ` — ${ev.hora_hasta}` : ''} hs{cd ? ` · 🎂 ${cd}` : ''}
                   </div>
                 </div>
                 <div>

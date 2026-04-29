@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 
 export default function Config({ config, updateConfig, addToast }) {
   const [nmN, setNmN] = useState('')
+  const [nmP, setNmP] = useState('')
   const [nsN, setNsN] = useState('')
   const [npD, setNpD] = useState('')
   const [npP, setNpP] = useState('')
@@ -17,12 +18,17 @@ export default function Config({ config, updateConfig, addToast }) {
   const addMenu = () => {
     const n = nmN.trim()
     if (!n) { addToast('Completá el nombre del menú', 'err'); return }
-    const updated = [...config.menus, { id: Date.now(), n }]
+    const p = parseFloat(nmP) || 0
+    const updated = [...config.menus, { id: Date.now(), n, p }]
     updateConfig('menus', updated)
-    setNmN('')
+    setNmN(''); setNmP('')
     addToast('Menú agregado ✓')
   }
   const delMenu = id => { updateConfig('menus', config.menus.filter(m => m.id !== id)); addToast('Menú eliminado') }
+  const updateMenuPrice = (id, val) => {
+    updateConfig('menus', config.menus.map(m => m.id === id ? { ...m, p: parseFloat(val) || 0 } : m))
+    addToast('Precio de menú actualizado ✓')
+  }
 
   // ── Salones ──
   const addSalon = () => {
@@ -96,13 +102,24 @@ export default function Config({ config, updateConfig, addToast }) {
             ? <div style={{ fontSize: 13, color: 'var(--mu)', padding: '8px 0' }}>Sin menús cargados</div>
             : config.menus.map(m => (
               <div key={m.id} className="li">
-                <div><span className="lin">{m.n}</span></div>
-                <button className="bdng" onClick={() => delMenu(m.id)}>✕</button>
+                <span className="lin">{m.n}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="number"
+                    defaultValue={m.p || 0}
+                    min={0}
+                    style={{ width: 110, border: '1px solid var(--bd2)', borderRadius: 7, padding: '5px 9px', fontSize: 13, background: 'var(--bg)' }}
+                    onBlur={ev => updateMenuPrice(m.id, ev.target.value)}
+                    title="Precio por chico con este menú"
+                  />
+                  <button className="bdng" onClick={() => delMenu(m.id)}>✕</button>
+                </div>
               </div>
             ))
           }
           <div className="ar">
             <input type="text" value={nmN} onChange={e => setNmN(e.target.value)} placeholder="Nombre del menú" style={{ flex: 2 }} />
+            <input type="number" value={nmP} onChange={e => setNmP(e.target.value)} placeholder="$ precio" style={{ width: 120, flex: 'none' }} />
             <button className="bp bsm" onClick={addMenu}>+ Agregar</button>
           </div>
         </div>

@@ -22,7 +22,8 @@ export default function DetalleModal({ evento: ev, config, onClose, onEditar }) 
   const menuRows = ev.mrows && ev.mrows.length
     ? ev.mrows.map(r => {
         const m = config.menus.find(x => String(x.id) === String(r.mid))
-        return m ? `${m.n} ×${r.qty} = ${fmt(m.p * r.qty)}` : null
+        if (!m) return null
+        return m.p ? `${m.n} ×${r.qty} = ${fmt(m.p * r.qty)}` : `${m.n} ×${r.qty}`
       }).filter(Boolean).join(' | ')
     : '—'
 
@@ -35,8 +36,8 @@ export default function DetalleModal({ evento: ev, config, onClose, onEditar }) 
 
   const promo = ev.promoId ? config.promos.find(p => String(p.id) === String(ev.promoId)) : null
 
-  const bc = ev.pago === 'paid' ? 'bpd' : ev.pago === 'sena' ? 'bsn' : 'bnp'
-  const bt = ev.pago === 'paid' ? '✓ Pagado completo' : ev.pago === 'sena' ? '◑ Seña dejada' : '✗ Sin pago'
+  const bc = ev.pago === 'paid' ? 'bpd' : ev.pago === 'sena' ? 'bsn' : ev.pago === 'cancelado' ? 'bcn' : 'bnp'
+  const bt = ev.pago === 'paid' ? '✓ Pagado completo' : ev.pago === 'sena' ? '◑ Seña dejada' : ev.pago === 'cancelado' ? '✕ Cancelado' : '✗ Sin pago'
 
   return (
     <div className="ov op" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -76,7 +77,11 @@ export default function DetalleModal({ evento: ev, config, onClose, onEditar }) 
 
         <div className="dm-row">
           <span className="dm-label">📅 Fecha y hora</span>
-          <span className="dm-val">{fmtFechaHora(ev.fecha, ev.hora)} hs</span>
+          <span className="dm-val">
+            {fmtFechaHora(ev.fecha, ev.hora)} hs
+            {ev.hora_hasta && ` — ${ev.hora_hasta} hs`}
+            {ev.extendido && <span style={{ marginLeft: 8, fontSize: 11, background: 'var(--nv3)', color: 'var(--nv)', padding: '2px 7px', borderRadius: 5, fontWeight: 700 }}>Extendido</span>}
+          </span>
         </div>
 
         <Row label="🏠 Salón" val={ev.salon} />

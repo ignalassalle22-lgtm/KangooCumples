@@ -142,6 +142,7 @@ h1,h2,h3,h4,.logo-name { font-family: 'Nunito', sans-serif; }
 .bpd { background: var(--gnb); color: var(--gn); }
 .bsn { background: var(--amb); color: var(--am); }
 .bnp { background: var(--rdb); color: var(--rd); }
+.bcn { background: #E8E8E8; color: #666; }
 .eact { display: flex; gap: 6px; }
 
 /* ── MODAL ── */
@@ -245,6 +246,7 @@ h1,h2,h3,h4,.logo-name { font-family: 'Nunito', sans-serif; }
 .rp.snone { border-color: var(--rd); background: var(--rdb); color: var(--rd); }
 .rp.ssena { border-color: var(--am); background: var(--amb); color: var(--am); }
 .rp.spaid { border-color: var(--gn); background: var(--gnb); color: var(--gn); }
+.rp.scancelado { border-color: #999; background: #E8E8E8; color: #555; }
 
 /* ── TOTAL BOX ── */
 .tb { background: var(--nv); border-radius: 14px; padding: 18px 22px; margin-top: 16px; }

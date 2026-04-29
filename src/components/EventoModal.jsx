@@ -91,7 +91,10 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
     const chi = parseInt(form.chi) || 0
     const adu = parseInt(form.adu) || 0
     const base = chi * (config.pChico || 0) + adu * (config.pAdulto || 0)
-    const mTot = 0
+    const mTot = mrows.reduce((acc, r) => {
+      const m = config.menus.find(x => String(x.id) === String(r.mid))
+      return acc + (m && m.p ? m.p * (parseInt(r.qty) || 0) : 0)
+    }, 0)
     const eTot = Object.entries(extraQtys).reduce((acc, [eid, qty]) => {
       const ex = config.extras.find(x => String(x.id) === String(eid))
       return acc + (ex ? ex.p * (qty || 0) : 0)
@@ -104,7 +107,7 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
     const total = base + mTot + eTot - dto
     const monto = parseFloat(form.monto) || 0
     return { base, mTot, eTot, dto, total, monto, rest: Math.max(0, total - monto) }
-  }, [form.chi, form.adu, form.promoId, form.monto, extraQtys, config])
+  }, [form.chi, form.adu, form.promoId, form.monto, extraQtys, config, mrows])
 
   // Duplicate check
   const dupAlert = useMemo(() => {
@@ -116,6 +119,7 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
 
   // Menu qty mismatch
   const menuAlert = useMemo(() => {
+    if (form.pago === 'cancelado') return null
     const chi = parseInt(form.chi) || 0
     if (chi === 0) return null
     const total = mrows.reduce((acc, r) => acc + (parseInt(r.qty) || 0), 0)
@@ -124,7 +128,7 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
     return diff > 0
       ? `⚠ Faltan ${diff} menú${diff !== 1 ? 's' : ''}: tenés ${total} asignado${total !== 1 ? 's' : ''} para ${chi} chico${chi !== 1 ? 's' : ''}.`
       : `⚠ Sobran ${Math.abs(diff)} menú${Math.abs(diff) !== 1 ? 's' : ''}: tenés ${total} asignado${total !== 1 ? 's' : ''} para ${chi} chico${chi !== 1 ? 's' : ''}.`
-  }, [form.chi, mrows])
+  }, [form.pago, form.chi, mrows])
 
   const handleSave = async () => {
     const hora = getHora(form)
@@ -134,6 +138,10 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
     }
     if (dupAlert) {
       addToast('Duplicado: ya existe un evento con esa fecha, hora y salón.', 'err')
+      return
+    }
+    if (form.pago !== 'none' && form.pago !== 'cancelado' && !form.met) {
+      addToast('Seleccioná el método de pago.', 'err')
       return
     }
     const chi = parseInt(form.chi) || 0
@@ -392,8 +400,8 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
         {/* Estado de pago */}
         <div className="sdv">Estado del pago</div>
         <div className="popt">
-          {['none', 'sena', 'paid'].map(v => {
-            const labels = { none: '✗ Sin pago', sena: '◑ Dejó seña', paid: '✓ Pagado completo' }
+          {['none', 'sena', 'paid', 'cancelado'].map(v => {
+            const labels = { none: '✗ Sin pago', sena: '◑ Dejó seña', paid: '✓ Pagado completo', cancelado: '✕ Cancelado' }
             const isActive = form.pago === v
             return (
               <div
@@ -407,7 +415,7 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
           })}
         </div>
 
-        {form.pago !== 'none' && (
+        {form.pago !== 'none' && form.pago !== 'cancelado' && (
           <div>
             <div className="fg" style={{ marginBottom: 10 }}>
               <div className="fgg">
@@ -454,6 +462,9 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
         {/* Total box */}
         <div className="tb">
           <div className="tr"><span className="tl">Precio base (chicos + adultos)</span><span className="tv">{fmt(calc.base)}</span></div>
+          {calc.mTot > 0 && (
+            <div className="tr"><span className="tl">Menús</span><span className="tv">{fmt(calc.mTot)}</span></div>
+          )}
           {calc.eTot > 0 && (
             <div className="tr"><span className="tl">Extras</span><span className="tv">{fmt(calc.eTot)}</span></div>
           )}
