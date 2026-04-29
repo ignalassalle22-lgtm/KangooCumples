@@ -6,7 +6,7 @@ const hora = () => new Date().toTimeString().slice(0, 5)
 
 const METODOS = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
-export default function TicketModal({ productos, cajaId, onSave, onClose, addToast }) {
+export default function TicketModal({ productos, cajaId, cajasAbiertas = [], onSave, onClose, addToast }) {
   const [items, setItems] = useState([])
   const [busca, setBusca] = useState('')
   const [cliente, setCliente] = useState('')
@@ -14,6 +14,7 @@ export default function TicketModal({ productos, cajaId, onSave, onClose, addToa
   const [metodo, setMetodo] = useState('Efectivo')
   const [obs, setObs] = useState('')
   const [saving, setSaving] = useState(false)
+  const [cajaSeleccionada, setCajaSeleccionada] = useState(cajaId || null)
   const buscaRef = useRef()
 
   const prodsFiltrados = useMemo(() => {
@@ -83,7 +84,7 @@ export default function TicketModal({ productos, cajaId, onSave, onClose, addToa
     setSaving(true)
     try {
       await onSave(
-        { fecha: hoy(), hora: hora(), cliente, subtotal, descuento: descuentoNum, total, metodo_pago: metodo, caja_id: cajaId || null, obs },
+        { fecha: hoy(), hora: hora(), cliente, subtotal, descuento: descuentoNum, total, metodo_pago: metodo, caja_id: cajaSeleccionada || null, obs },
         items
       )
     } catch (e) {
@@ -200,6 +201,24 @@ export default function TicketModal({ productos, cajaId, onSave, onClose, addToa
               <label>Cliente (opcional)</label>
               <input value={cliente} onChange={e => setCliente(e.target.value)} placeholder="Nombre o número" />
             </div>
+
+            {cajasAbiertas.length > 1 && (
+              <>
+                <div className="sdv">Caja</div>
+                <select
+                  value={cajaSeleccionada || ''}
+                  onChange={e => setCajaSeleccionada(e.target.value ? Number(e.target.value) : null)}
+                  style={{ border: '1px solid var(--bd2)', borderRadius: 10, padding: '9px 13px', fontSize: 13, background: 'var(--bg)', color: 'var(--tx)', width: '100%' }}
+                >
+                  <option value="">Sin caja asignada</option>
+                  {cajasAbiertas.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre || 'Caja'}{c.turno ? ` · ${c.turno}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
 
             <div className="sdv">Pago</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

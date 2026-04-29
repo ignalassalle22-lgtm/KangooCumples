@@ -62,9 +62,11 @@ CREATE TABLE IF NOT EXISTS public.productos (
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Cajas (sesiones diarias)
+-- Cajas (sesiones por sector/turno — pueden haber múltiples abiertas simultáneamente)
 CREATE TABLE IF NOT EXISTS public.cajas (
   id             BIGSERIAL PRIMARY KEY,
+  nombre         TEXT DEFAULT 'Caja',     -- Ej: 'Buffet', 'Saltos', 'Entrada'
+  turno          TEXT,                    -- Ej: 'Mañana', 'Tarde', 'Noche'
   fecha          DATE DEFAULT CURRENT_DATE,
   hora_apertura  TEXT,
   hora_cierre    TEXT,
@@ -76,6 +78,10 @@ CREATE TABLE IF NOT EXISTS public.cajas (
   obs_cierre     TEXT,
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migración (si la tabla ya existe, ejecutar en Supabase SQL Editor):
+-- ALTER TABLE public.cajas ADD COLUMN IF NOT EXISTS nombre TEXT DEFAULT 'Caja';
+-- ALTER TABLE public.cajas ADD COLUMN IF NOT EXISTS turno TEXT;
 
 -- Ventas (cabecera de ticket)
 CREATE TABLE IF NOT EXISTS public.ventas (

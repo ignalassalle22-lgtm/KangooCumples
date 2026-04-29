@@ -35,7 +35,8 @@ export default function App() {
   const { productos, categorias, loading: prodLoading, saveProducto, deleteProducto, updateStock, bulkUpdatePrecios, saveCategoria } = useProductos()
   const { ventas, loading: ventasLoading, fetchVentas, saveVenta, anularVenta } = useVentas()
   const { compras, loading: comprasLoading, saveCompra } = useCompras()
-  const { cajaActual, historial: cajaHistorial, loading: cajaLoading, abrirCaja, cerrarCaja } = useCaja()
+  const { cajasAbiertas, historial: cajaHistorial, loading: cajaLoading, abrirCaja, cerrarCaja } = useCaja()
+  const cajaActual = cajasAbiertas[0] || null
 
   // ── UI State ──
   const [activeSection, setActiveSection] = useState('eventos')
@@ -114,12 +115,12 @@ export default function App() {
   }, [saveCompra, updateStock, addToast])
 
   // ── Handlers caja ──
-  const handleAbrirCaja = useCallback(async (saldo) => {
-    await abrirCaja(saldo)
+  const handleAbrirCaja = useCallback(async ({ saldo_inicial, nombre, turno }) => {
+    await abrirCaja({ saldo_inicial, nombre, turno })
   }, [abrirCaja])
 
-  const handleCerrarCaja = useCallback(async (datos) => {
-    await cerrarCaja(datos)
+  const handleCerrarCaja = useCallback(async ({ cajaId, ...datos }) => {
+    await cerrarCaja({ cajaId, ...datos })
   }, [cerrarCaja])
 
   const editingEvento = editingId ? eventos.find(e => e.id === editingId) : null
@@ -202,7 +203,7 @@ export default function App() {
 
         {activeSection === 'caja' && (
           <Caja
-            cajaActual={cajaActual} historial={cajaHistorial} loading={cajaLoading}
+            cajasAbiertas={cajasAbiertas} historial={cajaHistorial} loading={cajaLoading}
             ventas={ventas}
             onAbrir={handleAbrirCaja}
             onCerrar={handleCerrarCaja}
@@ -252,7 +253,7 @@ export default function App() {
 
       {ticketModalOpen && (
         <TicketModal
-          productos={productos} cajaId={cajaActual?.id}
+          productos={productos} cajaId={cajaActual?.id} cajasAbiertas={cajasAbiertas}
           onSave={handleSaveVenta} onClose={() => setTicketModalOpen(false)}
           addToast={addToast}
         />
