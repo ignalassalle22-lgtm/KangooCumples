@@ -154,7 +154,7 @@ export default function Config({ config, updateConfig, addToast, productos = [] 
               const isExpanded = menuExpandido === m.id
               const comps = m.componentes || []
               return (
-                <div key={m.id} style={{ border: '1px solid var(--bd2)', borderRadius: 8, marginBottom: 8, overflow: 'hidden' }}>
+                <div key={m.id} style={{ border: '1px solid var(--bd2)', borderRadius: 8, marginBottom: 8 }}>
                   <div className="li" style={{ borderBottom: isExpanded ? '1px solid var(--bd2)' : 'none', cursor: 'pointer' }} onClick={() => setMenuExpandido(isExpanded ? null : m.id)}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 11, color: 'var(--mu)' }}>{isExpanded ? '▾' : '▸'}</span>
