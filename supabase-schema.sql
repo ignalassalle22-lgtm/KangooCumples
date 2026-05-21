@@ -21,10 +21,18 @@ CREATE TABLE IF NOT EXISTS public.eventos (
   met         TEXT,
   total       NUMERIC DEFAULT 0,
   promo_id    TEXT,
-  mrows       JSONB DEFAULT '[]',    -- [{mid, qty}]
-  extras      JSONB DEFAULT '[]',    -- [{eid, qty}]
-  created_at  TIMESTAMPTZ DEFAULT NOW()
+  mrows                JSONB DEFAULT '[]',    -- [{mid, qty}]
+  extras               JSONB DEFAULT '[]',    -- [{eid, qty}]
+  consumos             JSONB DEFAULT '[]',    -- [{productoId, nombreProducto, qty, precioUnitario}]
+  consumos_cobrados    BOOLEAN DEFAULT FALSE,
+  menus_stock_aplicado BOOLEAN DEFAULT FALSE,
+  created_at           TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migraciones (si la tabla eventos ya existe):
+-- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS consumos JSONB DEFAULT '[]';
+-- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS consumos_cobrados BOOLEAN DEFAULT FALSE;
+-- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS menus_stock_aplicado BOOLEAN DEFAULT FALSE;
 
 -- ── Tabla de configuración (clave→valor JSON) ──
 CREATE TABLE IF NOT EXISTS public.configuracion (

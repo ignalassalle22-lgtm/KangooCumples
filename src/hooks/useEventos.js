@@ -4,13 +4,21 @@ import { supabase } from '../supabase'
 // Map Supabase snake_case -> camelCase
 function fromDB(row) {
   if (!row) return row
-  return { ...row, promoId: row.promo_id }
+  return {
+    ...row,
+    promoId: row.promo_id,
+    menusStockAplicado: row.menus_stock_aplicado,
+    consumosCobrados: row.consumos_cobrados,
+  }
 }
 
 // Map camelCase -> Supabase snake_case
 function toDB(ev) {
-  const { promoId, ...rest } = ev
-  return { ...rest, promo_id: promoId || null }
+  const { promoId, menusStockAplicado, consumosCobrados, ...rest } = ev
+  const row = { ...rest, promo_id: promoId || null }
+  if (menusStockAplicado !== undefined) row.menus_stock_aplicado = menusStockAplicado
+  if (consumosCobrados !== undefined) row.consumos_cobrados = consumosCobrados
+  return row
 }
 
 export function useEventos() {
@@ -74,5 +82,51 @@ export function useEventos() {
     setEventos(prev => prev.filter(e => e.id !== id))
   }
 
-  return { eventos, setEventos, loading, error, fetchEventos, saveEvento, deleteEvento }
+  // Guarda los consumos del evento y actualiza el estado local
+  const saveEventoConsumos = async (eventoId, consumos) => {
+    const { data, error } = await supabase
+      .from('eventos')
+      .update({ consumos })
+      .eq('id', eventoId)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    const updated = fromDB(data)
+    setEventos(prev => prev.map(e => e.id === eventoId ? updated : e))
+    return updated
+  }
+
+  // Marca el stock de menús como aplicado
+  const marcarMenusStockAplicado = async (eventoId) => {
+    const { data, error } = await supabase
+      .from('eventos')
+      .update({ menus_stock_aplicado: true })
+      .eq('id', eventoId)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    const updated = fromDB(data)
+    setEventos(prev => prev.map(e => e.id === eventoId ? updated : e))
+    return updated
+  }
+
+  // Marca los adicionales como cobrados
+  const marcarConsumoCobrado = async (eventoId) => {
+    const { data, error } = await supabase
+      .from('eventos')
+      .update({ consumos_cobrados: true })
+      .eq('id', eventoId)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    const updated = fromDB(data)
+    setEventos(prev => prev.map(e => e.id === eventoId ? updated : e))
+    return updated
+  }
+
+  return {
+    eventos, setEventos, loading, error,
+    fetchEventos, saveEvento, deleteEvento,
+    saveEventoConsumos, marcarMenusStockAplicado, marcarConsumoCobrado,
+  }
 }

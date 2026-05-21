@@ -13,7 +13,7 @@ function Row({ label, val, valStyle }) {
   )
 }
 
-export default function DetalleModal({ evento: ev, config, onClose, onEditar }) {
+export default function DetalleModal({ evento: ev, config, onClose, onEditar, onAbrirCaja }) {
   if (!ev) return null
 
   const rest = (ev.total || 0) - (ev.monto || 0)
@@ -137,8 +137,25 @@ export default function DetalleModal({ evento: ev, config, onClose, onEditar }) 
 
         {ev.met && <Row label="Método de pago" val={ev.met} />}
 
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+        {/* Adicionales consumidos (si los hay) */}
+        {ev.consumos && ev.consumos.length > 0 && (
+          <div className="dm-row">
+            <span className="dm-label">🛒 Adicionales</span>
+            <span className="dm-val">
+              {ev.consumos.length} ítem(s)
+              {ev.consumos_cobrados
+                ? <span style={{ marginLeft: 8, fontSize: 11, background: 'rgba(34,197,94,.15)', color: 'var(--gn)', padding: '2px 7px', borderRadius: 5, fontWeight: 700 }}>✓ Cobrados</span>
+                : <span style={{ marginLeft: 8, fontSize: 11, background: 'var(--amb)', color: 'var(--am)', padding: '2px 7px', borderRadius: 5, fontWeight: 700 }}>Pendiente de cobro</span>
+              }
+            </span>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20, flexWrap: 'wrap' }}>
           <button className="bg2" onClick={onClose}>Cerrar</button>
+          {onAbrirCaja && (
+            <button className="bn" onClick={() => onAbrirCaja(ev.id)}>💰 Caja del evento</button>
+          )}
           <button className="bp" onClick={() => onEditar(ev.id)}>✏ Editar</button>
         </div>
       </div>

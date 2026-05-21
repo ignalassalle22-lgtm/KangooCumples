@@ -5,6 +5,7 @@ import Topbar from './components/Topbar'
 import EventosList from './components/EventosList'
 import EventoModal from './components/EventoModal'
 import DetalleModal from './components/DetalleModal'
+import CajaEventoModal from './components/CajaEventoModal'
 import CalendarioSemana from './components/CalendarioSemana'
 import CalendarioMes from './components/CalendarioMes'
 import Metricas from './components/Metricas'
@@ -28,7 +29,11 @@ import { useCaja } from './hooks/useCaja'
 
 export default function App() {
   // ── Cumpleaños ──
-  const { eventos, loading: evLoading, error, saveEvento, deleteEvento } = useEventos()
+  const {
+    eventos, loading: evLoading, error,
+    saveEvento, deleteEvento,
+    saveEventoConsumos, marcarMenusStockAplicado, marcarConsumoCobrado,
+  } = useEventos()
   const { config, updateConfig } = useConfig()
 
   // ── Ventas ──
@@ -45,7 +50,6 @@ export default function App() {
     if (cajasAbiertas.length === 0) {
       setCajaSeleccionadaId(null)
     } else if (!cajaSeleccionadaId || !ids.includes(cajaSeleccionadaId)) {
-      // Si la caja seleccionada se cerró o no hay ninguna, tomar la primera disponible
       setCajaSeleccionadaId(cajasAbiertas[0].id)
     }
   }, [cajasAbiertas])
@@ -59,6 +63,7 @@ export default function App() {
   const [detalleOpen, setDetalleOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [detalleId, setDetalleId] = useState(null)
+  const [cajaEventoId, setCajaEventoId] = useState(null)
 
   // Modals ventas
   const [productoModalOpen, setProductoModalOpen] = useState(false)
@@ -77,6 +82,7 @@ export default function App() {
   // ── Handlers cumpleaños ──
   const handleOpenModal = useCallback((id = null) => { setEditingId(id); setModalOpen(true) }, [])
   const handleOpenDetalle = useCallback((id) => { setDetalleId(id); setDetalleOpen(true) }, [])
+  const handleAbrirCajaEvento = useCallback((id) => { setCajaEventoId(id); setDetalleOpen(false) }, [])
 
   const handleSave = useCallback(async (eventoData) => {
     try {
@@ -91,6 +97,59 @@ export default function App() {
     try { await deleteEvento(id); addToast('Evento eliminado', 'err') }
     catch (e) { addToast('Error: ' + e.message, 'err') }
   }, [deleteEvento, addToast])
+
+  // ── Handlers caja de evento ──
+  const handleGuardarConsumos = useCallback(async (eventoId, consumos, opts = {}) => {
+    // opts.restore = consumo a restaurar (cuando se elimina uno)
+    if (opts.restore) {
+      await updateStock(opts.restore.productoId, opts.restore.qty)
+    } else if (consumos.length > 0) {
+      // Descontar el último item agregado
+      const ultimo = consumos[consumos.length - 1]
+      await updateStock(ultimo.productoId, -ultimo.qty)
+    }
+    await saveEventoConsumos(eventoId, consumos)
+  }, [saveEventoConsumos, updateStock])
+
+  const handleAplicarMenuStock = useCallback(async (eventoId, menuItems) => {
+    for (const item of menuItems) {
+      await updateStock(item.productoId, -item.qty)
+    }
+    await marcarMenusStockAplicado(eventoId)
+  }, [updateStock, marcarMenusStockAplicado])
+
+  const handleCobrarAdicionales = useCallback(async ({ eventoId, consumos, total, metodoPago, cajaId }) => {
+    const ev = eventos.find(e => e.id === eventoId)
+    const hoy = new Date()
+    const fecha = hoy.toISOString().split('T')[0]
+    const hora = hoy.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+    const cliente = ev ? `${ev.cumple || ev.reservante || ''} (evento)`.trim() : 'Evento'
+
+    const venta = {
+      fecha,
+      hora,
+      cliente,
+      subtotal: total,
+      descuento: 0,
+      total,
+      metodo_pago: metodoPago,
+      estado: 'completada',
+      caja_id: cajaId,
+      obs: `Adicionales evento #${eventoId}`,
+    }
+
+    const items = consumos.map(c => ({
+      producto_id: c.productoId,
+      nombre_producto: c.nombreProducto,
+      precio_unitario: c.precioUnitario || 0,
+      cantidad: c.qty,
+      subtotal: (c.precioUnitario || 0) * c.qty,
+    }))
+
+    // Stock ya fue descontado al agregar los consumos — no pasar updateStock
+    await saveVenta(venta, items, null)
+    await marcarConsumoCobrado(eventoId)
+  }, [eventos, saveVenta, marcarConsumoCobrado])
 
   // ── Handlers productos ──
   const handleOpenProducto = useCallback((id = null) => { setEditingProductoId(id); setProductoModalOpen(true) }, [])
@@ -137,6 +196,7 @@ export default function App() {
 
   const editingEvento = editingId ? eventos.find(e => e.id === editingId) : null
   const detalleEvento = detalleId ? eventos.find(e => e.id === detalleId) : null
+  const cajaEvento = cajaEventoId ? eventos.find(e => e.id === cajaEventoId) : null
   const editingProducto = editingProductoId ? productos.find(p => p.id === editingProductoId) : null
 
   return (
@@ -162,6 +222,7 @@ export default function App() {
               eventos={eventos} loading={evLoading} config={config}
               onEditar={handleOpenModal} onEliminar={handleDelete}
               onNuevo={() => handleOpenModal()} onVerDetalle={handleOpenDetalle}
+              onAbrirCaja={handleAbrirCajaEvento}
             />
           </div>
         )}
@@ -193,7 +254,9 @@ export default function App() {
         )}
 
         {activeSection === 'config' && (
-          <div className="sec"><Config config={config} updateConfig={updateConfig} addToast={addToast} /></div>
+          <div className="sec">
+            <Config config={config} updateConfig={updateConfig} addToast={addToast} productos={productos} />
+          </div>
         )}
 
         {/* ── VENTAS ── */}
@@ -251,6 +314,20 @@ export default function App() {
           evento={detalleEvento} config={config}
           onClose={() => setDetalleOpen(false)}
           onEditar={(id) => { setDetalleOpen(false); handleOpenModal(id) }}
+          onAbrirCaja={handleAbrirCajaEvento}
+        />
+      )}
+      {cajaEvento && (
+        <CajaEventoModal
+          evento={cajaEvento}
+          config={config}
+          productos={productos}
+          cajasAbiertas={cajasAbiertas}
+          onClose={() => setCajaEventoId(null)}
+          onGuardarConsumos={handleGuardarConsumos}
+          onAplicarMenuStock={handleAplicarMenuStock}
+          onCobrar={handleCobrarAdicionales}
+          addToast={addToast}
         />
       )}
 
