@@ -89,6 +89,11 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
         return
       }
     }
+    // Advertir si no hay caja seleccionada
+    if (!cajaSeleccionadaId) {
+      const ok = window.confirm('No hay ninguna caja seleccionada.\n\n¿Querés registrar la venta igualmente sin asignarla a una caja?')
+      if (!ok) return
+    }
     setSaving(true)
     try {
       await onSave(

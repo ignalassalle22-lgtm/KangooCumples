@@ -83,7 +83,7 @@ export default function CajaEventoModal({
       setSelectedProd(null)
       setSearchQ('')
       setQty(1)
-      addToast('✓ Consumo agregado · stock actualizado')
+      addToast('✓ Consumo agregado')
     } catch (e) {
       addToast('Error: ' + e.message, 'err')
     }
@@ -92,9 +92,9 @@ export default function CajaEventoModal({
   const handleRemoveConsumo = async (idx) => {
     const nuevosConsumos = consumos.filter((_, i) => i !== idx)
     try {
-      await onGuardarConsumos(evento.id, nuevosConsumos, { restore: consumos[idx] })
+      await onGuardarConsumos(evento.id, nuevosConsumos)
       setConsumos(nuevosConsumos)
-      addToast('Consumo eliminado · stock restaurado')
+      addToast('Consumo eliminado')
     } catch (e) {
       addToast('Error: ' + e.message, 'err')
     }

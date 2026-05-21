@@ -99,17 +99,10 @@ export default function App() {
   }, [deleteEvento, addToast])
 
   // ── Handlers caja de evento ──
-  const handleGuardarConsumos = useCallback(async (eventoId, consumos, opts = {}) => {
-    // opts.restore = consumo a restaurar (cuando se elimina uno)
-    if (opts.restore) {
-      await updateStock(opts.restore.productoId, opts.restore.qty)
-    } else if (consumos.length > 0) {
-      // Descontar el último item agregado
-      const ultimo = consumos[consumos.length - 1]
-      await updateStock(ultimo.productoId, -ultimo.qty)
-    }
+  // Solo persiste los consumos en DB — el stock se descuenta al cobrar
+  const handleGuardarConsumos = useCallback(async (eventoId, consumos) => {
     await saveEventoConsumos(eventoId, consumos)
-  }, [saveEventoConsumos, updateStock])
+  }, [saveEventoConsumos])
 
   const handleAplicarMenuStock = useCallback(async (eventoId, menuItems) => {
     for (const item of menuItems) {
@@ -120,9 +113,9 @@ export default function App() {
 
   const handleCobrarAdicionales = useCallback(async ({ eventoId, consumos, total, metodoPago, cajaId }) => {
     const ev = eventos.find(e => e.id === eventoId)
-    const hoy = new Date()
-    const fecha = hoy.toISOString().split('T')[0]
-    const hora = hoy.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+    const ahora = new Date()
+    const fecha = ahora.toISOString().split('T')[0]
+    const hora = ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
     const cliente = ev ? `${ev.cumple || ev.reservante || ''} (evento)`.trim() : 'Evento'
 
     const venta = {
@@ -146,10 +139,16 @@ export default function App() {
       subtotal: (c.precioUnitario || 0) * c.qty,
     }))
 
-    // Stock ya fue descontado al agregar los consumos — no pasar updateStock
+    // Crear la venta sin que saveVenta descuente stock (pasamos null)
     await saveVenta(venta, items, null)
+
+    // Descontar stock de todos los consumos al cobrar
+    for (const c of consumos) {
+      if (c.productoId) await updateStock(c.productoId, -c.qty)
+    }
+
     await marcarConsumoCobrado(eventoId)
-  }, [eventos, saveVenta, marcarConsumoCobrado])
+  }, [eventos, saveVenta, updateStock, marcarConsumoCobrado])
 
   // ── Handlers productos ──
   const handleOpenProducto = useCallback((id = null) => { setEditingProductoId(id); setProductoModalOpen(true) }, [])

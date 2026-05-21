@@ -6,6 +6,7 @@ const TABS_VENTAS = [
   { id: 'caja',      label: '💰 Caja' },
   { id: 'productos', label: '📦 Productos' },
   { id: 'reportes',  label: '📊 Reportes' },
+  { id: 'config',    label: '⚙️ Config' },
 ]
 
 const TABS_CUMPLES = [
