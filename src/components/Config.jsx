@@ -20,7 +20,7 @@ export default function Config({ config, updateConfig, addToast, productos = [] 
   const [compCant, setCompCant] = useState(1)
 
   // Productos simples disponibles para componentes de menú
-  const productosSimples = productos.filter(p => p.activo !== false && p.tipo !== 'compuesto')
+  const productosSimples = productos.filter(p => p.activo !== false)
   const compProdsFiltrados = compProdSearch.trim() && !compProdSel
     ? productosSimples.filter(p =>
         p.nombre.toLowerCase().includes(compProdSearch.toLowerCase()) ||
