@@ -107,9 +107,15 @@ export default function App() {
   const handleAplicarMenuStock = useCallback(async (eventoId, menuItems) => {
     for (const item of menuItems) {
       await updateStock(item.productoId, -item.qty)
+      const prod = productos.find(p => p.id === item.productoId)
+      if (prod?.componentes?.length) {
+        for (const comp of prod.componentes) {
+          await updateStock(comp.producto_id, -(comp.cantidad * item.qty))
+        }
+      }
     }
     await marcarMenusStockAplicado(eventoId)
-  }, [updateStock, marcarMenusStockAplicado])
+  }, [updateStock, marcarMenusStockAplicado, productos])
 
   const handleCobrarAdicionales = useCallback(async ({ eventoId, consumos, total, metodoPago, cajaId }) => {
     const ev = eventos.find(e => e.id === eventoId)
@@ -142,13 +148,20 @@ export default function App() {
     // Crear la venta sin que saveVenta descuente stock (pasamos null)
     await saveVenta(venta, items, null)
 
-    // Descontar stock de todos los consumos al cobrar
+    // Descontar stock al cobrar — si el producto es compuesto, también sus componentes
     for (const c of consumos) {
-      if (c.productoId) await updateStock(c.productoId, -c.qty)
+      if (!c.productoId) continue
+      await updateStock(c.productoId, -c.qty)
+      const prod = productos.find(p => p.id === c.productoId)
+      if (prod?.componentes?.length) {
+        for (const comp of prod.componentes) {
+          await updateStock(comp.producto_id, -(comp.cantidad * c.qty))
+        }
+      }
     }
 
     await marcarConsumoCobrado(eventoId)
-  }, [eventos, saveVenta, updateStock, marcarConsumoCobrado])
+  }, [eventos, productos, saveVenta, updateStock, marcarConsumoCobrado])
 
   // ── Handlers productos ──
   const handleOpenProducto = useCallback((id = null) => { setEditingProductoId(id); setProductoModalOpen(true) }, [])
