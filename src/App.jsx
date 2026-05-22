@@ -33,6 +33,7 @@ export default function App() {
     eventos, loading: evLoading, error,
     saveEvento, deleteEvento,
     saveEventoConsumos, marcarMenusStockAplicado, marcarConsumoCobrado,
+    resetConsumoCobrado, resetMenusStockAplicado,
   } = useEventos()
   const { config, updateConfig } = useConfig()
 
@@ -104,6 +105,17 @@ export default function App() {
     await saveEventoConsumos(eventoId, consumos)
   }, [saveEventoConsumos])
 
+  // Función helper: restaura stock de un ítem (y sus componentes si es compuesto)
+  const restaurarStockItem = useCallback(async (productoId, qty) => {
+    await updateStock(productoId, qty)
+    const prod = productos.find(p => p.id === productoId)
+    if (prod?.componentes?.length) {
+      for (const comp of prod.componentes) {
+        await updateStock(comp.producto_id, comp.cantidad * qty)
+      }
+    }
+  }, [updateStock, productos])
+
   const handleAplicarMenuStock = useCallback(async (eventoId, menuItems) => {
     for (const item of menuItems) {
       await updateStock(item.productoId, -item.qty)
@@ -116,6 +128,24 @@ export default function App() {
     }
     await marcarMenusStockAplicado(eventoId)
   }, [updateStock, marcarMenusStockAplicado, productos])
+
+  const handleDeshacerMenuStock = useCallback(async (eventoId, menuItems) => {
+    if (!window.confirm('¿Deshacés el descuento de stock de menús? Se va a restaurar todo el stock descontado.')) return
+    for (const item of menuItems) {
+      await restaurarStockItem(item.productoId, item.qty)
+    }
+    await resetMenusStockAplicado(eventoId)
+    addToast('✓ Stock de menús restaurado')
+  }, [restaurarStockItem, resetMenusStockAplicado, addToast])
+
+  const handleDeshacerCobro = useCallback(async (eventoId, consumos) => {
+    if (!window.confirm('¿Deshacés el cobro de adicionales? Se va a restaurar todo el stock descontado.')) return
+    for (const c of consumos) {
+      if (c.productoId) await restaurarStockItem(c.productoId, c.qty)
+    }
+    await resetConsumoCobrado(eventoId)
+    addToast('✓ Cobro deshecho · stock restaurado')
+  }, [restaurarStockItem, resetConsumoCobrado, addToast])
 
   const handleCobrarAdicionales = useCallback(async ({ eventoId, consumos, total, metodoPago, cajaId }) => {
     const ev = eventos.find(e => e.id === eventoId)
@@ -148,20 +178,13 @@ export default function App() {
     // Crear la venta sin que saveVenta descuente stock (pasamos null)
     await saveVenta(venta, items, null)
 
-    // Descontar stock al cobrar — si el producto es compuesto, también sus componentes
+    // Descontar stock al cobrar (incluye componentes de productos compuestos)
     for (const c of consumos) {
-      if (!c.productoId) continue
-      await updateStock(c.productoId, -c.qty)
-      const prod = productos.find(p => p.id === c.productoId)
-      if (prod?.componentes?.length) {
-        for (const comp of prod.componentes) {
-          await updateStock(comp.producto_id, -(comp.cantidad * c.qty))
-        }
-      }
+      if (c.productoId) await restaurarStockItem(c.productoId, -c.qty)
     }
 
     await marcarConsumoCobrado(eventoId)
-  }, [eventos, productos, saveVenta, updateStock, marcarConsumoCobrado])
+  }, [eventos, saveVenta, restaurarStockItem, marcarConsumoCobrado])
 
   // ── Handlers productos ──
   const handleOpenProducto = useCallback((id = null) => { setEditingProductoId(id); setProductoModalOpen(true) }, [])
@@ -338,7 +361,9 @@ export default function App() {
           onClose={() => setCajaEventoId(null)}
           onGuardarConsumos={handleGuardarConsumos}
           onAplicarMenuStock={handleAplicarMenuStock}
+          onDeshacerMenuStock={handleDeshacerMenuStock}
           onCobrar={handleCobrarAdicionales}
+          onDeshacerCobro={handleDeshacerCobro}
           addToast={addToast}
         />
       )}

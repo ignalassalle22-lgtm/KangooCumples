@@ -9,7 +9,9 @@ export default function CajaEventoModal({
   onClose,
   onGuardarConsumos,
   onAplicarMenuStock,
+  onDeshacerMenuStock,
   onCobrar,
+  onDeshacerCobro,
   addToast,
 }) {
   const [consumos, setConsumos] = useState(evento.consumos || [])
@@ -172,13 +174,23 @@ export default function CajaEventoModal({
                 ))}
               </tbody>
             </table>
-            <button
-              className={menuStockAplicado ? 'bg2 bsm' : 'bn bsm'}
-              disabled={menuStockAplicado || aplicandoMenus}
-              onClick={handleAplicarMenuStock}
-            >
-              {menuStockAplicado ? '✓ Stock de menús ya descontado' : aplicandoMenus ? 'Descontando...' : '⬇ Descontar stock de menús'}
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                className={menuStockAplicado ? 'bg2 bsm' : 'bn bsm'}
+                disabled={menuStockAplicado || aplicandoMenus}
+                onClick={handleAplicarMenuStock}
+              >
+                {menuStockAplicado ? '✓ Stock de menús descontado' : aplicandoMenus ? 'Descontando...' : '⬇ Descontar stock de menús'}
+              </button>
+              {menuStockAplicado && onDeshacerMenuStock && (
+                <button
+                  className="bdng bsm"
+                  onClick={() => onDeshacerMenuStock(evento.id, menuItems)}
+                >
+                  ↩ Deshacer
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -313,8 +325,17 @@ export default function CajaEventoModal({
         )}
 
         {consumosCobrados && (
-          <div style={{ background: 'rgba(34,197,94,.1)', border: '1px solid rgba(34,197,94,.3)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--gn)', fontWeight: 600, marginBottom: 14 }}>
-            ✓ Adicionales cobrados y registrados en caja
+          <div style={{ background: 'rgba(34,197,94,.1)', border: '1px solid rgba(34,197,94,.3)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--gn)', fontWeight: 600, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <span>✓ Adicionales cobrados y registrados en caja</span>
+            {onDeshacerCobro && (
+              <button
+                className="bdng bsm"
+                style={{ fontSize: 12 }}
+                onClick={() => onDeshacerCobro(evento.id, consumos)}
+              >
+                ↩ Deshacer cobro
+              </button>
+            )}
           </div>
         )}
 

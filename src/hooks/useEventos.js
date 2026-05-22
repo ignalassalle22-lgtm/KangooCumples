@@ -124,9 +124,38 @@ export function useEventos() {
     return updated
   }
 
+  // Deshace el cobro de adicionales
+  const resetConsumoCobrado = async (eventoId) => {
+    const { data, error } = await supabase
+      .from('eventos')
+      .update({ consumos_cobrados: false })
+      .eq('id', eventoId)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    const updated = fromDB(data)
+    setEventos(prev => prev.map(e => e.id === eventoId ? updated : e))
+    return updated
+  }
+
+  // Deshace el descuento de stock de menús
+  const resetMenusStockAplicado = async (eventoId) => {
+    const { data, error } = await supabase
+      .from('eventos')
+      .update({ menus_stock_aplicado: false })
+      .eq('id', eventoId)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    const updated = fromDB(data)
+    setEventos(prev => prev.map(e => e.id === eventoId ? updated : e))
+    return updated
+  }
+
   return {
     eventos, setEventos, loading, error,
     fetchEventos, saveEvento, deleteEvento,
     saveEventoConsumos, marcarMenusStockAplicado, marcarConsumoCobrado,
+    resetConsumoCobrado, resetMenusStockAplicado,
   }
 }
