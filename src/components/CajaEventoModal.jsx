@@ -14,7 +14,10 @@ export default function CajaEventoModal({
   onDeshacerCobro,
   addToast,
 }) {
-  const [consumos, setConsumos] = useState(evento.consumos || [])
+  // Normalizar consumos: agregar cobrado:false si no tienen el campo
+  const [consumos, setConsumos] = useState(
+    (evento.consumos || []).map(c => ({ cobrado: false, ...c }))
+  )
   const [searchQ, setSearchQ] = useState('')
   const [selectedProd, setSelectedProd] = useState(null)
   const [qty, setQty] = useState(1)
@@ -24,7 +27,6 @@ export default function CajaEventoModal({
   const [aplicandoMenus, setAplicandoMenus] = useState(false)
 
   const menuStockAplicado = evento.menus_stock_aplicado || false
-  const consumosCobrados = evento.consumos_cobrados || false
 
   // Items de stock generados por los menús del evento
   const menuItems = useMemo(() => {
@@ -36,16 +38,8 @@ export default function CajaEventoModal({
       for (const comp of menu.componentes) {
         const totalQty = comp.cantidad * mrow.qty
         const existing = items.find(i => i.productoId === comp.productoId)
-        if (existing) {
-          existing.qty += totalQty
-        } else {
-          items.push({
-            productoId: comp.productoId,
-            nombreProducto: comp.nombre,
-            qty: totalQty,
-            menuNombre: menu.n,
-          })
-        }
+        if (existing) { existing.qty += totalQty }
+        else { items.push({ productoId: comp.productoId, nombreProducto: comp.nombre, qty: totalQty, menuNombre: menu.n }) }
       }
     }
     return items
@@ -58,37 +52,32 @@ export default function CajaEventoModal({
     if (!searchQ.trim() || selectedProd) return []
     const q = searchQ.toLowerCase()
     return productos
-      .filter(p => p.activo !== false && (
-        p.nombre.toLowerCase().includes(q) ||
-        (p.codigo || '').toLowerCase().includes(q)
-      ))
+      .filter(p => p.activo !== false && (p.nombre.toLowerCase().includes(q) || (p.codigo || '').toLowerCase().includes(q)))
       .slice(0, 8)
   }, [searchQ, selectedProd, productos])
 
-  const totalConsumos = consumos.reduce((s, c) => s + (c.precioUnitario || 0) * c.qty, 0)
+  const pendientes = consumos.filter(c => !c.cobrado)
+  const cobrados = consumos.filter(c => c.cobrado)
+  const totalPendiente = pendientes.reduce((s, c) => s + (c.precioUnitario || 0) * c.qty, 0)
+  const totalCobrado = cobrados.reduce((s, c) => s + (c.precioUnitario || 0) * c.qty, 0)
 
   const handleAddConsumo = async () => {
     if (!selectedProd) { addToast('Seleccioná un producto', 'err'); return }
     if (!qty || qty <= 0) { addToast('Cantidad inválida', 'err'); return }
-
     const nuevoConsumo = {
       productoId: selectedProd.id,
       nombreProducto: selectedProd.nombre,
       qty: Number(qty),
       precioUnitario: selectedProd.precio_venta || 0,
+      cobrado: false,
     }
-
     const nuevosConsumos = [...consumos, nuevoConsumo]
     try {
       await onGuardarConsumos(evento.id, nuevosConsumos)
       setConsumos(nuevosConsumos)
-      setSelectedProd(null)
-      setSearchQ('')
-      setQty(1)
+      setSelectedProd(null); setSearchQ(''); setQty(1)
       addToast('✓ Consumo agregado')
-    } catch (e) {
-      addToast('Error: ' + e.message, 'err')
-    }
+    } catch (e) { addToast('Error: ' + e.message, 'err') }
   }
 
   const handleRemoveConsumo = async (idx) => {
@@ -97,37 +86,47 @@ export default function CajaEventoModal({
       await onGuardarConsumos(evento.id, nuevosConsumos)
       setConsumos(nuevosConsumos)
       addToast('Consumo eliminado')
-    } catch (e) {
-      addToast('Error: ' + e.message, 'err')
-    }
+    } catch (e) { addToast('Error: ' + e.message, 'err') }
   }
 
   const handleAplicarMenuStock = async () => {
-    if (menuStockAplicado) return
-    if (!hasMenuComponentes) return
+    if (menuStockAplicado || !hasMenuComponentes) return
     setAplicandoMenus(true)
     try {
       await onAplicarMenuStock(evento.id, menuItems)
       addToast('✓ Stock de menús descontado')
-    } catch (e) {
-      addToast('Error: ' + e.message, 'err')
-    } finally {
-      setAplicandoMenus(false)
-    }
+    } catch (e) { addToast('Error: ' + e.message, 'err') }
+    finally { setAplicandoMenus(false) }
   }
 
   const handleCobrar = async () => {
     if (!cajaId) { addToast('Seleccioná una caja abierta', 'err'); return }
-    if (consumos.length === 0) { addToast('No hay adicionales para cobrar', 'err'); return }
+    if (pendientes.length === 0) { addToast('No hay ítems pendientes de cobro', 'err'); return }
     setCobrando(true)
     try {
-      await onCobrar({ eventoId: evento.id, consumos, total: totalConsumos, metodoPago, cajaId })
-      addToast('✓ Adicionales cobrados · caja actualizada')
-      onClose()
+      await onCobrar({
+        eventoId: evento.id,
+        consumosPendientes: pendientes,
+        todosConsumos: consumos,
+        total: totalPendiente,
+        metodoPago,
+        cajaId,
+      })
+      // Marcar los pendientes como cobrados en el estado local
+      setConsumos(prev => prev.map(c => c.cobrado ? c : { ...c, cobrado: true }))
+      addToast('✓ Cobrado y registrado en caja')
     } catch (e) {
       addToast('Error: ' + e.message, 'err')
+    } finally {
       setCobrando(false)
     }
+  }
+
+  const handleDeshacerCobro = async () => {
+    try {
+      await onDeshacerCobro(evento.id, consumos)
+      setConsumos(prev => prev.map(c => ({ ...c, cobrado: false })))
+    } catch (e) { addToast('Error: ' + e.message, 'err') }
   }
 
   return (
@@ -161,7 +160,7 @@ export default function CajaEventoModal({
                 <tr style={{ borderBottom: '1px solid var(--bd2)', color: 'var(--mu)' }}>
                   <th style={{ textAlign: 'left', padding: '4px 6px' }}>Menú origen</th>
                   <th style={{ textAlign: 'left', padding: '4px 6px' }}>Producto</th>
-                  <th style={{ textAlign: 'right', padding: '4px 6px' }}>Cant. total</th>
+                  <th style={{ textAlign: 'right', padding: '4px 6px' }}>Cant.</th>
                 </tr>
               </thead>
               <tbody>
@@ -183,10 +182,7 @@ export default function CajaEventoModal({
                 {menuStockAplicado ? '✓ Stock de menús descontado' : aplicandoMenus ? 'Descontando...' : '⬇ Descontar stock de menús'}
               </button>
               {menuStockAplicado && onDeshacerMenuStock && (
-                <button
-                  className="bdng bsm"
-                  onClick={() => onDeshacerMenuStock(evento.id, menuItems)}
-                >
+                <button className="bdng bsm" onClick={() => onDeshacerMenuStock(evento.id, menuItems)}>
                   ↩ Deshacer
                 </button>
               )}
@@ -197,9 +193,14 @@ export default function CajaEventoModal({
         {/* Sección: Adicionales consumidos */}
         <div className="ct" style={{ marginBottom: 8 }}>
           <div className="ct-icon">🛒</div>Adicionales consumidos
-          {consumosCobrados && (
+          {cobrados.length > 0 && (
             <span style={{ marginLeft: 8, fontSize: 11, background: 'rgba(34,197,94,.15)', color: 'var(--gn)', padding: '2px 8px', borderRadius: 5, fontWeight: 700 }}>
-              ✓ Cobrados
+              {cobrados.length} cobrado{cobrados.length !== 1 ? 's' : ''}
+            </span>
+          )}
+          {pendientes.length > 0 && (
+            <span style={{ marginLeft: 4, fontSize: 11, background: 'var(--amb)', color: 'var(--am)', padding: '2px 8px', borderRadius: 5, fontWeight: 700 }}>
+              {pendientes.length} pendiente{pendientes.length !== 1 ? 's' : ''}
             </span>
           )}
         </div>
@@ -212,21 +213,28 @@ export default function CajaEventoModal({
                 <th style={{ textAlign: 'right', padding: '4px 6px' }}>Cant</th>
                 <th style={{ textAlign: 'right', padding: '4px 6px' }}>P. Unit</th>
                 <th style={{ textAlign: 'right', padding: '4px 6px' }}>Subtotal</th>
-                {!consumosCobrados && <th></th>}
+                <th style={{ textAlign: 'center', padding: '4px 6px' }}>Estado</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {consumos.map((c, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid var(--bd2)' }}>
+                <tr key={i} style={{ borderBottom: '1px solid var(--bd2)', opacity: c.cobrado ? 0.65 : 1 }}>
                   <td style={{ padding: '5px 6px' }}>{c.nombreProducto}</td>
                   <td style={{ padding: '5px 6px', textAlign: 'right' }}>{c.qty}</td>
                   <td style={{ padding: '5px 6px', textAlign: 'right' }}>{fmt(c.precioUnitario || 0)}</td>
                   <td style={{ padding: '5px 6px', textAlign: 'right', fontWeight: 600 }}>{fmt((c.precioUnitario || 0) * c.qty)}</td>
-                  {!consumosCobrados && (
-                    <td style={{ padding: '5px 6px', textAlign: 'right' }}>
+                  <td style={{ padding: '5px 6px', textAlign: 'center' }}>
+                    {c.cobrado
+                      ? <span style={{ fontSize: 11, background: 'rgba(34,197,94,.15)', color: 'var(--gn)', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>✓ Cobrado</span>
+                      : <span style={{ fontSize: 11, background: 'var(--amb)', color: 'var(--am)', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>Pendiente</span>
+                    }
+                  </td>
+                  <td style={{ padding: '5px 6px', textAlign: 'right' }}>
+                    {!c.cobrado && (
                       <button className="bdng" onClick={() => handleRemoveConsumo(i)}>✕</button>
-                    </td>
-                  )}
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -237,64 +245,67 @@ export default function CajaEventoModal({
           </div>
         )}
 
+        {/* Totales */}
         {consumos.length > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', fontWeight: 700, fontSize: 16, color: 'var(--nv)', marginBottom: 16 }}>
-            Total adicionales: {fmt(totalConsumos)}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 20, fontSize: 14, marginBottom: 16, flexWrap: 'wrap' }}>
+            {cobrados.length > 0 && (
+              <span style={{ color: 'var(--gn)', fontWeight: 600 }}>Cobrado: {fmt(totalCobrado)}</span>
+            )}
+            {pendientes.length > 0 && (
+              <span style={{ color: 'var(--nv)', fontWeight: 700, fontSize: 16 }}>Pendiente: {fmt(totalPendiente)}</span>
+            )}
           </div>
         )}
 
-        {/* Agregar consumo */}
-        {!consumosCobrados && (
-          <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: 14, marginBottom: 20 }}>
-            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>+ Agregar consumo</div>
-            <div style={{ position: 'relative', marginBottom: 10 }}>
-              <input
-                type="text"
-                value={selectedProd ? selectedProd.nombre : searchQ}
-                onChange={e => { setSearchQ(e.target.value); setSelectedProd(null) }}
-                placeholder="Buscar producto por nombre o código..."
-                style={{ width: '100%' }}
-              />
-              {prodsFiltrados.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg)', border: '1px solid var(--bd2)', borderRadius: 8, zIndex: 99, boxShadow: '0 4px 12px rgba(0,0,0,.12)', maxHeight: 200, overflowY: 'auto' }}>
-                  {prodsFiltrados.map(p => (
-                    <div
-                      key={p.id}
-                      style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--bd2)' }}
-                      onMouseDown={() => { setSelectedProd(p); setSearchQ(p.nombre) }}
-                    >
-                      <strong>{p.nombre}</strong>
-                      <span style={{ color: 'var(--mu)', marginLeft: 8 }}>{fmt(p.precio_venta || 0)}</span>
-                      <span style={{ color: (p.stock_actual || 0) > 0 ? 'var(--gn)' : 'var(--rd)', marginLeft: 8, fontSize: 11 }}>
-                        Stock: {p.stock_actual || 0}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-              <div className="fgg" style={{ flex: '0 0 110px' }}>
-                <label>Cantidad</label>
-                <input type="number" min={1} value={qty} onChange={e => setQty(Number(e.target.value))} />
+        {/* Agregar consumo — siempre visible */}
+        <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: 14, marginBottom: 20 }}>
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>+ Agregar consumo</div>
+          <div style={{ position: 'relative', marginBottom: 10 }}>
+            <input
+              type="text"
+              value={selectedProd ? selectedProd.nombre : searchQ}
+              onChange={e => { setSearchQ(e.target.value); setSelectedProd(null) }}
+              placeholder="Buscar producto por nombre o código..."
+              style={{ width: '100%' }}
+            />
+            {prodsFiltrados.length > 0 && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg)', border: '1px solid var(--bd2)', borderRadius: 8, zIndex: 99, boxShadow: '0 4px 12px rgba(0,0,0,.12)', maxHeight: 200, overflowY: 'auto' }}>
+                {prodsFiltrados.map(p => (
+                  <div key={p.id}
+                    style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--bd2)' }}
+                    onMouseDown={() => { setSelectedProd(p); setSearchQ(p.nombre) }}
+                  >
+                    <strong>{p.nombre}</strong>
+                    <span style={{ color: 'var(--mu)', marginLeft: 8 }}>{fmt(p.precio_venta || 0)}</span>
+                    <span style={{ color: (p.stock_actual || 0) > 0 ? 'var(--gn)' : 'var(--rd)', marginLeft: 8, fontSize: 11 }}>
+                      Stock: {p.stock_actual || 0}
+                    </span>
+                  </div>
+                ))}
               </div>
-              {selectedProd && (
-                <div style={{ flex: 1, fontSize: 13, color: 'var(--mu)', paddingBottom: 6 }}>
-                  {fmt(selectedProd.precio_venta || 0)} u · Subtotal: {fmt((selectedProd.precio_venta || 0) * qty)}
-                </div>
-              )}
-              <button className="bp bsm" onClick={handleAddConsumo} style={{ alignSelf: 'flex-end' }}>
-                + Agregar
-              </button>
-            </div>
+            )}
           </div>
-        )}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div className="fgg" style={{ flex: '0 0 110px' }}>
+              <label>Cantidad</label>
+              <input type="number" min={1} value={qty} onChange={e => setQty(Number(e.target.value))} />
+            </div>
+            {selectedProd && (
+              <div style={{ flex: 1, fontSize: 13, color: 'var(--mu)', paddingBottom: 6 }}>
+                {fmt(selectedProd.precio_venta || 0)} u · Subtotal: {fmt((selectedProd.precio_venta || 0) * qty)}
+              </div>
+            )}
+            <button className="bp bsm" onClick={handleAddConsumo} style={{ alignSelf: 'flex-end' }}>
+              + Agregar
+            </button>
+          </div>
+        </div>
 
-        {/* Cobrar adicionales */}
-        {!consumosCobrados && consumos.length > 0 && (
+        {/* Cobrar pendientes */}
+        {pendientes.length > 0 && (
           <div style={{ background: 'var(--nv3)', borderRadius: 8, padding: 14, marginBottom: 14 }}>
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: 'var(--nv)' }}>
-              Cobrar adicionales — {fmt(totalConsumos)}
+              Cobrar {pendientes.length} ítem{pendientes.length !== 1 ? 's' : ''} pendiente{pendientes.length !== 1 ? 's' : ''} — {fmt(totalPendiente)}
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <div className="fgg" style={{ flex: '1 1 180px' }}>
@@ -312,27 +323,19 @@ export default function CajaEventoModal({
                   {(config.mets || []).map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
-              <button
-                className="bn bsm"
-                onClick={handleCobrar}
-                disabled={cobrando || !cajaId}
-                style={{ alignSelf: 'flex-end' }}
-              >
+              <button className="bn bsm" onClick={handleCobrar} disabled={cobrando || !cajaId} style={{ alignSelf: 'flex-end' }}>
                 {cobrando ? 'Procesando...' : '✓ Cobrar y registrar'}
               </button>
             </div>
           </div>
         )}
 
-        {consumosCobrados && (
-          <div style={{ background: 'rgba(34,197,94,.1)', border: '1px solid rgba(34,197,94,.3)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--gn)', fontWeight: 600, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <span>✓ Adicionales cobrados y registrados en caja</span>
+        {/* Deshacer cobro */}
+        {cobrados.length > 0 && (
+          <div style={{ background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.25)', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <span style={{ color: 'var(--gn)', fontWeight: 600 }}>✓ {cobrados.length} ítem{cobrados.length !== 1 ? 's' : ''} cobrado{cobrados.length !== 1 ? 's' : ''} — {fmt(totalCobrado)}</span>
             {onDeshacerCobro && (
-              <button
-                className="bdng bsm"
-                style={{ fontSize: 12 }}
-                onClick={() => onDeshacerCobro(evento.id, consumos)}
-              >
+              <button className="bdng bsm" style={{ fontSize: 12 }} onClick={handleDeshacerCobro}>
                 ↩ Deshacer cobro
               </button>
             )}

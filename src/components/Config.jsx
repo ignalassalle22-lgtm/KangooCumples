@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 
 
-export default function Config({ config, updateConfig, addToast, productos = [] }) {
+export default function Config({ config, updateConfig, addToast, productos = [], empleados = [], saveEmpleado, toggleEmpleado, deleteEmpleado }) {
   const [nmN, setNmN] = useState('')
+  const [nempN, setNempN] = useState('')
   const [nmP, setNmP] = useState('')
   const [nsN, setNsN] = useState('')
   const [npD, setNpD] = useState('')
@@ -108,6 +109,14 @@ export default function Config({ config, updateConfig, addToast, productos = [] 
     addToast('Método de pago agregado ✓')
   }
   const delMetCaja = m => { updateConfig('mets_caja', metsCaja.filter(x => x !== m)); addToast('Método eliminado') }
+
+  // ── Empleados ──
+  const addEmp = async () => {
+    const n = nempN.trim()
+    if (!n) { addToast('Ingresá el nombre del empleado', 'err'); return }
+    try { await saveEmpleado(n); setNempN(''); addToast('Empleado agregado ✓') }
+    catch (e) { addToast('Error: ' + e.message, 'err') }
+  }
 
   // ── Extras ──
   const addExtra = () => {
@@ -347,6 +356,37 @@ export default function Config({ config, updateConfig, addToast, productos = [] 
           <div className="ar">
             <input type="text" value={nmetCajaN} onChange={e => setNmetCajaN(e.target.value)} placeholder="Ej: Efectivo, Transferencia..." />
             <button className="bp bsm" onClick={addMetCaja}>+ Agregar</button>
+          </div>
+        </div>
+
+        {/* Empleados */}
+        <div className="cc" style={{ gridColumn: '1/-1' }}>
+          <div className="ct"><div className="ct-icon">👤</div>Empleados</div>
+          <div style={{ fontSize: 12, color: 'var(--mu)', marginBottom: 12 }}>
+            Los empleados activos aparecen disponibles para asignar en cada venta.
+          </div>
+          {empleados.length === 0
+            ? <div style={{ fontSize: 13, color: 'var(--mu)', padding: '8px 0' }}>Sin empleados cargados</div>
+            : empleados.map(e => (
+              <div key={e.id} className="li">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="lin" style={{ color: e.activo ? undefined : 'var(--mu)', textDecoration: e.activo ? 'none' : 'line-through' }}>{e.nombre}</span>
+                  <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 4, fontWeight: 700, background: e.activo ? 'rgba(34,197,94,.12)' : 'var(--bg2)', color: e.activo ? 'var(--gn)' : 'var(--mu)' }}>
+                    {e.activo ? 'Activo' : 'Inactivo'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="bg2 bsm" onClick={() => toggleEmpleado(e.id, !e.activo)}>
+                    {e.activo ? 'Desactivar' : 'Activar'}
+                  </button>
+                  <button className="bdng" onClick={() => { if (window.confirm(`¿Eliminás a ${e.nombre}?`)) deleteEmpleado(e.id) }}>✕</button>
+                </div>
+              </div>
+            ))
+          }
+          <div className="ar">
+            <input type="text" value={nempN} onChange={e => setNempN(e.target.value)} placeholder="Nombre del empleado" onKeyDown={ev => ev.key === 'Enter' && addEmp()} />
+            <button className="bp bsm" onClick={addEmp}>+ Agregar</button>
           </div>
         </div>
 

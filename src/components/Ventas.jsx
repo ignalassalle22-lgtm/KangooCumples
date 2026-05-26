@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react'
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 const hoy = () => new Date().toISOString().slice(0, 10)
 
-export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular, fetchVentas }) {
+export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular, fetchVentas, empleados = [] }) {
   const [desde, setDesde] = useState(hoy())
   const [hasta, setHasta] = useState(hoy())
   const [filtroEstado, setFiltroEstado] = useState('')
@@ -95,6 +95,7 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
                 <th>N° Ticket</th>
                 <th>Fecha / Hora</th>
                 <th>Cliente</th>
+                <th>Empleado</th>
                 <th>Items</th>
                 <th>Método</th>
                 <th className="num">Total</th>
@@ -111,6 +112,9 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
                     <div style={{ fontSize: 12, color: 'var(--mu)' }}>{v.hora}</div>
                   </td>
                   <td>{v.cliente || <span style={{ color: 'var(--mu2)' }}>—</span>}</td>
+                  <td style={{ fontSize: 13 }}>
+                    {v.empleado_id ? (empleados.find(e => e.id === v.empleado_id)?.nombre || '—') : <span style={{ color: 'var(--mu2)' }}>—</span>}
+                  </td>
                   <td style={{ fontSize: 13, color: 'var(--mu)' }}>
                     {(v.venta_items || []).length} {(v.venta_items || []).length === 1 ? 'artículo' : 'artículos'}
                   </td>
@@ -147,6 +151,9 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
             <div style={{ marginTop: 14 }}>
               <div className="dm-row"><span className="dm-label">Fecha</span><span className="dm-val">{showDetalle.fecha} {showDetalle.hora}</span></div>
               <div className="dm-row"><span className="dm-label">Cliente</span><span className="dm-val">{showDetalle.cliente || '—'}</span></div>
+              {showDetalle.empleado_id && (
+                <div className="dm-row"><span className="dm-label">Empleado</span><span className="dm-val">{empleados.find(e => e.id === showDetalle.empleado_id)?.nombre || '—'}</span></div>
+              )}
               <div className="dm-row"><span className="dm-label">Método de pago</span><span className="dm-val">{showDetalle.metodo_pago}</span></div>
               <div className="dm-row"><span className="dm-label">Estado</span><span className="dm-val">{estadoBadge(showDetalle.estado)}</span></div>
               <div className="sdv" style={{ marginTop: 14 }}>Artículos</div>

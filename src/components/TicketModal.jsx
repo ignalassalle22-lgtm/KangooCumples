@@ -6,17 +6,20 @@ const hora = () => new Date().toTimeString().slice(0, 5)
 
 const METODOS_DEFAULT = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
-export default function TicketModal({ productos, cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, metodosPago, onSave, onClose, addToast }) {
+export default function TicketModal({ productos, cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, metodosPago, empleados = [], onSave, onClose, addToast }) {
   const METODOS = metodosPago?.length ? metodosPago : METODOS_DEFAULT
   const [items, setItems] = useState([])
   const [busca, setBusca] = useState('')
   const [cliente, setCliente] = useState('')
+  const [empleadoId, setEmpleadoId] = useState('')
   const [descuento, setDescuento] = useState('')
-  const [descuentoTipo, setDescuentoTipo] = useState('monto') // 'monto' | 'pct'
+  const [descuentoTipo, setDescuentoTipo] = useState('monto')
   const [metodo, setMetodo] = useState('Efectivo')
   const [obs, setObs] = useState('')
   const [saving, setSaving] = useState(false)
   const buscaRef = useRef()
+
+  const empleadosActivos = empleados.filter(e => e.activo !== false)
 
   function handleCajaChange(id) {
     const parsed = id ? Number(id) : null
@@ -82,22 +85,32 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
 
   async function handleGuardar() {
     if (items.length === 0) { addToast('Agregá al menos un producto', 'err'); return }
-    // Validar stock de simples
-    for (const it of items) {
-      if (it._tipo === 'simple' && (it._stockActual || 0) < it.cantidad) {
-        addToast(`Sin stock suficiente: ${it.nombre_producto} (disponible: ${it._stockActual || 0})`, 'err')
-        return
-      }
+
+    // Advertir sin bloquear cuando hay stock insuficiente
+    const sinStock = items.filter(it => it._tipo === 'simple' && (it._stockActual || 0) < it.cantidad)
+    if (sinStock.length > 0) {
+      const lista = sinStock.map(it => `• ${it.nombre_producto} (stock: ${it._stockActual || 0}, pedido: ${it.cantidad})`).join('\n')
+      const ok = window.confirm(`Stock insuficiente para:\n\n${lista}\n\n¿Querés registrar la venta igual?`)
+      if (!ok) return
     }
+
     // Advertir si no hay caja seleccionada
     if (!cajaSeleccionadaId) {
       const ok = window.confirm('No hay ninguna caja seleccionada.\n\n¿Querés registrar la venta igualmente sin asignarla a una caja?')
       if (!ok) return
     }
+
     setSaving(true)
     try {
       await onSave(
-        { fecha: hoy(), hora: hora(), cliente, subtotal, descuento: descuentoNum, total, metodo_pago: metodo, caja_id: cajaSeleccionadaId || null, obs },
+        {
+          fecha: hoy(), hora: hora(), cliente,
+          subtotal, descuento: descuentoNum, total,
+          metodo_pago: metodo,
+          caja_id: cajaSeleccionadaId || null,
+          empleado_id: empleadoId ? Number(empleadoId) : null,
+          obs,
+        },
         items
       )
     } catch (e) {
@@ -167,7 +180,7 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
                     <tr>
                       <th>Producto</th>
                       <th className="num" style={{ width: 80 }}>Cant.</th>
-                      <th className="num" style={{ width: 110 }}>Precio unit.</th>
+                      <th className="num" style={{ width: 120 }}>✏ Precio unit.</th>
                       <th className="num" style={{ width: 110 }}>Subtotal</th>
                       <th style={{ width: 36 }}></th>
                     </tr>
@@ -178,8 +191,8 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
                         <td>
                           <div style={{ fontWeight: 700, fontSize: 14 }}>{it.nombre_producto}</div>
                           {it._tipo === 'simple' && (
-                            <div style={{ fontSize: 11, color: (it._stockActual || 0) < it.cantidad ? 'var(--rd)' : 'var(--mu)' }}>
-                              Stock: {it._stockActual || 0}
+                            <div style={{ fontSize: 11, color: (it._stockActual || 0) < it.cantidad ? 'var(--am)' : 'var(--mu)' }}>
+                              Stock: {it._stockActual || 0}{(it._stockActual || 0) < it.cantidad ? ' ⚠ insuficiente' : ''}
                             </div>
                           )}
                         </td>
@@ -192,7 +205,8 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
                         <td className="num">
                           <input type="number" min="0" step="0.01" value={it.precio_unitario}
                             onChange={e => cambiarPrecio(it.producto_id, e.target.value)}
-                            style={{ width: 100, textAlign: 'right', border: '1px solid var(--bd2)', borderRadius: 7, padding: '4px 8px', fontSize: 13 }}
+                            style={{ width: 100, textAlign: 'right', border: '1px solid var(--nv2)', borderRadius: 7, padding: '4px 8px', fontSize: 13, background: 'var(--nv3)' }}
+                            title="Podés cambiar el precio para esta venta"
                           />
                         </td>
                         <td className="num" style={{ fontWeight: 700 }}>{fmt(it.subtotal)}</td>
@@ -214,6 +228,17 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
               <label>Cliente (opcional)</label>
               <input value={cliente} onChange={e => setCliente(e.target.value)} placeholder="Nombre o número" />
             </div>
+
+            {empleadosActivos.length > 0 && (
+              <div className="fgg">
+                <label>Empleado</label>
+                <select value={empleadoId} onChange={e => setEmpleadoId(e.target.value)}
+                  style={{ border: '1px solid var(--bd2)', borderRadius: 10, padding: '9px 13px', fontSize: 13, background: 'var(--bg)', color: 'var(--tx)', width: '100%' }}>
+                  <option value="">Sin asignar</option>
+                  {empleadosActivos.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                </select>
+              </div>
+            )}
 
             {cajasAbiertas.length > 0 && (
               <>

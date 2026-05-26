@@ -91,6 +91,14 @@ CREATE TABLE IF NOT EXISTS public.cajas (
 -- ALTER TABLE public.cajas ADD COLUMN IF NOT EXISTS nombre TEXT DEFAULT 'Caja';
 -- ALTER TABLE public.cajas ADD COLUMN IF NOT EXISTS turno TEXT;
 
+-- Empleados
+CREATE TABLE IF NOT EXISTS public.empleados (
+  id         BIGSERIAL PRIMARY KEY,
+  nombre     TEXT NOT NULL,
+  activo     BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Ventas (cabecera de ticket)
 CREATE TABLE IF NOT EXISTS public.ventas (
   id           BIGSERIAL PRIMARY KEY,
@@ -104,9 +112,11 @@ CREATE TABLE IF NOT EXISTS public.ventas (
   metodo_pago  TEXT,
   estado       TEXT DEFAULT 'completada',  -- 'completada' | 'anulada'
   caja_id      BIGINT REFERENCES public.cajas(id) ON DELETE SET NULL,
+  empleado_id  BIGINT REFERENCES public.empleados(id) ON DELETE SET NULL,
   obs          TEXT,
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
+-- Migración: ALTER TABLE public.ventas ADD COLUMN IF NOT EXISTS empleado_id BIGINT REFERENCES public.empleados(id) ON DELETE SET NULL;
 
 -- Items de venta
 CREATE TABLE IF NOT EXISTS public.venta_items (
@@ -155,6 +165,7 @@ ALTER TABLE public.ventas        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.venta_items   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.compras       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.compra_items  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.empleados     ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de acceso abierto
 CREATE POLICY "allow all eventos"        ON public.eventos       FOR ALL USING (TRUE) WITH CHECK (TRUE);
@@ -166,6 +177,7 @@ CREATE POLICY "allow all ventas"         ON public.ventas        FOR ALL USING (
 CREATE POLICY "allow all venta_items"    ON public.venta_items   FOR ALL USING (TRUE) WITH CHECK (TRUE);
 CREATE POLICY "allow all compras"        ON public.compras       FOR ALL USING (TRUE) WITH CHECK (TRUE);
 CREATE POLICY "allow all compra_items"   ON public.compra_items  FOR ALL USING (TRUE) WITH CHECK (TRUE);
+CREATE POLICY "allow all empleados"      ON public.empleados     FOR ALL USING (TRUE) WITH CHECK (TRUE);
 
 -- ── Datos iniciales ──
 INSERT INTO public.configuracion (clave, valor) VALUES

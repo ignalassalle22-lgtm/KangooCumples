@@ -26,6 +26,7 @@ import { useProductos } from './hooks/useProductos'
 import { useVentas } from './hooks/useVentas'
 import { useCompras } from './hooks/useCompras'
 import { useCaja } from './hooks/useCaja'
+import { useEmpleados } from './hooks/useEmpleados'
 
 export default function App() {
   // ── Cumpleaños ──
@@ -43,6 +44,7 @@ export default function App() {
   const { compras, loading: comprasLoading, saveCompra } = useCompras()
   const { cajasAbiertas, historial: cajaHistorial, loading: cajaLoading, abrirCaja, cerrarCaja } = useCaja()
   const cajaActual = cajasAbiertas[0] || null
+  const { empleados, saveEmpleado, toggleEmpleado, deleteEmpleado } = useEmpleados()
 
   // Caja seleccionada para ventas: se persiste entre tickets, se limpia si la caja se cierra
   const [cajaSeleccionadaId, setCajaSeleccionadaId] = useState(null)
@@ -140,14 +142,16 @@ export default function App() {
 
   const handleDeshacerCobro = useCallback(async (eventoId, consumos) => {
     if (!window.confirm('¿Deshacés el cobro de adicionales? Se va a restaurar todo el stock descontado.')) return
-    for (const c of consumos) {
+    const cobrados = consumos.filter(c => c.cobrado)
+    for (const c of cobrados) {
       if (c.productoId) await restaurarStockItem(c.productoId, c.qty)
     }
-    await resetConsumoCobrado(eventoId)
+    const consumosReseteados = consumos.map(c => ({ ...c, cobrado: false }))
+    await saveEventoConsumos(eventoId, consumosReseteados)
     addToast('✓ Cobro deshecho · stock restaurado')
-  }, [restaurarStockItem, resetConsumoCobrado, addToast])
+  }, [restaurarStockItem, saveEventoConsumos, addToast])
 
-  const handleCobrarAdicionales = useCallback(async ({ eventoId, consumos, total, metodoPago, cajaId }) => {
+  const handleCobrarAdicionales = useCallback(async ({ eventoId, consumosPendientes, todosConsumos, total, metodoPago, cajaId }) => {
     const ev = eventos.find(e => e.id === eventoId)
     const ahora = new Date()
     const fecha = ahora.toISOString().split('T')[0]
@@ -167,7 +171,7 @@ export default function App() {
       obs: `Adicionales evento #${eventoId}`,
     }
 
-    const items = consumos.map(c => ({
+    const items = consumosPendientes.map(c => ({
       producto_id: c.productoId,
       nombre_producto: c.nombreProducto,
       precio_unitario: c.precioUnitario || 0,
@@ -178,13 +182,15 @@ export default function App() {
     // Crear la venta sin que saveVenta descuente stock (pasamos null)
     await saveVenta(venta, items, null)
 
-    // Descontar stock al cobrar (incluye componentes de productos compuestos)
-    for (const c of consumos) {
+    // Descontar stock de los ítems pendientes (incluye componentes de productos compuestos)
+    for (const c of consumosPendientes) {
       if (c.productoId) await restaurarStockItem(c.productoId, -c.qty)
     }
 
-    await marcarConsumoCobrado(eventoId)
-  }, [eventos, saveVenta, restaurarStockItem, marcarConsumoCobrado])
+    // Marcar los pendientes como cobrados y guardar en DB
+    const consumosActualizados = todosConsumos.map(c => c.cobrado ? c : { ...c, cobrado: true })
+    await saveEventoConsumos(eventoId, consumosActualizados)
+  }, [eventos, saveVenta, restaurarStockItem, saveEventoConsumos])
 
   // ── Handlers productos ──
   const handleOpenProducto = useCallback((id = null) => { setEditingProductoId(id); setProductoModalOpen(true) }, [])
@@ -290,7 +296,8 @@ export default function App() {
 
         {activeSection === 'config' && (
           <div className="sec">
-            <Config config={config} updateConfig={updateConfig} addToast={addToast} productos={productos} />
+            <Config config={config} updateConfig={updateConfig} addToast={addToast} productos={productos}
+              empleados={empleados} saveEmpleado={saveEmpleado} toggleEmpleado={toggleEmpleado} deleteEmpleado={deleteEmpleado} />
           </div>
         )}
 
@@ -301,6 +308,7 @@ export default function App() {
             onNueva={() => setTicketModalOpen(true)}
             onAnular={handleAnularVenta}
             fetchVentas={fetchVentas}
+            empleados={empleados}
           />
         )}
 
@@ -384,6 +392,7 @@ export default function App() {
           cajaSeleccionadaId={cajaSeleccionadaId}
           onCajaChange={setCajaSeleccionadaId}
           metodosPago={config.mets_caja}
+          empleados={empleados}
           onSave={handleSaveVenta}
           onClose={() => setTicketModalOpen(false)}
           addToast={addToast}
