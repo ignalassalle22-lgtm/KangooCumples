@@ -40,7 +40,7 @@ export function useVentas() {
 
     // Descontar stock (también para componentes de productos compuestos)
     for (const it of items) {
-      if (it.producto_id && updateStockFn) {
+      if (it.producto_id && it.maneja_stock !== false && updateStockFn) {
         await updateStockFn(it.producto_id, -it.cantidad)
         // Si el producto tiene componentes, descontar de cada componente
         if (it.componentes && it.componentes.length > 0) {

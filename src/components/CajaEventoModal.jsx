@@ -14,7 +14,6 @@ export default function CajaEventoModal({
   onDeshacerCobro,
   addToast,
 }) {
-  // Normalizar consumos: agregar cobrado:false si no tienen el campo
   const [consumos, setConsumos] = useState(
     (evento.consumos || []).map(c => ({ cobrado: false, ...c }))
   )
@@ -25,10 +24,10 @@ export default function CajaEventoModal({
   const [cajaId, setCajaId] = useState(cajasAbiertas[0]?.id || null)
   const [cobrando, setCobrando] = useState(false)
   const [aplicandoMenus, setAplicandoMenus] = useState(false)
+  const [historialOpen, setHistorialOpen] = useState(false)
 
   const menuStockAplicado = evento.menus_stock_aplicado || false
 
-  // Items de stock generados por los menús del evento
   const menuItems = useMemo(() => {
     if (!evento.mrows || !evento.mrows.length) return []
     const items = []
@@ -47,7 +46,6 @@ export default function CajaEventoModal({
 
   const hasMenuComponentes = menuItems.length > 0
 
-  // Búsqueda de productos
   const prodsFiltrados = useMemo(() => {
     if (!searchQ.trim() || selectedProd) return []
     const q = searchQ.toLowerCase()
@@ -112,8 +110,8 @@ export default function CajaEventoModal({
         metodoPago,
         cajaId,
       })
-      // Marcar los pendientes como cobrados en el estado local
       setConsumos(prev => prev.map(c => c.cobrado ? c : { ...c, cobrado: true }))
+      setHistorialOpen(false)
       addToast('✓ Cobrado y registrado en caja')
     } catch (e) {
       addToast('Error: ' + e.message, 'err')
@@ -190,74 +188,56 @@ export default function CajaEventoModal({
           </div>
         )}
 
-        {/* Sección: Adicionales consumidos */}
+        {/* Sección: Ítems pendientes de cobro */}
         <div className="ct" style={{ marginBottom: 8 }}>
-          <div className="ct-icon">🛒</div>Adicionales consumidos
-          {cobrados.length > 0 && (
-            <span style={{ marginLeft: 8, fontSize: 11, background: 'rgba(34,197,94,.15)', color: 'var(--gn)', padding: '2px 8px', borderRadius: 5, fontWeight: 700 }}>
-              {cobrados.length} cobrado{cobrados.length !== 1 ? 's' : ''}
-            </span>
-          )}
+          <div className="ct-icon">🛒</div>Ítems a cobrar
           {pendientes.length > 0 && (
-            <span style={{ marginLeft: 4, fontSize: 11, background: 'var(--amb)', color: 'var(--am)', padding: '2px 8px', borderRadius: 5, fontWeight: 700 }}>
+            <span style={{ marginLeft: 8, fontSize: 11, background: 'var(--amb)', color: 'var(--am)', padding: '2px 8px', borderRadius: 5, fontWeight: 700 }}>
               {pendientes.length} pendiente{pendientes.length !== 1 ? 's' : ''}
             </span>
           )}
         </div>
 
-        {consumos.length > 0 ? (
-          <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse', marginBottom: 10 }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--bd2)', color: 'var(--mu)' }}>
-                <th style={{ textAlign: 'left', padding: '4px 6px' }}>Producto</th>
-                <th style={{ textAlign: 'right', padding: '4px 6px' }}>Cant</th>
-                <th style={{ textAlign: 'right', padding: '4px 6px' }}>P. Unit</th>
-                <th style={{ textAlign: 'right', padding: '4px 6px' }}>Subtotal</th>
-                <th style={{ textAlign: 'center', padding: '4px 6px' }}>Estado</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {consumos.map((c, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid var(--bd2)', opacity: c.cobrado ? 0.65 : 1 }}>
-                  <td style={{ padding: '5px 6px' }}>{c.nombreProducto}</td>
-                  <td style={{ padding: '5px 6px', textAlign: 'right' }}>{c.qty}</td>
-                  <td style={{ padding: '5px 6px', textAlign: 'right' }}>{fmt(c.precioUnitario || 0)}</td>
-                  <td style={{ padding: '5px 6px', textAlign: 'right', fontWeight: 600 }}>{fmt((c.precioUnitario || 0) * c.qty)}</td>
-                  <td style={{ padding: '5px 6px', textAlign: 'center' }}>
-                    {c.cobrado
-                      ? <span style={{ fontSize: 11, background: 'rgba(34,197,94,.15)', color: 'var(--gn)', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>✓ Cobrado</span>
-                      : <span style={{ fontSize: 11, background: 'var(--amb)', color: 'var(--am)', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>Pendiente</span>
-                    }
-                  </td>
-                  <td style={{ padding: '5px 6px', textAlign: 'right' }}>
-                    {!c.cobrado && (
-                      <button className="bdng" onClick={() => handleRemoveConsumo(i)}>✕</button>
-                    )}
-                  </td>
+        {pendientes.length > 0 ? (
+          <>
+            <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse', marginBottom: 8 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--bd2)', color: 'var(--mu)' }}>
+                  <th style={{ textAlign: 'left', padding: '4px 6px' }}>Producto</th>
+                  <th style={{ textAlign: 'right', padding: '4px 6px' }}>Cant</th>
+                  <th style={{ textAlign: 'right', padding: '4px 6px' }}>P. Unit</th>
+                  <th style={{ textAlign: 'right', padding: '4px 6px' }}>Subtotal</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pendientes.map((c, i) => {
+                  const realIdx = consumos.indexOf(c)
+                  return (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--bd2)' }}>
+                      <td style={{ padding: '5px 6px' }}>{c.nombreProducto}</td>
+                      <td style={{ padding: '5px 6px', textAlign: 'right' }}>{c.qty}</td>
+                      <td style={{ padding: '5px 6px', textAlign: 'right' }}>{fmt(c.precioUnitario || 0)}</td>
+                      <td style={{ padding: '5px 6px', textAlign: 'right', fontWeight: 600 }}>{fmt((c.precioUnitario || 0) * c.qty)}</td>
+                      <td style={{ padding: '5px 6px', textAlign: 'right' }}>
+                        <button className="bdng" onClick={() => handleRemoveConsumo(realIdx)}>✕</button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+              <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--nv)' }}>Total pendiente: {fmt(totalPendiente)}</span>
+            </div>
+          </>
         ) : (
-          <div style={{ fontSize: 13, color: 'var(--mu)', padding: '8px 0', marginBottom: 12 }}>
-            No hay adicionales cargados aún.
+          <div style={{ fontSize: 13, color: 'var(--mu)', padding: '10px 0', marginBottom: 12 }}>
+            Sin ítems pendientes. Agregá productos abajo para cobrar.
           </div>
         )}
 
-        {/* Totales */}
-        {consumos.length > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 20, fontSize: 14, marginBottom: 16, flexWrap: 'wrap' }}>
-            {cobrados.length > 0 && (
-              <span style={{ color: 'var(--gn)', fontWeight: 600 }}>Cobrado: {fmt(totalCobrado)}</span>
-            )}
-            {pendientes.length > 0 && (
-              <span style={{ color: 'var(--nv)', fontWeight: 700, fontSize: 16 }}>Pendiente: {fmt(totalPendiente)}</span>
-            )}
-          </div>
-        )}
-
-        {/* Agregar consumo — siempre visible */}
+        {/* Agregar consumo */}
         <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: 14, marginBottom: 20 }}>
           <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>+ Agregar consumo</div>
           <div style={{ position: 'relative', marginBottom: 10 }}>
@@ -277,9 +257,11 @@ export default function CajaEventoModal({
                   >
                     <strong>{p.nombre}</strong>
                     <span style={{ color: 'var(--mu)', marginLeft: 8 }}>{fmt(p.precio_venta || 0)}</span>
-                    <span style={{ color: (p.stock_actual || 0) > 0 ? 'var(--gn)' : 'var(--rd)', marginLeft: 8, fontSize: 11 }}>
-                      Stock: {p.stock_actual || 0}
-                    </span>
+                    {p.maneja_stock !== false && (
+                      <span style={{ color: (p.stock_actual || 0) > 0 ? 'var(--gn)' : 'var(--rd)', marginLeft: 8, fontSize: 11 }}>
+                        Stock: {p.stock_actual || 0}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -305,7 +287,7 @@ export default function CajaEventoModal({
         {pendientes.length > 0 && (
           <div style={{ background: 'var(--nv3)', borderRadius: 8, padding: 14, marginBottom: 14 }}>
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: 'var(--nv)' }}>
-              Cobrar {pendientes.length} ítem{pendientes.length !== 1 ? 's' : ''} pendiente{pendientes.length !== 1 ? 's' : ''} — {fmt(totalPendiente)}
+              Cobrar {pendientes.length} ítem{pendientes.length !== 1 ? 's' : ''} — {fmt(totalPendiente)}
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <div className="fgg" style={{ flex: '1 1 180px' }}>
@@ -330,14 +312,38 @@ export default function CajaEventoModal({
           </div>
         )}
 
-        {/* Deshacer cobro */}
+        {/* Historial de cobros (colapsable) */}
         {cobrados.length > 0 && (
-          <div style={{ background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.25)', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <span style={{ color: 'var(--gn)', fontWeight: 600 }}>✓ {cobrados.length} ítem{cobrados.length !== 1 ? 's' : ''} cobrado{cobrados.length !== 1 ? 's' : ''} — {fmt(totalCobrado)}</span>
-            {onDeshacerCobro && (
-              <button className="bdng bsm" style={{ fontSize: 12 }} onClick={handleDeshacerCobro}>
-                ↩ Deshacer cobro
-              </button>
+          <div style={{ border: '1px solid rgba(34,197,94,.25)', borderRadius: 8, marginBottom: 14, overflow: 'hidden' }}>
+            <button
+              type="button"
+              onClick={() => setHistorialOpen(v => !v)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(34,197,94,.08)', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--gn)' }}
+            >
+              <span>✓ Historial cobrado — {fmt(totalCobrado)} ({cobrados.length} ítem{cobrados.length !== 1 ? 's' : ''})</span>
+              <span style={{ fontSize: 11 }}>{historialOpen ? '▲ Ocultar' : '▼ Ver detalle'}</span>
+            </button>
+            {historialOpen && (
+              <div style={{ padding: '10px 14px' }}>
+                <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+                  <tbody>
+                    {cobrados.map((c, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid var(--bd2)' }}>
+                        <td style={{ padding: '5px 6px' }}>{c.nombreProducto}</td>
+                        <td style={{ padding: '5px 6px', textAlign: 'right', color: 'var(--mu)' }}>×{c.qty}</td>
+                        <td style={{ padding: '5px 6px', textAlign: 'right', fontWeight: 600 }}>{fmt((c.precioUnitario || 0) * c.qty)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {onDeshacerCobro && (
+                  <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button className="bdng bsm" style={{ fontSize: 12 }} onClick={handleDeshacerCobro}>
+                      ↩ Deshacer todo el cobro
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}

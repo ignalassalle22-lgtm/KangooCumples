@@ -109,8 +109,9 @@ export default function App() {
 
   // Función helper: restaura stock de un ítem (y sus componentes si es compuesto)
   const restaurarStockItem = useCallback(async (productoId, qty) => {
-    await updateStock(productoId, qty)
     const prod = productos.find(p => p.id === productoId)
+    if (prod?.maneja_stock === false) return
+    await updateStock(productoId, qty)
     if (prod?.componentes?.length) {
       for (const comp of prod.componentes) {
         await updateStock(comp.producto_id, comp.cantidad * qty)

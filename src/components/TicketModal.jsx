@@ -49,6 +49,7 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
         cantidad: 1,
         subtotal: prod.precio_venta || 0,
         componentes: prod.componentes || [],
+        maneja_stock: prod.maneja_stock ?? true,
         _stockActual: prod.stock_actual,
         _tipo: prod.tipo,
       }])
@@ -86,8 +87,8 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
   async function handleGuardar() {
     if (items.length === 0) { addToast('Agregá al menos un producto', 'err'); return }
 
-    // Advertir sin bloquear cuando hay stock insuficiente
-    const sinStock = items.filter(it => it._tipo === 'simple' && (it._stockActual || 0) < it.cantidad)
+    // Advertir sin bloquear cuando hay stock insuficiente (solo productos que manejan stock)
+    const sinStock = items.filter(it => it._tipo === 'simple' && it.maneja_stock !== false && (it._stockActual || 0) < it.cantidad)
     if (sinStock.length > 0) {
       const lista = sinStock.map(it => `• ${it.nombre_producto} (stock: ${it._stockActual || 0}, pedido: ${it.cantidad})`).join('\n')
       const ok = window.confirm(`Stock insuficiente para:\n\n${lista}\n\n¿Querés registrar la venta igual?`)
@@ -190,10 +191,13 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
                       <tr key={it.producto_id}>
                         <td>
                           <div style={{ fontWeight: 700, fontSize: 14 }}>{it.nombre_producto}</div>
-                          {it._tipo === 'simple' && (
+                          {it._tipo === 'simple' && it.maneja_stock !== false && (
                             <div style={{ fontSize: 11, color: (it._stockActual || 0) < it.cantidad ? 'var(--am)' : 'var(--mu)' }}>
                               Stock: {it._stockActual || 0}{(it._stockActual || 0) < it.cantidad ? ' ⚠ insuficiente' : ''}
                             </div>
+                          )}
+                        {it.maneja_stock === false && (
+                            <div style={{ fontSize: 11, color: 'var(--mu2)' }}>Sin control de stock</div>
                           )}
                         </td>
                         <td className="num">

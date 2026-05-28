@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'
 const EMPTY = {
   codigo: '', nombre: '', categoria_id: '', tipo: 'simple',
   precio_venta: '', precio_costo: '', unidad: 'unidad',
-  stock_actual: '', stock_minimo: '', activo: true, componentes: []
+  stock_actual: '', stock_minimo: '', activo: true, maneja_stock: true, componentes: []
 }
 
 export default function ProductoModal({ producto, productos, categorias, onSave, onClose, addToast, onNuevaCat }) {
@@ -162,16 +162,27 @@ export default function ProductoModal({ producto, productos, categorias, onSave,
           {form.tipo === 'simple' && (
             <>
               <div className="sdv">Stock</div>
-              <div className="fg">
-                <div className="fgg">
-                  <label>Stock actual</label>
-                  <input type="number" min="0" step="0.01" value={form.stock_actual} onChange={e => set('stock_actual', e.target.value)} placeholder="0" />
-                </div>
-                <div className="fgg">
-                  <label>Stock mínimo (alerta)</label>
-                  <input type="number" min="0" step="0.01" value={form.stock_minimo} onChange={e => set('stock_minimo', e.target.value)} placeholder="0" />
-                </div>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+                {[{ v: true, l: '📦 Maneja stock' }, { v: false, l: '🚫 Sin control de stock' }].map(({ v, l }) => (
+                  <button key={String(v)} type="button"
+                    className={`rp ${form.maneja_stock === v ? 'spaid' : ''}`}
+                    onClick={() => set('maneja_stock', v)}
+                    style={{ flex: 1, textAlign: 'center', fontSize: 13 }}
+                  >{l}</button>
+                ))}
               </div>
+              {form.maneja_stock !== false && (
+                <div className="fg">
+                  <div className="fgg">
+                    <label>Stock actual</label>
+                    <input type="number" min="0" step="0.01" value={form.stock_actual} onChange={e => set('stock_actual', e.target.value)} placeholder="0" />
+                  </div>
+                  <div className="fgg">
+                    <label>Stock mínimo (alerta)</label>
+                    <input type="number" min="0" step="0.01" value={form.stock_minimo} onChange={e => set('stock_minimo', e.target.value)} placeholder="0" />
+                  </div>
+                </div>
+              )}
             </>
           )}
 

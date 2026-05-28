@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS public.productos (
   stock_actual NUMERIC DEFAULT 0,
   stock_minimo NUMERIC DEFAULT 0,
   activo       BOOLEAN DEFAULT TRUE,
+  maneja_stock BOOLEAN DEFAULT TRUE,     -- FALSE = no descuenta ni controla stock (ej: servicios, entradas)
   componentes  JSONB DEFAULT '[]',       -- [{producto_id, nombre, cantidad}]
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
@@ -117,6 +118,7 @@ CREATE TABLE IF NOT EXISTS public.ventas (
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 -- Migración: ALTER TABLE public.ventas ADD COLUMN IF NOT EXISTS empleado_id BIGINT REFERENCES public.empleados(id) ON DELETE SET NULL;
+-- Migración: ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS maneja_stock BOOLEAN DEFAULT TRUE;
 
 -- Items de venta
 CREATE TABLE IF NOT EXISTS public.venta_items (
