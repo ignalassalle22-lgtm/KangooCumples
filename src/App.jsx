@@ -297,7 +297,7 @@ export default function App() {
 
         {activeSection === 'config' && (
           <div className="sec">
-            <Config config={config} updateConfig={updateConfig} addToast={addToast} productos={productos}
+            <Config config={config} updateConfig={updateConfig} addToast={addToast} productos={productos} categorias={categorias}
               empleados={empleados} saveEmpleado={saveEmpleado} toggleEmpleado={toggleEmpleado} deleteEmpleado={deleteEmpleado} />
           </div>
         )}

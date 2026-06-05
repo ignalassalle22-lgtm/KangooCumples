@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 
 
-export default function Config({ config, updateConfig, addToast, productos = [], empleados = [], saveEmpleado, toggleEmpleado, deleteEmpleado }) {
+export default function Config({ config, updateConfig, addToast, productos = [], categorias = [], empleados = [], saveEmpleado, toggleEmpleado, deleteEmpleado }) {
   const [nmN, setNmN] = useState('')
   const [nempN, setNempN] = useState('')
   const [nmP, setNmP] = useState('')
@@ -19,6 +19,32 @@ export default function Config({ config, updateConfig, addToast, productos = [],
   const [compProdSearch, setCompProdSearch] = useState('')
   const [compProdSel, setCompProdSel] = useState(null)
   const [compCant, setCompCant] = useState(1)
+
+  // ── Menú digital ──
+  const _md = config.menu_digital || {}
+  const [mdActivo, setMdActivo] = useState(_md.activo || false)
+  const [mdTitulo, setMdTitulo] = useState(_md.titulo || 'Kangoo Cumples')
+  const [mdSubtitulo, setMdSubtitulo] = useState(_md.subtitulo || '')
+  const [mdLogoUrl, setMdLogoUrl] = useState(_md.logoUrl || '')
+  const [mdProductosIds, setMdProductosIds] = useState(_md.productosIds || [])
+
+  const toggleMdProd = id => setMdProductosIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+
+  const saveMenuDigital = async () => {
+    await updateConfig('menu_digital', { activo: mdActivo, titulo: mdTitulo, subtitulo: mdSubtitulo, logoUrl: mdLogoUrl, productosIds: mdProductosIds })
+    addToast('✓ Menú digital guardado')
+  }
+
+  const menuUrl = typeof window !== 'undefined' ? `${window.location.origin}/menu` : '/menu'
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(menuUrl)}&bgcolor=ffffff&color=1B3A6B&margin=8`
+
+  // Agrupar productos activos por categoría para el selector
+  const prodsPorCat = categorias.map(cat => ({
+    ...cat,
+    items: productos.filter(p => p.activo !== false && p.categoria_id === cat.id),
+  })).filter(g => g.items.length > 0)
+  const sinCat = productos.filter(p => p.activo !== false && !p.categoria_id)
+  if (sinCat.length > 0) prodsPorCat.push({ id: null, nombre: 'Sin categoría', items: sinCat })
 
   // Productos simples disponibles para componentes de menú
   const productosSimples = productos.filter(p => p.activo !== false)
@@ -420,6 +446,107 @@ export default function Config({ config, updateConfig, addToast, productos = [],
             <input type="number" value={neP} onChange={e => setNeP(e.target.value)} placeholder="$ precio unitario" style={{ width: 160, flex: 'none' }} />
             <button className="bp bsm" onClick={addExtra}>+ Agregar extra</button>
           </div>
+        </div>
+
+        {/* Menú Digital */}
+        <div className="cc" style={{ gridColumn: '1/-1' }}>
+          <div className="ct"><div className="ct-icon">📱</div>Menú digital (QR)</div>
+          <div style={{ fontSize: 12, color: 'var(--mu)', marginBottom: 16 }}>
+            Publicá una página con tus productos y precios accesible por QR. Los clientes la ven desde su celular con los colores del parque.
+          </div>
+
+          {/* Toggle activo */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+            {[{ v: true, l: '✓ Activo' }, { v: false, l: '✗ Inactivo' }].map(({ v, l }) => (
+              <button key={String(v)} type="button"
+                className={`rp ${mdActivo === v ? 'spaid' : ''}`}
+                onClick={() => setMdActivo(v)}
+                style={{ flex: 1, textAlign: 'center' }}
+              >{l}</button>
+            ))}
+          </div>
+
+          <div className="fg" style={{ marginBottom: 14 }}>
+            <div className="fgg">
+              <label>Título del menú</label>
+              <input value={mdTitulo} onChange={e => setMdTitulo(e.target.value)} placeholder="Ej: Kangoo Cumples" />
+            </div>
+            <div className="fgg">
+              <label>Subtítulo</label>
+              <input value={mdSubtitulo} onChange={e => setMdSubtitulo(e.target.value)} placeholder="Ej: Consultá nuestros precios" />
+            </div>
+            <div className="fgg" style={{ gridColumn: '1/-1' }}>
+              <label>URL del logo (imagen)</label>
+              <input value={mdLogoUrl} onChange={e => setMdLogoUrl(e.target.value)} placeholder="https://... (URL de imagen, opcional)" />
+            </div>
+          </div>
+
+          {/* Selector de productos */}
+          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--nv)', marginBottom: 10 }}>
+            Productos a mostrar en el menú ({mdProductosIds.length} seleccionados)
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+            <button type="button" className="bg2 bsm" onClick={() => setMdProductosIds(productos.filter(p => p.activo !== false).map(p => p.id))}>
+              Seleccionar todos
+            </button>
+            <button type="button" className="bg2 bsm" onClick={() => setMdProductosIds([])}>
+              Quitar todos
+            </button>
+          </div>
+          <div style={{ maxHeight: 280, overflowY: 'auto', border: '1px solid var(--bd2)', borderRadius: 10, padding: '10px 12px', marginBottom: 16, background: 'var(--bg)' }}>
+            {prodsPorCat.length === 0
+              ? <div style={{ fontSize: 13, color: 'var(--mu)' }}>Sin productos cargados. Primero creá productos desde el módulo Ventas → Productos.</div>
+              : prodsPorCat.map(cat => (
+                <div key={cat.id || 'sin'} style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--or, #E8621A)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>
+                    {cat.nombre}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {cat.items.map(p => (
+                      <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '4px 6px', borderRadius: 7, background: mdProductosIds.includes(p.id) ? 'var(--nv3)' : 'transparent' }}>
+                        <input type="checkbox" checked={mdProductosIds.includes(p.id)} onChange={() => toggleMdProd(p.id)} style={{ width: 15, height: 15, accentColor: 'var(--nv)' }} />
+                        <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{p.nombre}</span>
+                        <span style={{ fontSize: 13, color: 'var(--gn)', fontWeight: 700 }}>
+                          ${Number(p.precio_venta || 0).toLocaleString('es-AR')}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+
+          <button className="bn" onClick={saveMenuDigital} style={{ marginBottom: 24 }}>
+            Guardar menú digital
+          </button>
+
+          {/* QR y URL */}
+          {mdActivo && (
+            <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap', background: 'var(--nv3)', borderRadius: 12, padding: 20 }}>
+              <img src={qrUrl} alt="QR del menú" style={{ width: 140, height: 140, borderRadius: 8, border: '1px solid var(--bd2)', background: '#fff' }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--nv)', marginBottom: 8 }}>Tu menú digital está activo</div>
+                <div style={{ fontSize: 12, color: 'var(--mu)', marginBottom: 10 }}>Escaneá el QR o compartí este link con tus clientes:</div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <code style={{ fontSize: 12, background: 'var(--wh)', border: '1px solid var(--bd2)', padding: '6px 10px', borderRadius: 7, color: 'var(--nv)', wordBreak: 'break-all' }}>
+                    {menuUrl}
+                  </code>
+                  <button className="bg2 bsm" onClick={() => { navigator.clipboard.writeText(menuUrl); addToast('✓ Link copiado') }}>
+                    Copiar link
+                  </button>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 10 }}>
+                  Imprimí el QR y pegalo en las mesas, salones o entrada para que los clientes puedan verlo desde su celular.
+                </div>
+              </div>
+            </div>
+          )}
+          {!mdActivo && (
+            <div style={{ fontSize: 13, color: 'var(--mu)', background: 'var(--bg2)', borderRadius: 10, padding: '12px 16px' }}>
+              Activá el menú digital arriba para ver el QR y el link público.
+            </div>
+          )}
         </div>
       </div>
     </>
