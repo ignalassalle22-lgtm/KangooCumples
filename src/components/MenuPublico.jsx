@@ -17,6 +17,13 @@ export default function MenuPublico() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // Pedido activo (localStorage)
+  const [pedidoActivo, setPedidoActivo] = useState(() => {
+    const id = localStorage.getItem('kf_pedido_id')
+    const num = localStorage.getItem('kf_pedido_num')
+    return id ? { id, num } : null
+  })
+
   // Carrito
   const [cart, setCart] = useState([])
   const [cartOpen, setCartOpen] = useState(false)
@@ -66,6 +73,8 @@ export default function MenuPublico() {
       const { error: ie } = await supabase.from('pedido_items').insert(items)
       if (ie) throw new Error(`pedido_items: ${ie.message} (${ie.code})`)
 
+      localStorage.setItem('kf_pedido_id', pedidoData.id)
+      localStorage.setItem('kf_pedido_num', pedidoData.numero)
       window.location.href = `/pedido?id=${pedidoData.id}`
     } catch (e) {
       setPedidoError(e.message || 'Error al enviar el pedido.')
@@ -201,6 +210,25 @@ export default function MenuPublico() {
         <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 900, color: C.or2, fontSize: 14, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>Kangaroo Fun</div>
         <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>Los precios pueden variar · Consultá en caja</div>
       </div>
+
+      {/* Burbuja pedido activo */}
+      {pedidoActivo && !cartOpen && (
+        <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+          <a
+            href={`/pedido?id=${pedidoActivo.id}`}
+            style={{ background: C.nv, color: C.wh, borderRadius: 50, padding: '10px 18px', fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 13, textDecoration: 'none', boxShadow: '0 4px 16px rgba(27,58,107,0.4)', display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}
+          >
+            <span style={{ fontSize: 16 }}>📋</span>
+            {pedidoActivo.num ? `Pedido #${pedidoActivo.num}` : 'Ver mi pedido'}
+          </a>
+          <button
+            onClick={() => { localStorage.removeItem('kf_pedido_id'); localStorage.removeItem('kf_pedido_num'); setPedidoActivo(null) }}
+            style={{ background: 'rgba(27,58,107,0.15)', border: 'none', borderRadius: 50, padding: '4px 10px', fontSize: 11, color: C.mu, cursor: 'pointer', fontWeight: 700 }}
+          >
+            ✕ cerrar
+          </button>
+        </div>
+      )}
 
       {/* Botón flotante del carrito */}
       {cartCount > 0 && !cartOpen && (

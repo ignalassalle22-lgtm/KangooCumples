@@ -56,9 +56,12 @@ export default function PedidoEstado() {
           if (prev && payload.new.estado !== prev.estado) {
             setFlash(true)
             setTimeout(() => setFlash(false), 1200)
-            // Intentar notificación nativa del navegador
             if (payload.new.estado === 'listo' && 'Notification' in window && Notification.permission === 'granted') {
               new Notification('¡Tu pedido está listo! 🎉', { body: 'Pasá a retirar tu pedido en caja.' })
+            }
+            if (payload.new.estado === 'cobrado') {
+              localStorage.removeItem('kf_pedido_id')
+              localStorage.removeItem('kf_pedido_num')
             }
           }
           return { ...prev, ...payload.new }
