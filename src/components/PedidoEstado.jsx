@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 
 const C = {
@@ -23,14 +23,55 @@ function pasoIndex(estado) {
   return i === -1 ? 0 : i
 }
 
+// Sonido de notificación con Web Audio API
+function playNotifSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const notas = [880, 1100, 1320]
+    notas.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      const t = ctx.currentTime + i * 0.18
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.4, t + 0.04)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35)
+      osc.start(t); osc.stop(t + 0.35)
+    })
+  } catch (_) {}
+}
+
 export default function PedidoEstado() {
   const [pedido, setPedido] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [prevEstado, setPrevEstado] = useState(null)
   const [flash, setFlash] = useState(false)
+  const wakeLockRef = useRef(null)
 
   const pedidoId = new URLSearchParams(window.location.search).get('id')
+
+  // Wake Lock: evita que el navegador duerma la conexión
+  useEffect(() => {
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLockRef.current = await navigator.wakeLock.request('screen')
+        }
+      } catch (_) {}
+    }
+    requestWakeLock()
+    // Re-adquirir si la página vuelve a ser visible
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') requestWakeLock()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      wakeLockRef.current?.release().catch(() => {})
+    }
+  }, [])
 
   useEffect(() => {
     if (!pedidoId) { setError('No se encontró el pedido.'); setLoading(false); return }
@@ -39,11 +80,9 @@ export default function PedidoEstado() {
       .then(({ data, error }) => {
         if (error || !data) { setError('Pedido no encontrado.'); setLoading(false); return }
         setPedido(data)
-        setPrevEstado(data.estado)
         setLoading(false)
       })
 
-    // Supabase Realtime — se activa cuando el admin cambia el estado
     const channel = supabase
       .channel(`pedido-estado-${pedidoId}`)
       .on('postgres_changes', {
@@ -56,9 +95,21 @@ export default function PedidoEstado() {
           if (prev && payload.new.estado !== prev.estado) {
             setFlash(true)
             setTimeout(() => setFlash(false), 1200)
-            if (payload.new.estado === 'listo' && 'Notification' in window && Notification.permission === 'granted') {
-              new Notification('¡Tu pedido está listo! 🎉', { body: 'Pasá a retirar tu pedido en caja.' })
+
+            if (payload.new.estado === 'listo') {
+              // Sonido
+              playNotifSound()
+              // Vibración (Android)
+              if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 400])
+              // Notificación del sistema si tiene permiso
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('¡Tu pedido está listo! 🎉', {
+                  body: 'Pasá a retirar en caja · Kangaroo Fun',
+                  icon: '/logo.jpg',
+                })
+              }
             }
+
             if (payload.new.estado === 'cobrado') {
               localStorage.removeItem('kf_pedido_id')
               localStorage.removeItem('kf_pedido_num')
@@ -69,7 +120,7 @@ export default function PedidoEstado() {
       })
       .subscribe()
 
-    // Pedir permiso para notificaciones nativas
+    // Pedir permiso de notificaciones
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission()
     }
@@ -124,12 +175,21 @@ export default function PedidoEstado() {
 
       <div style={{ maxWidth: 480, margin: '0 auto', padding: '28px 16px 64px' }}>
 
+        {/* Aviso: mantener página abierta */}
+        {!esListo && !esCobrado && (
+          <div style={{ background: C.amb, border: `1px solid rgba(168,98,0,0.2)`, borderRadius: 12, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>📱</span>
+            <div style={{ fontSize: 13, color: C.am, fontWeight: 600, lineHeight: 1.4 }}>
+              Dejá esta pantalla abierta para recibir el sonido cuando tu pedido esté listo.
+            </div>
+          </div>
+        )}
+
         {/* Estado listo — celebración */}
         {esListo && (
           <div style={{
             background: C.gnb, border: '2px solid rgba(34,197,94,.4)', borderRadius: 16,
             padding: '24px 20px', textAlign: 'center', marginBottom: 24,
-            animation: flash ? 'none' : undefined,
           }}>
             <div style={{ fontSize: 52, marginBottom: 8 }}>🎉</div>
             <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: 22, color: C.gn, marginBottom: 6 }}>
@@ -154,7 +214,6 @@ export default function PedidoEstado() {
         {!esCobrado && (
           <div style={{ background: C.wh, borderRadius: 16, padding: '20px', marginBottom: 20, boxShadow: '0 2px 10px rgba(27,58,107,0.07)' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'relative' }}>
-              {/* Línea de conexión */}
               <div style={{ position: 'absolute', top: 16, left: '16%', right: '16%', height: 3, background: 'var(--bd)', borderRadius: 2, zIndex: 0 }} />
               <div style={{ position: 'absolute', top: 16, left: '16%', height: 3, width: `${pasoActual * 34}%`, background: esListo ? C.gn : C.or, borderRadius: 2, zIndex: 1, transition: 'width 0.6s ease' }} />
 
