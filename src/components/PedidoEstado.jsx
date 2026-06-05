@@ -48,24 +48,21 @@ export default function PedidoEstado() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [flash, setFlash] = useState(false)
+  const estadoRef = useRef(null)
   const wakeLockRef = useRef(null)
 
   const pedidoId = new URLSearchParams(window.location.search).get('id')
 
-  // Wake Lock: evita que el navegador duerma la conexión
+  // Wake Lock
   useEffect(() => {
     async function requestWakeLock() {
       try {
-        if ('wakeLock' in navigator) {
+        if ('wakeLock' in navigator)
           wakeLockRef.current = await navigator.wakeLock.request('screen')
-        }
       } catch (_) {}
     }
     requestWakeLock()
-    // Re-adquirir si la página vuelve a ser visible
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') requestWakeLock()
-    }
+    const handleVisibility = () => { if (document.visibilityState === 'visible') requestWakeLock() }
     document.addEventListener('visibilitychange', handleVisibility)
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility)
@@ -73,59 +70,68 @@ export default function PedidoEstado() {
     }
   }, [])
 
+  function handleNuevoEstado(nuevoEstado) {
+    if (nuevoEstado === estadoRef.current) return
+    estadoRef.current = nuevoEstado
+    setFlash(true)
+    setTimeout(() => setFlash(false), 1200)
+    if (nuevoEstado === 'listo') {
+      playNotifSound()
+      if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 400])
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('¡Tu pedido está listo! 🎉', { body: 'Pasá a retirar en caja · Kangaroo Fun', icon: '/logo.jpg' })
+      }
+    }
+    if (nuevoEstado === 'cobrado') {
+      localStorage.removeItem('kf_pedido_id')
+      localStorage.removeItem('kf_pedido_num')
+    }
+  }
+
   useEffect(() => {
     if (!pedidoId) { setError('No se encontró el pedido.'); setLoading(false); return }
 
+    // Carga inicial
     supabase.from('pedidos').select('*, pedido_items(*)').eq('id', pedidoId).single()
       .then(({ data, error }) => {
         if (error || !data) { setError('Pedido no encontrado.'); setLoading(false); return }
+        estadoRef.current = data.estado
         setPedido(data)
         setLoading(false)
       })
 
+    // Realtime (funciona si la tabla está en la publicación supabase_realtime)
     const channel = supabase
       .channel(`pedido-estado-${pedidoId}`)
       .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'pedidos',
+        event: 'UPDATE', schema: 'public', table: 'pedidos',
         filter: `id=eq.${pedidoId}`,
       }, (payload) => {
-        setPedido(prev => {
-          if (prev && payload.new.estado !== prev.estado) {
-            setFlash(true)
-            setTimeout(() => setFlash(false), 1200)
-
-            if (payload.new.estado === 'listo') {
-              // Sonido
-              playNotifSound()
-              // Vibración (Android)
-              if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 400])
-              // Notificación del sistema si tiene permiso
-              if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('¡Tu pedido está listo! 🎉', {
-                  body: 'Pasá a retirar en caja · Kangaroo Fun',
-                  icon: '/logo.jpg',
-                })
-              }
-            }
-
-            if (payload.new.estado === 'cobrado') {
-              localStorage.removeItem('kf_pedido_id')
-              localStorage.removeItem('kf_pedido_num')
-            }
-          }
-          return { ...prev, ...payload.new }
-        })
+        setPedido(prev => ({ ...prev, ...payload.new }))
+        handleNuevoEstado(payload.new.estado)
       })
       .subscribe()
 
-    // Pedir permiso de notificaciones
+    // Polling cada 15 seg como respaldo (captura cambios si Realtime no funciona)
+    const poll = setInterval(async () => {
+      const { data } = await supabase
+        .from('pedidos').select('estado').eq('id', pedidoId).single()
+      if (data && data.estado !== estadoRef.current) {
+        // Realtime no entregó el cambio — lo buscamos completo
+        const { data: full } = await supabase
+          .from('pedidos').select('*, pedido_items(*)').eq('id', pedidoId).single()
+        if (full) {
+          setPedido(full)
+          handleNuevoEstado(full.estado)
+        }
+      }
+    }, 15000)
+
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission()
     }
 
-    return () => supabase.removeChannel(channel)
+    return () => { supabase.removeChannel(channel); clearInterval(poll) }
   }, [pedidoId])
 
   if (loading) return (
