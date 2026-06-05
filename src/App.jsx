@@ -101,7 +101,13 @@ export default function App() {
     addToast(`🔔 Nuevo pedido #${pedido.numero} — ${pedido.nombre}`, 'ok')
   }, [addToast])
 
-  const { pedidos, loading: pedidosLoading, updateEstado: updateEstadoPedido, marcarCobrado } = usePedidos(handleNuevoPedido)
+  const { pedidos, loading: pedidosLoading, updateEstado: updateEstadoPedido, marcarCobrado, anularPedido } = usePedidos(handleNuevoPedido)
+
+  const handleAnularPedido = useCallback(async (id) => {
+    if (!window.confirm('¿Cancelar este pedido?')) return
+    try { await anularPedido(id); addToast('Pedido cancelado') }
+    catch (e) { addToast('Error: ' + e.message, 'err') }
+  }, [anularPedido, addToast])
 
   const handleCobrarPedido = useCallback((pedido) => {
     const itemsIniciales = (pedido.pedido_items || []).map(it => ({
@@ -353,6 +359,7 @@ export default function App() {
             loading={pedidosLoading}
             onUpdateEstado={updateEstadoPedido}
             onCobrar={handleCobrarPedido}
+            onAnular={handleAnularPedido}
           />
         )}
 

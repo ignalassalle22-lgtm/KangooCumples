@@ -57,5 +57,12 @@ export function usePedidos(onNuevoPedido) {
     setPedidos(prev => prev.filter(p => p.id !== id))
   }
 
-  return { pedidos, loading, fetchPedidos, updateEstado, marcarCobrado }
+  const anularPedido = async (id) => {
+    const { error } = await supabase
+      .from('pedidos').update({ estado: 'cancelado' }).eq('id', id)
+    if (error) throw new Error(error.message)
+    setPedidos(prev => prev.filter(p => p.id !== id))
+  }
+
+  return { pedidos, loading, fetchPedidos, updateEstado, marcarCobrado, anularPedido }
 }

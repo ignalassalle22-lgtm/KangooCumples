@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../supabase'
 
 const C = {
@@ -23,10 +23,17 @@ function pasoIndex(estado) {
   return i === -1 ? 0 : i
 }
 
-// Sonido de notificación con Web Audio API
+// AudioContext compartido — se desbloquea en el primer toque (necesario en iOS)
+let _audioCtx = null
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+  if (_audioCtx.state === 'suspended') _audioCtx.resume()
+  return _audioCtx
+}
+
 function playNotifSound() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const ctx = getAudioCtx()
     const notas = [880, 1100, 1320]
     notas.forEach((freq, i) => {
       const osc = ctx.createOscillator()
@@ -52,6 +59,17 @@ export default function PedidoEstado() {
   const wakeLockRef = useRef(null)
 
   const pedidoId = new URLSearchParams(window.location.search).get('id')
+
+  // Desbloquear AudioContext en el primer toque (iOS requiere gesto del usuario)
+  useEffect(() => {
+    const unlock = () => { try { getAudioCtx() } catch (_) {} }
+    document.addEventListener('touchstart', unlock, { once: true })
+    document.addEventListener('click', unlock, { once: true })
+    return () => {
+      document.removeEventListener('touchstart', unlock)
+      document.removeEventListener('click', unlock)
+    }
+  }, [])
 
   // Wake Lock
   useEffect(() => {
@@ -156,6 +174,7 @@ export default function PedidoEstado() {
   const pasoActual = pasoIndex(pedido.estado)
   const esListo = pedido.estado === 'listo'
   const esCobrado = pedido.estado === 'cobrado'
+  const esCancelado = pedido.estado === 'cancelado'
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg }}>
@@ -181,8 +200,18 @@ export default function PedidoEstado() {
 
       <div style={{ maxWidth: 480, margin: '0 auto', padding: '28px 16px 64px' }}>
 
+        {/* Estado cancelado */}
+        {esCancelado && (
+          <div style={{ background: '#FDEAEA', border: '1px solid rgba(163,32,32,.2)', borderRadius: 16, padding: '24px 20px', textAlign: 'center', marginBottom: 24 }}>
+            <div style={{ fontSize: 44, marginBottom: 8 }}>❌</div>
+            <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: 20, color: '#A32020', marginBottom: 6 }}>Pedido cancelado</div>
+            <div style={{ fontSize: 14, color: '#A32020', opacity: 0.8 }}>Consultá en caja si tenés dudas.</div>
+            <a href="/menu" style={{ display: 'inline-block', marginTop: 16, background: C.or, color: '#fff', borderRadius: 10, padding: '10px 24px', fontWeight: 800, fontSize: 14, textDecoration: 'none' }}>Volver al menú</a>
+          </div>
+        )}
+
         {/* Aviso: mantener página abierta */}
-        {!esListo && !esCobrado && (
+        {!esListo && !esCobrado && !esCancelado && (
           <div style={{ background: C.amb, border: `1px solid rgba(168,98,0,0.2)`, borderRadius: 12, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 20 }}>📱</span>
             <div style={{ fontSize: 13, color: C.am, fontWeight: 600, lineHeight: 1.4 }}>
@@ -217,7 +246,7 @@ export default function PedidoEstado() {
         )}
 
         {/* Barra de progreso */}
-        {!esCobrado && (
+        {!esCobrado && !esCancelado && (
           <div style={{ background: C.wh, borderRadius: 16, padding: '20px', marginBottom: 20, boxShadow: '0 2px 10px rgba(27,58,107,0.07)' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'relative' }}>
               <div style={{ position: 'absolute', top: 16, left: '16%', right: '16%', height: 3, background: 'var(--bd)', borderRadius: 2, zIndex: 0 }} />

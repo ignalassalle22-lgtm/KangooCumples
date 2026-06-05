@@ -15,7 +15,7 @@ const ESTADOS = [
   { id: 'listo',           label: 'Listo',            color: '#1A7A45', bg: '#E8F5EE', dot: '#22C55E' },
 ]
 
-export default function Pedidos({ pedidos, loading, onUpdateEstado, onCobrar }) {
+export default function Pedidos({ pedidos, loading, onUpdateEstado, onCobrar, onAnular }) {
   const [filtro, setFiltro] = useState('todos')
 
   const filtrados = useMemo(() => {
@@ -148,10 +148,15 @@ export default function Pedidos({ pedidos, loading, onUpdateEstado, onCobrar }) 
                       $ Cobrar pedido
                     </button>
                   )}
-                  {p.estado !== 'listo' && p.estado !== 'pendiente' && null}
                   <button className="bg2 bsm" onClick={() => onCobrar(p)} title="Cobrar ahora sin esperar">
                     $ Cobrar
                   </button>
+                  <button
+                    className="bsm"
+                    style={{ background: 'none', border: '1.5px solid #e5e7eb', color: '#6B7A99', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
+                    onClick={() => onAnular(p.id)}
+                    title="Cancelar pedido"
+                  >✕</button>
                 </div>
               </div>
             )
