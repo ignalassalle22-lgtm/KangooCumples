@@ -48,11 +48,10 @@ export default function MenuPublico() {
     setPedidoError('')
     setEnviando(true)
     try {
-      const numero = `P-${Date.now().toString().slice(-6)}`
       const total = cartTotal
       const { data: pedidoData, error: pe } = await supabase
         .from('pedidos')
-        .insert({ numero, nombre: nombre.trim(), mesa: mesa.trim() || null, notas: notas.trim() || null, total, estado: 'pendiente' })
+        .insert({ nombre: nombre.trim(), mesa: mesa.trim() || null, notas: notas.trim() || null, total, estado: 'pendiente' })
         .select().single()
       if (pe) throw pe
 
@@ -205,9 +204,9 @@ export default function MenuPublico() {
 
       {/* Botón flotante del carrito */}
       {cartCount > 0 && !cartOpen && (
-        <button onClick={() => setCartOpen(true)} style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: C.nv, color: C.wh, border: 'none', borderRadius: 50, padding: '14px 28px', fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 15, cursor: 'pointer', boxShadow: '0 6px 24px rgba(27,58,107,0.4)', display: 'flex', alignItems: 'center', gap: 10, zIndex: 50, whiteSpace: 'nowrap' }}>
-          <span style={{ background: C.or, borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900 }}>{cartCount}</span>
-          Ver pedido · {fmt(cartTotal)}
+        <button onClick={() => setCartOpen(true)} style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: C.or, color: C.wh, border: 'none', borderRadius: 50, padding: '14px 28px', fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 15, cursor: 'pointer', boxShadow: '0 6px 24px rgba(232,98,26,0.5)', display: 'flex', alignItems: 'center', gap: 10, zIndex: 50, whiteSpace: 'nowrap' }}>
+          <span style={{ background: C.wh, color: C.or, borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900 }}>{cartCount}</span>
+          Tu pedido · {fmt(cartTotal)}
         </button>
       )}
 
