@@ -2,6 +2,7 @@ import React from 'react'
 
 const TABS_VENTAS = [
   { id: 'ventas',    label: '🧾 Ventas' },
+  { id: 'pedidos',   label: '📋 Pedidos' },
   { id: 'compras',   label: '📥 Compras' },
   { id: 'caja',      label: '💰 Caja' },
   { id: 'productos', label: '📦 Productos' },

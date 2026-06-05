@@ -6,11 +6,11 @@ const hora = () => new Date().toTimeString().slice(0, 5)
 
 const METODOS_DEFAULT = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
-export default function TicketModal({ productos, cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, metodosPago, empleados = [], onSave, onClose, addToast }) {
+export default function TicketModal({ productos, cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, metodosPago, empleados = [], itemsIniciales = [], clienteInicial = '', onSave, onClose, addToast }) {
   const METODOS = metodosPago?.length ? metodosPago : METODOS_DEFAULT
-  const [items, setItems] = useState([])
+  const [items, setItems] = useState(() => itemsIniciales.length ? itemsIniciales : [])
   const [busca, setBusca] = useState('')
-  const [cliente, setCliente] = useState('')
+  const [cliente, setCliente] = useState(clienteInicial)
   const [empleadoId, setEmpleadoId] = useState('')
   const [descuento, setDescuento] = useState('')
   const [descuentoTipo, setDescuentoTipo] = useState('monto')

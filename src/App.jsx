@@ -22,11 +22,13 @@ import Compras from './components/Compras'
 import CompraModal from './components/CompraModal'
 import Caja from './components/Caja'
 import ReportesVentas from './components/ReportesVentas'
+import Pedidos from './components/Pedidos'
 import { useProductos } from './hooks/useProductos'
 import { useVentas } from './hooks/useVentas'
 import { useCompras } from './hooks/useCompras'
 import { useCaja } from './hooks/useCaja'
 import { useEmpleados } from './hooks/useEmpleados'
+import { usePedidos } from './hooks/usePedidos'
 
 export default function App() {
   // ── Cumpleaños ──
@@ -73,6 +75,7 @@ export default function App() {
   const [editingProductoId, setEditingProductoId] = useState(null)
   const [ticketModalOpen, setTicketModalOpen] = useState(false)
   const [compraModalOpen, setCompraModalOpen] = useState(false)
+  const [pedidoParaCobrar, setPedidoParaCobrar] = useState(null)
 
   const [toasts, setToasts] = useState([])
 
@@ -81,6 +84,47 @@ export default function App() {
     setToasts(prev => [...prev, { id, msg, type }])
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500)
   }, [])
+
+  // ── Pedidos (menú digital) ──
+  const handleNuevoPedido = useCallback((pedido) => {
+    // Beep de notificación via Web Audio API
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.type = 'sine'; osc.frequency.value = 880
+      gain.gain.setValueAtTime(0.3, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+      osc.start(); osc.stop(ctx.currentTime + 0.4)
+    } catch (_) {}
+    addToast(`🔔 Nuevo pedido #${pedido.numero} — ${pedido.nombre}`, 'ok')
+  }, [addToast])
+
+  const { pedidos, loading: pedidosLoading, updateEstado: updateEstadoPedido, marcarCobrado } = usePedidos(handleNuevoPedido)
+
+  const handleCobrarPedido = useCallback((pedido) => {
+    const itemsIniciales = (pedido.pedido_items || []).map(it => ({
+      producto_id: it.producto_id || null,
+      nombre_producto: it.nombre_producto,
+      precio_unitario: it.precio_unitario || 0,
+      cantidad: it.cantidad,
+      subtotal: it.subtotal || 0,
+      maneja_stock: true,
+    }))
+    setPedidoParaCobrar(pedido)
+    setTicketModalOpen(true)
+  }, [])
+
+  const handleSaveVentaDesdePedido = useCallback(async (venta, items) => {
+    const ventaGuardada = await saveVenta(venta, items, updateStock)
+    if (pedidoParaCobrar) {
+      await marcarCobrado(pedidoParaCobrar.id, ventaGuardada?.id || null)
+      setPedidoParaCobrar(null)
+    }
+    setTicketModalOpen(false)
+    addToast('✓ Pedido cobrado correctamente')
+  }, [saveVenta, updateStock, marcarCobrado, pedidoParaCobrar, addToast])
 
   // ── Handlers cumpleaños ──
   const handleOpenModal = useCallback((id = null) => { setEditingId(id); setModalOpen(true) }, [])
@@ -302,6 +346,16 @@ export default function App() {
           </div>
         )}
 
+        {/* ── PEDIDOS ── */}
+        {activeSection === 'pedidos' && (
+          <Pedidos
+            pedidos={pedidos}
+            loading={pedidosLoading}
+            onUpdateEstado={updateEstadoPedido}
+            onCobrar={handleCobrarPedido}
+          />
+        )}
+
         {/* ── VENTAS ── */}
         {activeSection === 'ventas' && (
           <Ventas
@@ -394,8 +448,17 @@ export default function App() {
           onCajaChange={setCajaSeleccionadaId}
           metodosPago={config.mets_caja}
           empleados={empleados}
-          onSave={handleSaveVenta}
-          onClose={() => setTicketModalOpen(false)}
+          itemsIniciales={pedidoParaCobrar ? (pedidoParaCobrar.pedido_items || []).map(it => ({
+            producto_id: it.producto_id || null,
+            nombre_producto: it.nombre_producto,
+            precio_unitario: it.precio_unitario || 0,
+            cantidad: it.cantidad,
+            subtotal: it.subtotal || 0,
+            maneja_stock: true,
+          })) : []}
+          clienteInicial={pedidoParaCobrar?.nombre || ''}
+          onSave={pedidoParaCobrar ? handleSaveVentaDesdePedido : handleSaveVenta}
+          onClose={() => { setTicketModalOpen(false); setPedidoParaCobrar(null) }}
           addToast={addToast}
         />
       )}

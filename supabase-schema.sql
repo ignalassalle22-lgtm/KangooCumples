@@ -157,6 +157,54 @@ CREATE TABLE IF NOT EXISTS public.compra_items (
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ── Pedidos (menú digital) ──
+CREATE TABLE IF NOT EXISTS public.pedidos (
+  id         BIGSERIAL PRIMARY KEY,
+  numero     INTEGER,
+  nombre     TEXT,
+  mesa       TEXT,
+  notas      TEXT,
+  total      NUMERIC DEFAULT 0,
+  estado     TEXT DEFAULT 'pendiente',  -- pendiente | en_preparacion | listo | cobrado
+  venta_id   BIGINT REFERENCES public.ventas(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Secuencia para número legible de pedido
+CREATE SEQUENCE IF NOT EXISTS public.pedidos_numero_seq START 1;
+
+-- Asignar número automático en insert
+CREATE OR REPLACE FUNCTION public.set_pedido_numero()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.numero IS NULL THEN
+    NEW.numero := nextval('public.pedidos_numero_seq');
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_pedido_numero ON public.pedidos;
+CREATE TRIGGER trg_pedido_numero
+  BEFORE INSERT ON public.pedidos
+  FOR EACH ROW EXECUTE FUNCTION public.set_pedido_numero();
+
+-- Items de pedido
+CREATE TABLE IF NOT EXISTS public.pedido_items (
+  id              BIGSERIAL PRIMARY KEY,
+  pedido_id       BIGINT REFERENCES public.pedidos(id) ON DELETE CASCADE,
+  producto_id     BIGINT REFERENCES public.productos(id) ON DELETE SET NULL,
+  nombre_producto TEXT,
+  precio_unitario NUMERIC DEFAULT 0,
+  cantidad        INTEGER DEFAULT 1,
+  subtotal        NUMERIC DEFAULT 0,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Habilitar Realtime para pedidos (necesario para Supabase Realtime)
+ALTER TABLE public.pedidos REPLICA IDENTITY FULL;
+ALTER TABLE public.pedido_items REPLICA IDENTITY FULL;
+
 -- ── Row Level Security ──
 ALTER TABLE public.eventos       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.configuracion ENABLE ROW LEVEL SECURITY;
@@ -168,6 +216,8 @@ ALTER TABLE public.venta_items   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.compras       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.compra_items  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.empleados     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pedidos       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pedido_items  ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de acceso abierto
 CREATE POLICY "allow all eventos"        ON public.eventos       FOR ALL USING (TRUE) WITH CHECK (TRUE);
@@ -180,6 +230,8 @@ CREATE POLICY "allow all venta_items"    ON public.venta_items   FOR ALL USING (
 CREATE POLICY "allow all compras"        ON public.compras       FOR ALL USING (TRUE) WITH CHECK (TRUE);
 CREATE POLICY "allow all compra_items"   ON public.compra_items  FOR ALL USING (TRUE) WITH CHECK (TRUE);
 CREATE POLICY "allow all empleados"      ON public.empleados     FOR ALL USING (TRUE) WITH CHECK (TRUE);
+CREATE POLICY "allow all pedidos"        ON public.pedidos       FOR ALL USING (TRUE) WITH CHECK (TRUE);
+CREATE POLICY "allow all pedido_items"   ON public.pedido_items  FOR ALL USING (TRUE) WITH CHECK (TRUE);
 
 -- ── Datos iniciales ──
 INSERT INTO public.configuracion (clave, valor) VALUES
