@@ -53,7 +53,7 @@ export default function MenuPublico() {
         .from('pedidos')
         .insert({ nombre: nombre.trim(), mesa: mesa.trim() || null, notas: notas.trim() || null, total, estado: 'pendiente' })
         .select().single()
-      if (pe) throw pe
+      if (pe) throw new Error(`pedidos: ${pe.message} (${pe.code})`)
 
       const items = cart.map(it => ({
         pedido_id: pedidoData.id,
@@ -64,11 +64,11 @@ export default function MenuPublico() {
         subtotal: it.precio_venta * it.qty,
       }))
       const { error: ie } = await supabase.from('pedido_items').insert(items)
-      if (ie) throw ie
+      if (ie) throw new Error(`pedido_items: ${ie.message} (${ie.code})`)
 
       window.location.href = `/pedido?id=${pedidoData.id}`
     } catch (e) {
-      setPedidoError('Error al enviar el pedido. Intentá de nuevo.')
+      setPedidoError(e.message || 'Error al enviar el pedido.')
       setEnviando(false)
     }
   }
