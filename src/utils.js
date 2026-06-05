@@ -35,7 +35,7 @@ export const DEFAULT_CONFIG = {
   mets_caja: ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro'],
   menu_digital: {
     activo: false,
-    titulo: 'Kangoo Cumples',
+    titulo: 'Kangaroo Fun',
     subtitulo: '',
     logoUrl: '',
     productosIds: [],

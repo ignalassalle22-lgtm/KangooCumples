@@ -24,9 +24,9 @@ export default function Topbar({ activeSection, onNav, onNuevo, cajaActual }) {
       {/* Fila superior */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 }}>
         <div className="logo-wrap">
-          <div className="logo-emoji">🦘</div>
+          <img src="/logo.jpg" alt="Kangaroo Fun" style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--or2)', flexShrink: 0 }} />
           <div className="logo-texts">
-            <div className="logo-name">Kangoo<span>Cumples</span></div>
+            <div className="logo-name">Kangaroo<span> Fun</span></div>
             <div className="logo-sub">Sistema de gestión</div>
           </div>
         </div>
