@@ -138,6 +138,20 @@ export function useEventos() {
     return updated
   }
 
+  // Finaliza el evento: marca como pagado completo y consumos cobrados
+  const finalizarEvento = async (eventoId, { monto, met }) => {
+    const { data, error } = await supabase
+      .from('eventos')
+      .update({ pago: 'paid', monto, met, consumos_cobrados: true })
+      .eq('id', eventoId)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    const updated = fromDB(data)
+    setEventos(prev => prev.map(e => e.id === eventoId ? updated : e))
+    return updated
+  }
+
   // Deshace el descuento de stock de menús
   const resetMenusStockAplicado = async (eventoId) => {
     const { data, error } = await supabase
@@ -156,6 +170,6 @@ export function useEventos() {
     eventos, setEventos, loading, error,
     fetchEventos, saveEvento, deleteEvento,
     saveEventoConsumos, marcarMenusStockAplicado, marcarConsumoCobrado,
-    resetConsumoCobrado, resetMenusStockAplicado,
+    resetConsumoCobrado, resetMenusStockAplicado, finalizarEvento,
   }
 }

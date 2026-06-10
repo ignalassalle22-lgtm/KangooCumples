@@ -6,6 +6,7 @@ import EventosList from './components/EventosList'
 import EventoModal from './components/EventoModal'
 import DetalleModal from './components/DetalleModal'
 import CajaEventoModal from './components/CajaEventoModal'
+import FinalizarEventoModal from './components/FinalizarEventoModal'
 import CalendarioSemana from './components/CalendarioSemana'
 import CalendarioMes from './components/CalendarioMes'
 import Metricas from './components/Metricas'
@@ -37,7 +38,7 @@ export default function App() {
     eventos, loading: evLoading, error,
     saveEvento, deleteEvento,
     saveEventoConsumos, marcarMenusStockAplicado, marcarConsumoCobrado,
-    resetConsumoCobrado, resetMenusStockAplicado,
+    resetConsumoCobrado, resetMenusStockAplicado, finalizarEvento,
   } = useEventos()
   const { config, updateConfig } = useConfig()
 
@@ -70,6 +71,7 @@ export default function App() {
   const [editingId, setEditingId] = useState(null)
   const [detalleId, setDetalleId] = useState(null)
   const [cajaEventoId, setCajaEventoId] = useState(null)
+  const [finalizarEventoId, setFinalizarEventoId] = useState(null)
 
   // Modals ventas
   const [productoModalOpen, setProductoModalOpen] = useState(false)
@@ -243,6 +245,60 @@ export default function App() {
     const consumosActualizados = todosConsumos.map(c => c.cobrado ? c : { ...c, cobrado: true })
     await saveEventoConsumos(eventoId, consumosActualizados)
   }, [eventos, saveVenta, restaurarStockItem, saveEventoConsumos])
+
+  // ── Finalizar evento ──
+  const handleAbrirFinalizar = useCallback((id) => {
+    setDetalleOpen(false)
+    setFinalizarEventoId(id)
+  }, [])
+
+  const handleFinalizarEvento = useCallback(async ({ metodoPago, cajaId, saldoEvento, consumosPendientes, totalFinal }) => {
+    const ev = eventos.find(e => e.id === finalizarEventoId)
+    if (!ev) return
+
+    const ahora = new Date()
+    const fecha = ahora.toISOString().split('T')[0]
+    const hora = ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+    const cliente = ev.reservante || ev.cumple || 'Evento'
+
+    if (totalFinal > 0 && cajaId) {
+      const items = []
+      if (saldoEvento > 0) {
+        items.push({
+          producto_id: null,
+          nombre_producto: `Saldo evento — ${cliente}`,
+          precio_unitario: saldoEvento,
+          cantidad: 1,
+          subtotal: saldoEvento,
+          maneja_stock: false,
+        })
+      }
+      consumosPendientes.forEach(c => {
+        items.push({
+          producto_id: c.productoId || null,
+          nombre_producto: c.nombreProducto,
+          precio_unitario: c.precioUnitario || 0,
+          cantidad: c.qty,
+          subtotal: (c.precioUnitario || 0) * c.qty,
+          maneja_stock: !!c.productoId,
+        })
+        if (c.productoId) restaurarStockItem(c.productoId, -c.qty)
+      })
+
+      const venta = {
+        fecha, hora, cliente,
+        subtotal: totalFinal, descuento: 0, total: totalFinal,
+        metodo_pago: metodoPago, estado: 'completada',
+        caja_id: cajaId,
+        obs: `Finalización evento — ${cliente}`,
+      }
+      await saveVenta(venta, items, null)
+    }
+
+    await finalizarEvento(finalizarEventoId, { monto: ev.total, met: metodoPago })
+    setFinalizarEventoId(null)
+    addToast('✅ Evento finalizado y cobro registrado en caja')
+  }, [eventos, finalizarEventoId, saveVenta, finalizarEvento, restaurarStockItem, addToast])
 
   // ── Handlers productos ──
   const handleOpenProducto = useCallback((id = null) => { setEditingProductoId(id); setProductoModalOpen(true) }, [])
@@ -426,6 +482,16 @@ export default function App() {
           onClose={() => setDetalleOpen(false)}
           onEditar={(id) => { setDetalleOpen(false); handleOpenModal(id) }}
           onAbrirCaja={handleAbrirCajaEvento}
+          onFinalizar={handleAbrirFinalizar}
+        />
+      )}
+      {finalizarEventoId && (
+        <FinalizarEventoModal
+          evento={eventos.find(e => e.id === finalizarEventoId)}
+          cajasAbiertas={cajasAbiertas}
+          config={config}
+          onFinalizar={handleFinalizarEvento}
+          onClose={() => setFinalizarEventoId(null)}
         />
       )}
       {cajaEvento && (

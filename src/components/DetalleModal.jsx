@@ -13,7 +13,7 @@ function Row({ label, val, valStyle }) {
   )
 }
 
-export default function DetalleModal({ evento: ev, config, onClose, onEditar, onAbrirCaja }) {
+export default function DetalleModal({ evento: ev, config, onClose, onEditar, onAbrirCaja, onFinalizar }) {
   if (!ev) return null
 
   const rest = (ev.total || 0) - (ev.monto || 0)
@@ -157,6 +157,15 @@ export default function DetalleModal({ evento: ev, config, onClose, onEditar, on
             <button className="bn" onClick={() => onAbrirCaja(ev.id)}>💰 Caja del evento</button>
           )}
           <button className="bp" onClick={() => onEditar(ev.id)}>✏ Editar</button>
+          {onFinalizar && ev.pago !== 'paid' && ev.pago !== 'cancelado' && (
+            <button
+              className="bp"
+              onClick={() => onFinalizar(ev.id)}
+              style={{ background: '#1A7A45', border: 'none' }}
+            >
+              ✅ Finalizar evento
+            </button>
+          )}
         </div>
       </div>
     </div>
