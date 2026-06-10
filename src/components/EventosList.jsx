@@ -13,7 +13,7 @@ function getMonthLabel(key) {
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
-export default function EventosList({ eventos, loading, onEditar, onEliminar, onNuevo, onVerDetalle, onAbrirCaja }) {
+export default function EventosList({ eventos, loading, onEditar, onEliminar, onNuevo, onVerDetalle, onAbrirCaja, onFinalizar }) {
   const [search, setSearch] = useState('')
   const [filterPago, setFilterPago] = useState('')
   const [filterFecha, setFilterFecha] = useState('')
@@ -184,6 +184,16 @@ export default function EventosList({ eventos, loading, onEditar, onEliminar, on
                     </button>
                   )}
                   <button className="bg2 bsm" onClick={() => onEditar(ev.id)}>✏ Editar</button>
+                  {onFinalizar && ev.pago !== 'paid' && ev.pago !== 'cancelado' && (
+                    <button
+                      className="bsm"
+                      title="Finalizar evento"
+                      onClick={() => onFinalizar(ev.id)}
+                      style={{ background: '#1A7A45', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
+                    >
+                      ✅ Finalizar
+                    </button>
+                  )}
                   <button className="bdng" onClick={() => onEliminar(ev.id)}>🗑</button>
                 </div>
               </div>

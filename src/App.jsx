@@ -371,7 +371,7 @@ export default function App() {
               eventos={eventos} loading={evLoading} config={config}
               onEditar={handleOpenModal} onEliminar={handleDelete}
               onNuevo={() => handleOpenModal()} onVerDetalle={handleOpenDetalle}
-              onAbrirCaja={handleAbrirCajaEvento}
+              onAbrirCaja={handleAbrirCajaEvento} onFinalizar={handleAbrirFinalizar}
             />
           </div>
         )}
