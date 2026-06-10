@@ -23,6 +23,7 @@ import CompraModal from './components/CompraModal'
 import Caja from './components/Caja'
 import ReportesVentas from './components/ReportesVentas'
 import Pedidos from './components/Pedidos'
+import Asistencia from './components/Asistencia'
 import { useProductos } from './hooks/useProductos'
 import { useVentas } from './hooks/useVentas'
 import { useCompras } from './hooks/useCompras'
@@ -361,6 +362,11 @@ export default function App() {
             onCobrar={handleCobrarPedido}
             onAnular={handleAnularPedido}
           />
+        )}
+
+        {/* ── ASISTENCIA ── */}
+        {activeSection === 'asistencia' && (
+          <Asistencia empleados={empleados} />
         )}
 
         {/* ── VENTAS ── */}
