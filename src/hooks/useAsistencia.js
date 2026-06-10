@@ -1,10 +1,9 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '../supabase'
 
-// estado: null = ausente, 'presente', 'vacaciones'
 export function useAsistencia() {
   const [asistencias, setAsistencias] = useState([])
-  const [observaciones, setObservaciones] = useState([]) // [{empleado_id, año, mes, obs}]
+  const [observaciones, setObservaciones] = useState([])
   const [loading, setLoading] = useState(false)
 
   const fetchMes = useCallback(async (año, mes) => {
@@ -20,29 +19,24 @@ export function useAsistencia() {
     setLoading(false)
   }, [])
 
-  // Cicla: ausente → presente → vacaciones → ausente
-  const toggleAsistencia = useCallback(async (empleadoId, fecha, estadoActual) => {
-    const ciclo = { null: 'presente', presente: 'vacaciones', vacaciones: null }
-    const nuevo = ciclo[estadoActual ?? 'null'] ?? ciclo['null']
+  // Guarda o elimina un registro de asistencia
+  const saveAsistencia = useCallback(async (empleadoId, fecha, { hora_entrada, hora_salida, vacaciones }) => {
+    const isEmpty = !hora_entrada && !hora_salida && !vacaciones
 
     // Optimistic update
     setAsistencias(prev => {
       const existe = prev.find(a => a.empleado_id === empleadoId && a.fecha === fecha)
-      if (nuevo === null) return prev.filter(a => !(a.empleado_id === empleadoId && a.fecha === fecha))
-      if (existe) return prev.map(a => a.empleado_id === empleadoId && a.fecha === fecha ? { ...a, estado: nuevo } : a)
-      return [...prev, { empleado_id: empleadoId, fecha, estado: nuevo }]
+      if (isEmpty) return prev.filter(a => !(a.empleado_id === empleadoId && a.fecha === fecha))
+      const nuevo = { empleado_id: empleadoId, fecha, hora_entrada: hora_entrada || null, hora_salida: hora_salida || null, vacaciones: !!vacaciones }
+      if (existe) return prev.map(a => a.empleado_id === empleadoId && a.fecha === fecha ? { ...a, ...nuevo } : a)
+      return [...prev, nuevo]
     })
 
-    if (nuevo === null) {
+    if (isEmpty) {
       await supabase.from('asistencias').delete().eq('empleado_id', empleadoId).eq('fecha', fecha)
     } else {
-      const { error } = await supabase
-        .from('asistencias')
-        .upsert({ empleado_id: empleadoId, fecha, estado: nuevo }, { onConflict: 'empleado_id,fecha' })
-      if (error) {
-        // revertir
-        setAsistencias(prev => prev.filter(a => !(a.empleado_id === empleadoId && a.fecha === fecha)))
-      }
+      await supabase.from('asistencias')
+        .upsert({ empleado_id: empleadoId, fecha, hora_entrada: hora_entrada || null, hora_salida: hora_salida || null, vacaciones: !!vacaciones }, { onConflict: 'empleado_id,fecha' })
     }
   }, [])
 
@@ -56,5 +50,5 @@ export function useAsistencia() {
       .upsert({ empleado_id: empleadoId, año, mes, obs }, { onConflict: 'empleado_id,año,mes' })
   }, [])
 
-  return { asistencias, observaciones, loading, fetchMes, toggleAsistencia, saveObs }
+  return { asistencias, observaciones, loading, fetchMes, saveAsistencia, saveObs }
 }
