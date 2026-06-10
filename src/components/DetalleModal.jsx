@@ -156,7 +156,6 @@ export default function DetalleModal({ evento: ev, config, onClose, onEditar, on
           {onAbrirCaja && (
             <button className="bn" onClick={() => onAbrirCaja(ev.id)}>💰 Caja del evento</button>
           )}
-          <button className="bp" onClick={() => onEditar(ev.id)}>✏ Editar</button>
           {onFinalizar && ev.pago !== 'paid' && ev.pago !== 'cancelado' && (
             <button
               className="bp"
@@ -166,6 +165,7 @@ export default function DetalleModal({ evento: ev, config, onClose, onEditar, on
               ✅ Finalizar evento
             </button>
           )}
+          <button className="bp" onClick={() => onEditar(ev.id)}>✏ Editar</button>
         </div>
       </div>
     </div>
