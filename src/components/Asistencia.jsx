@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import * as XLSX from 'xlsx'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAsistencia } from '../hooks/useAsistencia'
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -162,7 +161,8 @@ export default function Asistencia({ empleados = [] }) {
   }, [obsLocal, año, mes, saveObs])
 
   // ── Exportar a Excel ──
-  function exportarExcel() {
+  async function exportarExcel() {
+    const XLSX = await import('xlsx')
     const wb = XLSX.utils.book_new()
     const mesNombre = MESES[mes - 1]
 
