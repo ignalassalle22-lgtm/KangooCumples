@@ -554,7 +554,7 @@ export default function App() {
         {activeSection === 'caja' && (
           <Caja
             cajasAbiertas={cajasAbiertas} historial={cajaHistorial} loading={cajaLoading}
-            ventas={ventas} gastos={cajaGastos}
+            ventas={ventas} gastos={cajaGastos} empleados={empleados}
             onAbrir={handleAbrirCaja}
             onCerrar={handleCerrarCaja}
             onAddGasto={handleAddGasto}
@@ -585,6 +585,7 @@ export default function App() {
             saldo={cofreSaldo}
             loading={cofreLoading}
             onAddRetiro={addCofreMovimiento}
+            empleados={empleados}
             askPin={askPin}
             addToast={addToast}
           />

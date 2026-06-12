@@ -41,7 +41,7 @@ function TicketDetalle({ venta, onClose }) {
   )
 }
 
-function CajaCard({ caja, ventas, gastos = [], onCerrar, onAddGasto, onAddCofreIngreso, addToast, askPin }) {
+function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGasto, onAddCofreIngreso, addToast, askPin }) {
   const [cerrando, setCerrando] = useState(false)
   const [saldoFinal, setSaldoFinal] = useState('')
   const [obs, setObs] = useState('')
@@ -199,7 +199,10 @@ function CajaCard({ caja, ventas, gastos = [], onCerrar, onAddGasto, onAddCofreI
             </div>
             <div className="fgg">
               <label>Responsable</label>
-              <input type="text" value={gastoPersona} onChange={e => setGastoPersona(e.target.value)} placeholder="Nombre" />
+              <select value={gastoPersona} onChange={e => setGastoPersona(e.target.value)}>
+                <option value="">Seleccionar...</option>
+                {empleados.filter(e => e.activo !== false).map(e => <option key={e.id} value={e.nombre}>{e.nombre}</option>)}
+              </select>
             </div>
           </div>
           {gastos.length > 0 && (
@@ -231,7 +234,10 @@ function CajaCard({ caja, ventas, gastos = [], onCerrar, onAddGasto, onAddCofreI
             </div>
             <div className="fgg">
               <label>Responsable del traspaso</label>
-              <input type="text" value={cofrePersona} onChange={e => setCofrePersona(e.target.value)} placeholder="Nombre" />
+              <select value={cofrePersona} onChange={e => setCofrePersona(e.target.value)}>
+                <option value="">Seleccionar...</option>
+                {empleados.filter(e => e.activo !== false).map(e => <option key={e.id} value={e.nombre}>{e.nombre}</option>)}
+              </select>
             </div>
             <div className="fgg">
               <label>Observaciones</label>
@@ -339,7 +345,7 @@ function CajaCard({ caja, ventas, gastos = [], onCerrar, onAddGasto, onAddCofreI
   )
 }
 
-export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos = [], onAbrir, onCerrar, onAddGasto, onAddCofreIngreso, addToast, askPin }) {
+export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos = [], empleados = [], onAbrir, onCerrar, onAddGasto, onAddCofreIngreso, addToast, askPin }) {
   const [nombre, setNombre] = useState('')
   const [turno, setTurno] = useState('')
   const [saldoInicial, setSaldoInicial] = useState('')
@@ -427,6 +433,7 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                   <CajaCard
                     key={c.id} caja={c} ventas={ventas}
                     gastos={gastos.filter(g => g.caja_id === c.id)}
+                    empleados={empleados}
                     onCerrar={onCerrar} onAddGasto={onAddGasto} onAddCofreIngreso={onAddCofreIngreso}
                     addToast={addToast} askPin={askPin}
                   />

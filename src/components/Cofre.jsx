@@ -9,7 +9,7 @@ function fmtFecha(ts) {
     ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function Cofre({ movimientos, saldo, loading, onAddRetiro, askPin, addToast }) {
+export default function Cofre({ movimientos, saldo, loading, onAddRetiro, empleados = [], askPin, addToast }) {
   const [showForm, setShowForm] = useState(false)
   const [monto, setMonto] = useState('')
   const [persona, setPersona] = useState('')
@@ -79,7 +79,10 @@ export default function Cofre({ movimientos, saldo, loading, onAddRetiro, askPin
             </div>
             <div className="fgg">
               <label>Persona que retira</label>
-              <input type="text" value={persona} onChange={e => setPersona(e.target.value)} placeholder="Nombre del responsable" />
+              <select value={persona} onChange={e => setPersona(e.target.value)}>
+                <option value="">Seleccionar...</option>
+                {empleados.filter(e => e.activo !== false).map(e => <option key={e.id} value={e.nombre}>{e.nombre}</option>)}
+              </select>
             </div>
             <div className="fgg">
               <label>Observaciones</label>
