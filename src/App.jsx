@@ -1,4 +1,75 @@
 import React, { useState, useCallback, useEffect } from 'react'
+
+function PinModal({ storedPin, msg, onConfirm, onCancel }) {
+  const [pin, setPin] = React.useState('')
+  const [err, setErr] = React.useState(false)
+
+  const tryPin = (val) => {
+    if (val.length < 4) return
+    if (val === String(storedPin)) {
+      onConfirm()
+    } else {
+      setErr(true)
+      setPin('')
+      setTimeout(() => setErr(false), 1500)
+    }
+  }
+
+  return (
+    <div className="ov op" onClick={e => { if (e.target === e.currentTarget) onCancel() }}>
+      <div className="mo" style={{ maxWidth: 380 }}>
+        <div className="moh">
+          <div className="mot">
+            <div className="mot-icon">🔐</div>
+            <span>Confirmar acción</span>
+          </div>
+          <button className="xcl" onClick={onCancel}>✕</button>
+        </div>
+        {!storedPin ? (
+          <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--mu)', fontSize: 14 }}>
+            No hay código configurado. Configurá uno en <b>Datos de venta</b> antes de poder continuar.
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="bg2" onClick={onCancel}>Cerrar</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {msg && <p style={{ color: 'var(--mu)', fontSize: 14, marginBottom: 16 }}>{msg}</p>}
+            <p style={{ color: 'var(--mu)', fontSize: 13, marginBottom: 20 }}>
+              Ingresá el código de 4 dígitos para confirmar. Esta acción no se puede deshacer.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={pin}
+                autoFocus
+                onChange={e => {
+                  const v = e.target.value.replace(/\D/g, '').slice(0, 4)
+                  setPin(v)
+                  tryPin(v)
+                }}
+                style={{
+                  fontSize: 28, textAlign: 'center', letterSpacing: 14, width: 150,
+                  border: `2px solid ${err ? 'var(--rd)' : 'var(--bd2)'}`,
+                  borderRadius: 10, padding: '10px 16px',
+                  transition: 'border-color .2s',
+                }}
+                placeholder="••••"
+              />
+            </div>
+            {err && <div style={{ textAlign: 'center', color: 'var(--rd)', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Código incorrecto</div>}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+              <button className="bg2" onClick={onCancel}>Cancelar</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 import Topbar from './components/Topbar'
 
 // Cumpleaños
@@ -64,6 +135,8 @@ export default function App() {
   // ── UI State ──
   const [activeSection, setActiveSection] = useState('eventos')
   const [calView, setCalView] = useState('semana')
+  const [pinModal, setPinModal] = useState({ show: false, onConfirm: null, msg: '' })
+  const askPin = useCallback((msg, onConfirm) => setPinModal({ show: true, onConfirm, msg }), [])
 
   // Modals cumpleaños
   const [modalOpen, setModalOpen] = useState(false)
@@ -106,11 +179,13 @@ export default function App() {
 
   const { pedidos, loading: pedidosLoading, updateEstado: updateEstadoPedido, marcarCobrado, anularPedido } = usePedidos(handleNuevoPedido)
 
-  const handleAnularPedido = useCallback(async (id) => {
-    if (!window.confirm('¿Cancelar este pedido?')) return
-    try { await anularPedido(id); addToast('Pedido cancelado') }
-    catch (e) { addToast('Error: ' + e.message, 'err') }
-  }, [anularPedido, addToast])
+  const handleAnularPedido = useCallback((id) => {
+    askPin('Vas a cancelar este pedido.', async () => {
+      setPinModal({ show: false, onConfirm: null, msg: '' })
+      try { await anularPedido(id); addToast('Pedido cancelado') }
+      catch (e) { addToast('Error: ' + e.message, 'err') }
+    })
+  }, [anularPedido, addToast, askPin])
 
   const handleCobrarPedido = useCallback((pedido) => {
     const itemsIniciales = (pedido.pedido_items || []).map(it => ({
@@ -148,11 +223,13 @@ export default function App() {
     } catch (e) { addToast('Error: ' + e.message, 'err'); throw e }
   }, [saveEvento, addToast])
 
-  const handleDelete = useCallback(async (id) => {
-    if (!window.confirm('¿Eliminás este evento? Esta acción no se puede deshacer.')) return
-    try { await deleteEvento(id); addToast('Evento eliminado', 'err') }
-    catch (e) { addToast('Error: ' + e.message, 'err') }
-  }, [deleteEvento, addToast])
+  const handleDelete = useCallback((id) => {
+    askPin('Vas a eliminar este evento permanentemente.', async () => {
+      setPinModal({ show: false, onConfirm: null, msg: '' })
+      try { await deleteEvento(id); addToast('Evento eliminado', 'err') }
+      catch (e) { addToast('Error: ' + e.message, 'err') }
+    })
+  }, [deleteEvento, addToast, askPin])
 
   // ── Handlers caja de evento ──
   // Solo persiste los consumos en DB — el stock se descuenta al cobrar
@@ -185,25 +262,29 @@ export default function App() {
     await marcarMenusStockAplicado(eventoId)
   }, [updateStock, marcarMenusStockAplicado, productos])
 
-  const handleDeshacerMenuStock = useCallback(async (eventoId, menuItems) => {
-    if (!window.confirm('¿Deshacés el descuento de stock de menús? Se va a restaurar todo el stock descontado.')) return
-    for (const item of menuItems) {
-      await restaurarStockItem(item.productoId, item.qty)
-    }
-    await resetMenusStockAplicado(eventoId)
-    addToast('✓ Stock de menús restaurado')
-  }, [restaurarStockItem, resetMenusStockAplicado, addToast])
+  const handleDeshacerMenuStock = useCallback((eventoId, menuItems) => {
+    askPin('Se va a restaurar todo el stock descontado de menús.', async () => {
+      setPinModal({ show: false, onConfirm: null, msg: '' })
+      for (const item of menuItems) {
+        await restaurarStockItem(item.productoId, item.qty)
+      }
+      await resetMenusStockAplicado(eventoId)
+      addToast('✓ Stock de menús restaurado')
+    })
+  }, [restaurarStockItem, resetMenusStockAplicado, addToast, askPin])
 
-  const handleDeshacerCobro = useCallback(async (eventoId, consumos) => {
-    if (!window.confirm('¿Deshacés el cobro de adicionales? Se va a restaurar todo el stock descontado.')) return
-    const cobrados = consumos.filter(c => c.cobrado)
-    for (const c of cobrados) {
-      if (c.productoId) await restaurarStockItem(c.productoId, c.qty)
-    }
-    const consumosReseteados = consumos.map(c => ({ ...c, cobrado: false }))
-    await saveEventoConsumos(eventoId, consumosReseteados)
-    addToast('✓ Cobro deshecho · stock restaurado')
-  }, [restaurarStockItem, saveEventoConsumos, addToast])
+  const handleDeshacerCobro = useCallback((eventoId, consumos) => {
+    askPin('Se va a deshacer el cobro y restaurar el stock de adicionales.', async () => {
+      setPinModal({ show: false, onConfirm: null, msg: '' })
+      const cobrados = consumos.filter(c => c.cobrado)
+      for (const c of cobrados) {
+        if (c.productoId) await restaurarStockItem(c.productoId, c.qty)
+      }
+      const consumosReseteados = consumos.map(c => ({ ...c, cobrado: false }))
+      await saveEventoConsumos(eventoId, consumosReseteados)
+      addToast('✓ Cobro deshecho · stock restaurado')
+    })
+  }, [restaurarStockItem, saveEventoConsumos, addToast, askPin])
 
   const handleCobrarAdicionales = useCallback(async ({ eventoId, consumosPendientes, todosConsumos, total, metodoPago, cajaId }) => {
     const ev = eventos.find(e => e.id === eventoId)
@@ -309,11 +390,13 @@ export default function App() {
     addToast(p.id ? '✓ Producto actualizado' : '✓ Producto creado')
   }, [saveProducto, addToast])
 
-  const handleDeleteProducto = useCallback(async (id) => {
-    if (!window.confirm('¿Eliminás este producto?')) return
-    try { await deleteProducto(id); addToast('Producto eliminado', 'err') }
-    catch (e) { addToast('Error: ' + e.message, 'err') }
-  }, [deleteProducto, addToast])
+  const handleDeleteProducto = useCallback((id) => {
+    askPin('Vas a eliminar este producto permanentemente.', async () => {
+      setPinModal({ show: false, onConfirm: null, msg: '' })
+      try { await deleteProducto(id); addToast('Producto eliminado', 'err') }
+      catch (e) { addToast('Error: ' + e.message, 'err') }
+    })
+  }, [deleteProducto, addToast, askPin])
 
   // ── Handlers ventas ──
   const handleSaveVenta = useCallback(async (venta, items) => {
@@ -548,6 +631,15 @@ export default function App() {
           metodosPago={config.mets_caja}
           onSave={handleSaveCompra} onClose={() => setCompraModalOpen(false)}
           addToast={addToast}
+        />
+      )}
+
+      {pinModal.show && (
+        <PinModal
+          storedPin={config.pin}
+          msg={pinModal.msg}
+          onConfirm={pinModal.onConfirm}
+          onCancel={() => setPinModal({ show: false, onConfirm: null, msg: '' })}
         />
       )}
 

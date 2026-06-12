@@ -15,6 +15,8 @@ export default function Config({ config, updateConfig, addToast, productos = [],
   const [cfgPc, setCfgPc] = useState(config.pChico)
   const [cfgPa, setCfgPa] = useState(config.pAdulto)
   const [pricesOk, setPricesOk] = useState(false)
+  const [newPin, setNewPin] = useState('')
+  const [pinOk, setPinOk] = useState(false)
   const [menuExpandido, setMenuExpandido] = useState(null)
   const [compProdSearch, setCompProdSearch] = useState('')
   const [compProdSel, setCompProdSel] = useState(null)
@@ -156,6 +158,17 @@ export default function Config({ config, updateConfig, addToast, productos = [],
   const updateExtraPrice = (id, val) => {
     updateConfig('extras', config.extras.map(e => e.id === id ? { ...e, p: parseFloat(val) || 0 } : e))
     addToast('Precio actualizado ✓')
+  }
+
+  // ── PIN de seguridad ──
+  const savePin = () => {
+    const p = newPin.trim()
+    if (!/^\d{4}$/.test(p)) { addToast('El código debe ser de exactamente 4 dígitos numéricos', 'err'); return }
+    updateConfig('pin', p)
+    setNewPin('')
+    setPinOk(true)
+    setTimeout(() => setPinOk(false), 3000)
+    addToast('Código de seguridad guardado ✓')
   }
 
   // ── Precios base ──
@@ -414,6 +427,28 @@ export default function Config({ config, updateConfig, addToast, productos = [],
             <input type="text" value={nempN} onChange={e => setNempN(e.target.value)} placeholder="Nombre del empleado" onKeyDown={ev => ev.key === 'Enter' && addEmp()} />
             <button className="bp bsm" onClick={addEmp}>+ Agregar</button>
           </div>
+        </div>
+
+        {/* PIN de seguridad */}
+        <div className="cc">
+          <div className="ct"><div className="ct-icon">🔐</div>Código de seguridad</div>
+          <div style={{ fontSize: 12, color: 'var(--mu)', marginBottom: 12 }}>
+            Código de 4 dígitos requerido para confirmar eliminaciones y acciones sensibles.
+            {config.pin ? ' Ya tenés un código configurado.' : ' Todavía no configuraste un código.'}
+          </div>
+          <div className="ar">
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={newPin}
+              onChange={e => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              placeholder="Nuevo código (4 dígitos)"
+              style={{ width: 200, letterSpacing: 4 }}
+            />
+            <button className="bn bsm" onClick={savePin}>💾 Guardar código</button>
+          </div>
+          {pinOk && <div style={{ fontSize: 13, color: 'var(--gn)', marginTop: 8, fontWeight: 600 }}>✓ Código guardado correctamente</div>}
         </div>
 
         {/* Extras */}

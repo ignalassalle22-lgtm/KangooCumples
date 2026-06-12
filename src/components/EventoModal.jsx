@@ -33,6 +33,8 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
   const [form, setForm] = useState(EMPTY_FORM)
   const [mrows, setMrows] = useState([]) // [{rid, mid, qty}]
   const [extraQtys, setExtraQtys] = useState({}) // {eid: qty}
+  const [extraPrices, setExtraPrices] = useState({}) // {eid: customPrice}
+  const [adHocExtras, setAdHocExtras] = useState([]) // [{rid, desc, qty, p}]
   const [saving, setSaving] = useState(false)
 
   // Populate form from evento
@@ -65,14 +67,27 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
       // Restore menu rows
       const rows = (evento.mrows || []).map(r => ({ rid: Date.now() + Math.random(), mid: String(r.mid), qty: r.qty || 1 }))
       setMrows(rows.length > 0 ? rows : [{ rid: Date.now(), mid: '', qty: 1 }])
-      // Restore extra quantities
+      // Restore extra quantities, custom prices and ad-hoc extras
       const qtys = {}
-      ;(evento.extras || []).forEach(e => { qtys[String(e.eid)] = e.qty || 0 })
+      const prices = {}
+      const adHoc = []
+      ;(evento.extras || []).forEach(e => {
+        if (e.custom) {
+          adHoc.push({ rid: Date.now() + Math.random(), desc: e.desc || '', qty: e.qty || 1, p: e.p || 0 })
+        } else {
+          qtys[String(e.eid)] = e.qty || 0
+          if (e.p !== undefined) prices[String(e.eid)] = e.p
+        }
+      })
       setExtraQtys(qtys)
+      setExtraPrices(prices)
+      setAdHocExtras(adHoc)
     } else {
       setForm(EMPTY_FORM)
       setMrows([{ rid: Date.now(), mid: '', qty: 1 }])
       setExtraQtys({})
+      setExtraPrices({})
+      setAdHocExtras([])
     }
   }, [evento])
 
@@ -85,6 +100,12 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
 
   // Extra quantity handler
   const setExtraQty = (eid, qty) => setExtraQtys(prev => ({ ...prev, [String(eid)]: parseInt(qty) || 0 }))
+  // Extra custom price handler
+  const setExtraPrice = (eid, val) => setExtraPrices(prev => ({ ...prev, [String(eid)]: parseFloat(val) || 0 }))
+  // Ad-hoc extras handlers
+  const addAdHoc = () => setAdHocExtras(prev => [...prev, { rid: Date.now() + Math.random(), desc: '', qty: 1, p: 0 }])
+  const removeAdHoc = rid => setAdHocExtras(prev => prev.filter(r => r.rid !== rid))
+  const updateAdHoc = (rid, field, val) => setAdHocExtras(prev => prev.map(r => r.rid === rid ? { ...r, [field]: val } : r))
 
   // Computed totals
   const calc = useMemo(() => {
@@ -97,8 +118,9 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
     }, 0)
     const eTot = Object.entries(extraQtys).reduce((acc, [eid, qty]) => {
       const ex = config.extras.find(x => String(x.id) === String(eid))
-      return acc + (ex ? ex.p * (qty || 0) : 0)
-    }, 0)
+      const price = extraPrices[String(eid)] !== undefined ? extraPrices[String(eid)] : (ex ? ex.p : 0)
+      return acc + price * (qty || 0)
+    }, 0) + adHocExtras.reduce((acc, r) => acc + (parseFloat(r.p) || 0) * (parseInt(r.qty) || 0), 0)
     let dto = 0
     if (form.promoId) {
       const pr = config.promos.find(p => String(p.id) === String(form.promoId))
@@ -107,7 +129,7 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
     const total = base + mTot + eTot - dto
     const monto = parseFloat(form.monto) || 0
     return { base, mTot, eTot, dto, total, monto, rest: Math.max(0, total - monto) }
-  }, [form.chi, form.adu, form.promoId, form.monto, extraQtys, config, mrows])
+  }, [form.chi, form.adu, form.promoId, form.monto, extraQtys, extraPrices, adHocExtras, config, mrows])
 
   // Duplicate check
   const dupAlert = useMemo(() => {
@@ -151,9 +173,20 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
     }
 
     const mrowsSave = mrows.filter(r => r.mid).map(r => ({ mid: r.mid, qty: parseInt(r.qty) || 0 }))
-    const extrasSave = Object.entries(extraQtys)
-      .filter(([, qty]) => qty > 0)
-      .map(([eid, qty]) => ({ eid, qty }))
+    const extrasSave = [
+      ...Object.entries(extraQtys)
+        .filter(([, qty]) => qty > 0)
+        .map(([eid, qty]) => {
+          const ex = config.extras.find(x => String(x.id) === String(eid))
+          const customP = extraPrices[String(eid)]
+          const obj = { eid, qty }
+          if (customP !== undefined && customP !== ex?.p) obj.p = customP
+          return obj
+        }),
+      ...adHocExtras
+        .filter(r => r.desc.trim() && parseInt(r.qty) > 0)
+        .map(r => ({ custom: true, desc: r.desc.trim(), qty: parseInt(r.qty), p: parseFloat(r.p) || 0 }))
+    ]
 
     const horaHasta = addMinutesToHora(hora, form.extendido ? 180 : 150)
 
@@ -435,29 +468,78 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
 
         {/* Extras */}
         <div className="sdv">Extras</div>
+        <div style={{ fontSize: 11, color: 'var(--mu)', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+          Podés modificar el precio unitario para este evento puntualmente.
+        </div>
         <div className="mrc">
           {config.extras.map(ex => {
             const qty = extraQtys[String(ex.id)] || 0
-            const sub = ex.p * qty
+            const customP = extraPrices[String(ex.id)]
+            const price = customP !== undefined ? customP : ex.p
+            const sub = price * qty
             return (
               <div key={ex.id} className="mr">
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--nv)' }}>{ex.n}</div>
-                <div style={{ fontSize: 12, color: 'var(--mu)', textAlign: 'right' }}>{fmt(ex.p)} c/u</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--nv)', flex: 2 }}>{ex.n}</div>
+                <input
+                  type="number"
+                  min={0}
+                  value={customP !== undefined ? customP : ex.p}
+                  onChange={e => setExtraPrice(ex.id, e.target.value)}
+                  style={{ width: 90, textAlign: 'right' }}
+                  title="Precio unitario (editable para este evento)"
+                />
                 <input
                   type="number"
                   min={0}
                   value={qty}
                   onChange={e => setExtraQty(ex.id, e.target.value)}
                   style={{ width: 70, textAlign: 'center' }}
+                  placeholder="Cant."
                 />
                 <div className="mrp">{sub > 0 ? fmt(sub) : '$0'}</div>
               </div>
             )
           })}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--mu)', marginTop: 6 }}>
-          Los extras se cargan desde <b>Datos de venta</b>. Ingresá la cantidad de cada ítem a cobrar.
-        </div>
+
+        {/* Extras ad-hoc (puntuales para este evento) */}
+        {adHocExtras.length > 0 && (
+          <div className="mrc" style={{ marginTop: 8 }}>
+            {adHocExtras.map(r => {
+              const sub = (parseFloat(r.p) || 0) * (parseInt(r.qty) || 0)
+              return (
+                <div key={r.rid} className="mr">
+                  <input
+                    type="text"
+                    value={r.desc}
+                    onChange={e => updateAdHoc(r.rid, 'desc', e.target.value)}
+                    placeholder="Descripción del extra..."
+                    style={{ flex: 2 }}
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    value={r.p}
+                    onChange={e => updateAdHoc(r.rid, 'p', e.target.value)}
+                    placeholder="$ precio"
+                    style={{ width: 90, textAlign: 'right' }}
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    value={r.qty}
+                    onChange={e => updateAdHoc(r.rid, 'qty', e.target.value)}
+                    placeholder="Cant."
+                    style={{ width: 70, textAlign: 'center' }}
+                  />
+                  <div className="mrp">{sub > 0 ? fmt(sub) : '$0'}</div>
+                  <button className="bdng" style={{ padding: '5px 10px' }} onClick={() => removeAdHoc(r.rid)}>✕</button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+        <button className="bg2 bsm" style={{ marginTop: 8 }} onClick={addAdHoc}>+ Extra puntual para este evento</button>
 
         {/* Total box */}
         <div className="tb">
