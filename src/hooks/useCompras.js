@@ -18,7 +18,7 @@ export function useCompras() {
 
   useEffect(() => { fetchCompras() }, [fetchCompras])
 
-  const saveCompra = async (compra, items, updateStockFn) => {
+  const saveCompra = async (compra, items, updateStockFn, updateCostoFn) => {
     const { data: compraData, error: compraError } = await supabase
       .from('compras')
       .insert(compra)
@@ -37,10 +37,11 @@ export function useCompras() {
     const { error: itemsError } = await supabase.from('compra_items').insert(itemsToInsert)
     if (itemsError) throw new Error(itemsError.message)
 
-    // Incrementar stock
+    // Incrementar stock y actualizar costo
     for (const it of itemsToInsert) {
-      if (it.producto_id && updateStockFn) {
-        await updateStockFn(it.producto_id, it.cantidad)
+      if (it.producto_id) {
+        if (updateStockFn) await updateStockFn(it.producto_id, it.cantidad)
+        if (updateCostoFn && it.precio_unitario > 0) await updateCostoFn(it.producto_id, it.precio_unitario)
       }
     }
 

@@ -114,7 +114,7 @@ export default function App() {
   const { config, updateConfig } = useConfig()
 
   // ── Ventas ──
-  const { productos, categorias, loading: prodLoading, saveProducto, deleteProducto, updateStock, bulkUpdatePrecios, saveCategoria } = useProductos()
+  const { productos, categorias, loading: prodLoading, saveProducto, deleteProducto, updateStock, updateCosto, bulkUpdatePrecios, saveCategoria } = useProductos()
   const { ventas, loading: ventasLoading, fetchVentas, saveVenta, anularVenta } = useVentas()
   const { compras, loading: comprasLoading, saveCompra } = useCompras()
   const { cajasAbiertas, historial: cajaHistorial, loading: cajaLoading, abrirCaja, cerrarCaja } = useCaja()
@@ -415,10 +415,10 @@ export default function App() {
 
   // ── Handlers compras ──
   const handleSaveCompra = useCallback(async (compra, items) => {
-    await saveCompra(compra, items, updateStock)
+    await saveCompra(compra, items, updateStock, updateCosto)
     setCompraModalOpen(false)
-    addToast('✓ Compra registrada · stock actualizado')
-  }, [saveCompra, updateStock, addToast])
+    addToast('✓ Compra registrada · stock y costos actualizados')
+  }, [saveCompra, updateStock, updateCosto, addToast])
 
   // ── Handlers caja ──
   const handleAbrirCaja = useCallback(async ({ saldo_inicial, nombre, turno }) => {

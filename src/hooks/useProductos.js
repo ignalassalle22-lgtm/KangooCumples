@@ -53,6 +53,12 @@ export function useProductos() {
     setProductos(prev => prev.map(p => p.id === productoId ? { ...p, stock_actual: nuevo } : p))
   }
 
+  const updateCosto = async (productoId, nuevoCosto) => {
+    const { error } = await supabase.from('productos').update({ precio_costo: nuevoCosto }).eq('id', productoId)
+    if (error) throw new Error(error.message)
+    setProductos(prev => prev.map(p => p.id === productoId ? { ...p, precio_costo: nuevoCosto } : p))
+  }
+
   const bulkUpdatePrecios = async (updates) => {
     // updates: [{id, precio_venta, precio_costo?}]
     for (const u of updates) {
@@ -71,5 +77,5 @@ export function useProductos() {
     return data
   }
 
-  return { productos, categorias, loading, fetchAll, saveProducto, deleteProducto, updateStock, bulkUpdatePrecios, saveCategoria }
+  return { productos, categorias, loading, fetchAll, saveProducto, deleteProducto, updateStock, updateCosto, bulkUpdatePrecios, saveCategoria }
 }
