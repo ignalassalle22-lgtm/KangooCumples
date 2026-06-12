@@ -17,10 +17,11 @@ const TABS_CUMPLES = [
   { id: 'config',     label: '⚙️ Config' },
 ]
 
-export default function Topbar({ activeSection, onNav, onNuevo, cajaActual }) {
+export default function Topbar({ activeSection, onNav, onNuevo, cajaActual, onNavCofre }) {
   const isVentas = TABS_VENTAS.some(t => t.id === activeSection)
   const isAsistencia = activeSection === 'asistencia'
-  const isCumples = !isVentas && !isAsistencia
+  const isCofre = activeSection === 'cofre'
+  const isCumples = !isVentas && !isAsistencia && !isCofre
 
   return (
     <div className="topbar" style={{ height: 'auto', padding: '0 28px', flexDirection: 'column', alignItems: 'stretch', gap: 0 }}>
@@ -51,6 +52,11 @@ export default function Topbar({ activeSection, onNav, onNuevo, cajaActual }) {
             onClick={() => onNav('asistencia')}
             style={{ fontSize: 12, padding: '6px 16px' }}
           >👥 Asistencia</button>
+          <button
+            className={`nb${isCofre ? ' on' : ''}`}
+            onClick={onNavCofre}
+            style={{ fontSize: 12, padding: '6px 16px' }}
+          >🔒 Cofre</button>
         </div>
 
         {/* Acción rápida */}
@@ -66,8 +72,8 @@ export default function Topbar({ activeSection, onNav, onNuevo, cajaActual }) {
         }
       </div>
 
-      {/* Fila inferior: tabs del módulo activo (no se muestra en Asistencia) */}
-      {!isAsistencia && (
+      {/* Fila inferior: tabs del módulo activo (no se muestra en Asistencia ni Cofre) */}
+      {!isAsistencia && !isCofre && (
         <div style={{ display: 'flex', gap: 2, paddingBottom: 0, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
           {(isVentas ? TABS_VENTAS : TABS_CUMPLES).map(t => (
             <button

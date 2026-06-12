@@ -96,7 +96,10 @@ import Caja from './components/Caja'
 import ReportesVentas from './components/ReportesVentas'
 import Pedidos from './components/Pedidos'
 import Asistencia from './components/Asistencia'
+import Cofre from './components/Cofre'
 import { useProductos } from './hooks/useProductos'
+import { useCofre } from './hooks/useCofre'
+import { useCajaGastos } from './hooks/useCajaGastos'
 import { useVentas } from './hooks/useVentas'
 import { useCompras } from './hooks/useCompras'
 import { useCaja } from './hooks/useCaja'
@@ -120,6 +123,8 @@ export default function App() {
   const { cajasAbiertas, historial: cajaHistorial, loading: cajaLoading, abrirCaja, cerrarCaja } = useCaja()
   const cajaActual = cajasAbiertas[0] || null
   const { empleados, saveEmpleado, toggleEmpleado, deleteEmpleado } = useEmpleados()
+  const { movimientos: cofreMovimientos, loading: cofreLoading, saldo: cofreSaldo, addMovimiento: addCofreMovimiento } = useCofre()
+  const { gastos: cajaGastos, addGasto } = useCajaGastos()
 
   // Caja seleccionada para ventas: se persiste entre tickets, se limpia si la caja se cierra
   const [cajaSeleccionadaId, setCajaSeleccionadaId] = useState(null)
@@ -137,6 +142,22 @@ export default function App() {
   const [calView, setCalView] = useState('semana')
   const [pinModal, setPinModal] = useState({ show: false, onConfirm: null, msg: '' })
   const askPin = useCallback((msg, onConfirm) => setPinModal({ show: true, onConfirm, msg }), [])
+
+  const handleNavToCofre = useCallback(() => {
+    askPin('Acceso al módulo Cofre.', () => {
+      setPinModal({ show: false, onConfirm: null, msg: '' })
+      setActiveSection('cofre')
+    })
+  }, [askPin])
+
+  // ── Handlers cofre y gastos ──
+  const handleAddCofreIngreso = useCallback(async (mov) => {
+    await addCofreMovimiento(mov)
+  }, [addCofreMovimiento])
+
+  const handleAddGasto = useCallback(async (gasto) => {
+    await addGasto(gasto)
+  }, [addGasto])
 
   // Modals cumpleaños
   const [modalOpen, setModalOpen] = useState(false)
@@ -441,6 +462,7 @@ export default function App() {
         onNav={setActiveSection}
         onNuevo={() => handleOpenModal()}
         cajaActual={cajaActual}
+        onNavCofre={handleNavToCofre}
       />
 
       <div className="content">
@@ -532,9 +554,11 @@ export default function App() {
         {activeSection === 'caja' && (
           <Caja
             cajasAbiertas={cajasAbiertas} historial={cajaHistorial} loading={cajaLoading}
-            ventas={ventas}
+            ventas={ventas} gastos={cajaGastos}
             onAbrir={handleAbrirCaja}
             onCerrar={handleCerrarCaja}
+            onAddGasto={handleAddGasto}
+            onAddCofreIngreso={handleAddCofreIngreso}
             addToast={addToast}
             askPin={askPin}
           />
@@ -553,6 +577,17 @@ export default function App() {
 
         {activeSection === 'reportes' && (
           <ReportesVentas ventas={ventas} />
+        )}
+
+        {activeSection === 'cofre' && (
+          <Cofre
+            movimientos={cofreMovimientos}
+            saldo={cofreSaldo}
+            loading={cofreLoading}
+            onAddRetiro={addCofreMovimiento}
+            askPin={askPin}
+            addToast={addToast}
+          />
         )}
       </div>
 

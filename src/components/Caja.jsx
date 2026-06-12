@@ -41,13 +41,23 @@ function TicketDetalle({ venta, onClose }) {
   )
 }
 
-function CajaCard({ caja, ventas, onCerrar, addToast, askPin }) {
+function CajaCard({ caja, ventas, gastos = [], onCerrar, onAddGasto, onAddCofreIngreso, addToast, askPin }) {
   const [cerrando, setCerrando] = useState(false)
   const [saldoFinal, setSaldoFinal] = useState('')
   const [obs, setObs] = useState('')
   const [saving, setSaving] = useState(false)
   const [verTickets, setVerTickets] = useState(false)
   const [ticketDetalle, setTicketDetalle] = useState(null)
+  const [showGastos, setShowGastos] = useState(false)
+  const [showCofre, setShowCofre] = useState(false)
+  // Gasto form
+  const [gastoMonto, setGastoMonto] = useState('')
+  const [gastoDetalle, setGastoDetalle] = useState('')
+  const [gastoPersona, setGastoPersona] = useState('')
+  // Cofre form
+  const [cofreMonto, setCofreMonto] = useState('')
+  const [cofrePersona, setCofrePersona] = useState('')
+  const [cofreObs, setCofreObs] = useState('')
 
   const ventasCaja = useMemo(() =>
     ventas.filter(v => v.caja_id === caja.id && v.estado !== 'anulada'),
@@ -56,7 +66,8 @@ function CajaCard({ caja, ventas, onCerrar, addToast, askPin }) {
 
   const totalVentas = ventasCaja.reduce((s, v) => s + (v.total || 0), 0)
   const totalEfectivo = ventasCaja.filter(v => v.metodo_pago === 'Efectivo').reduce((s, v) => s + (v.total || 0), 0)
-  const efectivoEsperado = (caja.saldo_inicial || 0) + totalEfectivo
+  const totalGastos = gastos.reduce((s, g) => s + (g.monto || 0), 0)
+  const efectivoEsperado = (caja.saldo_inicial || 0) + totalEfectivo - totalGastos
 
   const desglose = useMemo(() => {
     const map = {}
@@ -82,6 +93,36 @@ function CajaCard({ caja, ventas, onCerrar, addToast, askPin }) {
     })
   }
 
+  function handleAddGasto() {
+    const m = parseFloat(gastoMonto)
+    if (!m || m <= 0) { addToast('Ingresá un monto válido', 'err'); return }
+    if (!gastoDetalle.trim()) { addToast('Ingresá el detalle del gasto', 'err'); return }
+    if (!gastoPersona.trim()) { addToast('Indicá quién realiza el gasto', 'err'); return }
+    askPin('Vas a registrar un gasto desde esta caja.', async () => {
+      try {
+        await onAddGasto({ caja_id: caja.id, monto: m, detalle: gastoDetalle.trim(), persona: gastoPersona.trim() })
+        setGastoMonto(''); setGastoDetalle(''); setGastoPersona('')
+        addToast('✓ Gasto registrado')
+      } catch (e) { addToast('Error: ' + e.message, 'err') }
+    })
+  }
+
+  function handleTraspasarCofre() {
+    const m = parseFloat(cofreMonto)
+    if (!m || m <= 0) { addToast('Ingresá un monto válido', 'err'); return }
+    if (!cofrePersona.trim()) { addToast('Indicá quién realiza el traspaso', 'err'); return }
+    askPin('Vas a traspasar efectivo de esta caja al cofre.', async () => {
+      try {
+        const obsText = cofreObs.trim()
+        await onAddCofreIngreso({ tipo: 'ingreso', monto: m, persona: cofrePersona.trim(), obs: obsText || `Traspaso desde ${caja.nombre || 'Caja'}` })
+        await onAddGasto({ caja_id: caja.id, monto: m, detalle: `Traspaso al cofre${obsText ? ': ' + obsText : ''}`, persona: cofrePersona.trim() })
+        setCofreMonto(''); setCofrePersona(''); setCofreObs('')
+        setShowCofre(false)
+        addToast('✓ Traspaso al cofre registrado')
+      } catch (e) { addToast('Error: ' + e.message, 'err') }
+    })
+  }
+
   return (
     <div className="cc" style={{ borderTop: '3px solid var(--gn)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, gap: 12 }}>
@@ -101,9 +142,15 @@ function CajaCard({ caja, ventas, onCerrar, addToast, askPin }) {
             {caja.fecha} · apertura {caja.hora_apertura} hs · saldo inicial {fmt(caja.saldo_inicial)}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="bg2 bsm" onClick={() => setVerTickets(!verTickets)}>
             {verTickets ? '▲ Ocultar tickets' : `🧾 Ver tickets (${ventasCaja.length})`}
+          </button>
+          <button className="bg2 bsm" onClick={() => { setShowGastos(f => !f); setShowCofre(false) }}>
+            {showGastos ? '✕ Cancelar gasto' : '🧾 Registrar gasto'}
+          </button>
+          <button className="bg2 bsm" onClick={() => { setShowCofre(f => !f); setShowGastos(false) }}>
+            {showCofre ? '✕ Cancelar traspaso' : '🔒 Traspasar al cofre'}
           </button>
           <button className="bg2 bsm" onClick={() => setCerrando(!cerrando)}>
             {cerrando ? '✕ Cancelar' : '🔐 Cerrar caja'}
@@ -116,6 +163,9 @@ function CajaCard({ caja, ventas, onCerrar, addToast, askPin }) {
           <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Resumen</div>
           <div className="li"><span className="lin">Tickets registrados</span><span className="lis">{ventasCaja.length}</span></div>
           <div className="li"><span className="lin">Total facturado</span><span className="lip">{fmt(totalVentas)}</span></div>
+          {totalGastos > 0 && (
+            <div className="li"><span className="lin">Gastos / traspasos</span><span style={{ fontWeight: 700, color: 'var(--rd)' }}>−{fmt(totalGastos)}</span></div>
+          )}
           <div className="li"><span className="lin">Efectivo esperado en caja</span><span className="lip">{fmt(efectivoEsperado)}</span></div>
         </div>
         <div>
@@ -131,6 +181,68 @@ function CajaCard({ caja, ventas, onCerrar, addToast, askPin }) {
           }
         </div>
       </div>
+
+      {/* ── FORM GASTO ── */}
+      {showGastos && (
+        <div style={{ marginTop: 16, borderTop: '1px solid var(--bd)', paddingTop: 14 }}>
+          <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+            Registrar gasto desde caja
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div className="fgg">
+              <label>Monto $</label>
+              <input type="number" min="0" value={gastoMonto} onChange={e => setGastoMonto(e.target.value)} placeholder="0" autoFocus />
+            </div>
+            <div className="fgg">
+              <label>Detalle del gasto</label>
+              <input type="text" value={gastoDetalle} onChange={e => setGastoDetalle(e.target.value)} placeholder="Ej: Bolsas, limpieza, etc." />
+            </div>
+            <div className="fgg">
+              <label>Responsable</label>
+              <input type="text" value={gastoPersona} onChange={e => setGastoPersona(e.target.value)} placeholder="Nombre" />
+            </div>
+          </div>
+          {gastos.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              {gastos.map(g => (
+                <div key={g.id} className="li" style={{ fontSize: 12 }}>
+                  <span className="lin">{g.detalle || '—'} · {g.persona || '—'}</span>
+                  <span style={{ color: 'var(--rd)', fontWeight: 700 }}>−{fmt(g.monto)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <button className="bp" style={{ background: 'var(--am)', borderColor: 'var(--am)' }} onClick={handleAddGasto}>
+            ✓ Registrar gasto
+          </button>
+        </div>
+      )}
+
+      {/* ── FORM TRASPASO COFRE ── */}
+      {showCofre && (
+        <div style={{ marginTop: 16, borderTop: '1px solid var(--bd)', paddingTop: 14 }}>
+          <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+            Traspasar efectivo al cofre
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div className="fgg">
+              <label>Monto a traspasar $</label>
+              <input type="number" min="0" value={cofreMonto} onChange={e => setCofreMonto(e.target.value)} placeholder="0" autoFocus />
+            </div>
+            <div className="fgg">
+              <label>Responsable del traspaso</label>
+              <input type="text" value={cofrePersona} onChange={e => setCofrePersona(e.target.value)} placeholder="Nombre" />
+            </div>
+            <div className="fgg">
+              <label>Observaciones</label>
+              <input type="text" value={cofreObs} onChange={e => setCofreObs(e.target.value)} placeholder="Opcional" />
+            </div>
+          </div>
+          <button className="bp" style={{ background: 'var(--nv)', borderColor: 'var(--nv)' }} onClick={handleTraspasarCofre}>
+            🔒 Confirmar traspaso al cofre
+          </button>
+        </div>
+      )}
 
       {verTickets && (
         <div style={{ marginTop: 16, borderTop: '1px solid var(--bd)', paddingTop: 14 }}>
@@ -227,7 +339,7 @@ function CajaCard({ caja, ventas, onCerrar, addToast, askPin }) {
   )
 }
 
-export default function Caja({ cajasAbiertas, historial, loading, ventas, onAbrir, onCerrar, addToast, askPin }) {
+export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos = [], onAbrir, onCerrar, onAddGasto, onAddCofreIngreso, addToast, askPin }) {
   const [nombre, setNombre] = useState('')
   const [turno, setTurno] = useState('')
   const [saldoInicial, setSaldoInicial] = useState('')
@@ -312,7 +424,12 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, onAbri
               <div className="sdv">Cajas abiertas ({cajasAbiertas.length})</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {cajasAbiertas.map(c => (
-                  <CajaCard key={c.id} caja={c} ventas={ventas} onCerrar={onCerrar} addToast={addToast} askPin={askPin} />
+                  <CajaCard
+                    key={c.id} caja={c} ventas={ventas}
+                    gastos={gastos.filter(g => g.caja_id === c.id)}
+                    onCerrar={onCerrar} onAddGasto={onAddGasto} onAddCofreIngreso={onAddCofreIngreso}
+                    addToast={addToast} askPin={askPin}
+                  />
                 ))}
               </div>
             </div>
