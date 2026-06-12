@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
+import * as XLSX from 'xlsx'
 
 const fmt = n => '$' + Math.round(n || 0).toLocaleString('es-AR')
 
@@ -16,21 +17,49 @@ export default function Cofre({ movimientos, saldo, loading, onAddRetiro, emplea
   const [obs, setObs] = useState('')
   const [saving, setSaving] = useState(false)
 
+  // Compute running balance: sort oldest→newest, accumulate, then reverse for display
+  const movimientosConSaldo = useMemo(() => {
+    const sorted = [...movimientos].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    let acum = 0
+    const withBalance = sorted.map(m => {
+      acum += m.tipo === 'ingreso' ? (m.monto || 0) : -(m.monto || 0)
+      return { ...m, saldoParcial: acum }
+    })
+    return withBalance.reverse() // newest first for display
+  }, [movimientos])
+
   function handleRetiro() {
     const m = parseFloat(monto)
     if (!m || m <= 0) { addToast('Ingresá un monto válido', 'err'); return }
-    if (!persona.trim()) { addToast('Indicá quién realiza el retiro', 'err'); return }
+    if (!persona) { addToast('Indicá quién realiza el retiro', 'err'); return }
     if (m > saldo) { addToast('El monto supera el saldo disponible en el cofre', 'err'); return }
     askPin('Vas a registrar un retiro del cofre.', async () => {
       setSaving(true)
       try {
-        await onAddRetiro({ tipo: 'retiro', monto: m, persona: persona.trim(), obs: obs.trim() })
+        await onAddRetiro({ tipo: 'retiro', monto: m, persona, obs: obs.trim() })
         setMonto(''); setPersona(''); setObs('')
         setShowForm(false)
         addToast('✓ Retiro del cofre registrado')
       } catch (e) { addToast('Error: ' + e.message, 'err') }
       finally { setSaving(false) }
     })
+  }
+
+  function handleExport() {
+    const rows = [...movimientosConSaldo].reverse() // export oldest→newest
+    const data = rows.map(m => ({
+      Fecha: fmtFecha(m.created_at),
+      Tipo: m.tipo === 'ingreso' ? 'Ingreso' : 'Retiro',
+      Persona: m.persona || '',
+      Observaciones: m.obs || '',
+      Monto: m.tipo === 'ingreso' ? m.monto : -m.monto,
+      'Saldo parcial': m.saldoParcial,
+    }))
+    const ws = XLSX.utils.json_to_sheet(data)
+    ws['!cols'] = [{ wch: 18 }, { wch: 10 }, { wch: 20 }, { wch: 30 }, { wch: 14 }, { wch: 14 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Cofre')
+    XLSX.writeFile(wb, `cofre_${new Date().toISOString().slice(0,10)}.xlsx`)
   }
 
   const totalIngresos = movimientos.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + (m.monto || 0), 0)
@@ -43,9 +72,14 @@ export default function Cofre({ movimientos, saldo, loading, onAddRetiro, emplea
           <div className="pt">🔒 Cofre</div>
           <div className="ps">Efectivo retirado de cajas y administrado por los dueños</div>
         </div>
-        <button className="bp" onClick={() => setShowForm(f => !f)}>
-          {showForm ? '✕ Cancelar' : '− Registrar retiro'}
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {movimientos.length > 0 && (
+            <button className="bg2" onClick={handleExport}>📥 Exportar Excel</button>
+          )}
+          <button className="bp" onClick={() => setShowForm(f => !f)}>
+            {showForm ? '✕ Cancelar' : '− Registrar retiro'}
+          </button>
+        </div>
       </div>
 
       {/* Saldo cards */}
@@ -76,6 +110,7 @@ export default function Cofre({ movimientos, saldo, loading, onAddRetiro, emplea
             <div className="fgg">
               <label>Monto a retirar $</label>
               <input type="number" min="0" value={monto} onChange={e => setMonto(e.target.value)} placeholder="0" autoFocus />
+              {saldo > 0 && <span style={{ fontSize: 11, color: 'var(--mu)', marginTop: 3, display: 'block' }}>Disponible: {fmt(saldo)}</span>}
             </div>
             <div className="fgg">
               <label>Persona que retira</label>
@@ -112,10 +147,11 @@ export default function Cofre({ movimientos, saldo, loading, onAddRetiro, emplea
                   <th>Persona</th>
                   <th>Observaciones</th>
                   <th className="num">Monto</th>
+                  <th className="num">Saldo parcial</th>
                 </tr>
               </thead>
               <tbody>
-                {movimientos.map(m => (
+                {movimientosConSaldo.map(m => (
                   <tr key={m.id}>
                     <td>
                       <span style={{
@@ -131,6 +167,9 @@ export default function Cofre({ movimientos, saldo, loading, onAddRetiro, emplea
                     <td style={{ fontSize: 13, color: 'var(--mu)' }}>{m.obs || <span style={{ color: 'var(--mu2)' }}>—</span>}</td>
                     <td className="num" style={{ fontWeight: 800, color: m.tipo === 'ingreso' ? 'var(--gn)' : 'var(--rd)' }}>
                       {m.tipo === 'ingreso' ? '+' : '−'}{fmt(m.monto)}
+                    </td>
+                    <td className="num" style={{ fontWeight: 700, color: m.saldoParcial >= 0 ? 'var(--nv)' : 'var(--rd)' }}>
+                      {fmt(m.saldoParcial)}
                     </td>
                   </tr>
                 ))}

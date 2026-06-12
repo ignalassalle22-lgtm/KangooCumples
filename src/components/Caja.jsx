@@ -50,6 +50,7 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
   const [ticketDetalle, setTicketDetalle] = useState(null)
   const [showGastos, setShowGastos] = useState(false)
   const [showCofre, setShowCofre] = useState(false)
+  const [verGastos, setVerGastos] = useState(false)
   // Gasto form
   const [gastoMonto, setGastoMonto] = useState('')
   const [gastoDetalle, setGastoDetalle] = useState('')
@@ -97,7 +98,8 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
     const m = parseFloat(gastoMonto)
     if (!m || m <= 0) { addToast('Ingresá un monto válido', 'err'); return }
     if (!gastoDetalle.trim()) { addToast('Ingresá el detalle del gasto', 'err'); return }
-    if (!gastoPersona.trim()) { addToast('Indicá quién realiza el gasto', 'err'); return }
+    if (!gastoPersona) { addToast('Indicá quién realiza el gasto', 'err'); return }
+    if (m > efectivoEsperado) { addToast(`El monto supera el efectivo disponible en caja (${fmt(efectivoEsperado)})`, 'err'); return }
     askPin('Vas a registrar un gasto desde esta caja.', async () => {
       try {
         await onAddGasto({ caja_id: caja.id, monto: m, detalle: gastoDetalle.trim(), persona: gastoPersona.trim() })
@@ -110,7 +112,8 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
   function handleTraspasarCofre() {
     const m = parseFloat(cofreMonto)
     if (!m || m <= 0) { addToast('Ingresá un monto válido', 'err'); return }
-    if (!cofrePersona.trim()) { addToast('Indicá quién realiza el traspaso', 'err'); return }
+    if (!cofrePersona) { addToast('Indicá quién realiza el traspaso', 'err'); return }
+    if (m > efectivoEsperado) { addToast(`El monto supera el efectivo disponible en caja (${fmt(efectivoEsperado)})`, 'err'); return }
     askPin('Vas a traspasar efectivo de esta caja al cofre.', async () => {
       try {
         const obsText = cofreObs.trim()
@@ -146,6 +149,11 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
           <button className="bg2 bsm" onClick={() => setVerTickets(!verTickets)}>
             {verTickets ? '▲ Ocultar tickets' : `🧾 Ver tickets (${ventasCaja.length})`}
           </button>
+          {gastos.length > 0 && (
+            <button className="bg2 bsm" onClick={() => setVerGastos(f => !f)}>
+              {verGastos ? '▲ Ocultar gastos' : `💸 Ver gastos (${gastos.length})`}
+            </button>
+          )}
           <button className="bg2 bsm" onClick={() => { setShowGastos(f => !f); setShowCofre(false) }}>
             {showGastos ? '✕ Cancelar gasto' : '🧾 Registrar gasto'}
           </button>
@@ -182,6 +190,45 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
         </div>
       </div>
 
+      {/* ── DETALLE GASTOS ── */}
+      {verGastos && gastos.length > 0 && (
+        <div style={{ marginTop: 16, borderTop: '1px solid var(--bd)', paddingTop: 14 }}>
+          <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+            Gastos registrados en esta caja
+          </div>
+          <div className="vtable-wrap">
+            <table className="vtable">
+              <thead>
+                <tr>
+                  <th>Detalle</th>
+                  <th>Responsable</th>
+                  <th style={{ fontSize: 11 }}>Fecha / Hora</th>
+                  <th className="num">Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gastos.map(g => (
+                  <tr key={g.id}>
+                    <td style={{ fontWeight: 600 }}>{g.detalle || '—'}</td>
+                    <td>{g.persona || '—'}</td>
+                    <td style={{ fontSize: 12, color: 'var(--mu)' }}>
+                      {g.created_at ? new Date(g.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </td>
+                    <td className="num" style={{ fontWeight: 800, color: 'var(--rd)' }}>−{fmt(g.monto)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={3} className="num" style={{ fontSize: 12 }}>Total gastos</td>
+                  <td className="num" style={{ fontWeight: 800, color: 'var(--rd)' }}>−{fmt(totalGastos)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* ── FORM GASTO ── */}
       {showGastos && (
         <div style={{ marginTop: 16, borderTop: '1px solid var(--bd)', paddingTop: 14 }}>
@@ -205,16 +252,6 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
               </select>
             </div>
           </div>
-          {gastos.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              {gastos.map(g => (
-                <div key={g.id} className="li" style={{ fontSize: 12 }}>
-                  <span className="lin">{g.detalle || '—'} · {g.persona || '—'}</span>
-                  <span style={{ color: 'var(--rd)', fontWeight: 700 }}>−{fmt(g.monto)}</span>
-                </div>
-              ))}
-            </div>
-          )}
           <button className="bp" style={{ background: 'var(--am)', borderColor: 'var(--am)' }} onClick={handleAddGasto}>
             ✓ Registrar gasto
           </button>

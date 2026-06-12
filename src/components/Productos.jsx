@@ -111,6 +111,26 @@ export default function Productos({ productos, categorias, loading, onNuevo, onE
     return 'gn'
   }
 
+  function handleExportExcel() {
+    const data = filtrados.map(p => ({
+      Código: p.codigo || '',
+      Nombre: p.nombre,
+      Categoría: catMap[p.categoria_id] || '',
+      Tipo: p.tipo === 'compuesto' ? 'Compuesto' : 'Simple',
+      'Precio venta': p.precio_venta || 0,
+      'Precio costo': p.precio_costo || 0,
+      Stock: p.tipo === 'simple' ? (p.stock_actual ?? 0) : '',
+      Unidad: p.unidad || '',
+      'Stock mínimo': p.stock_minimo ?? '',
+      Estado: p.activo !== false ? 'Activo' : 'Inactivo',
+    }))
+    const ws = XLSX.utils.json_to_sheet(data)
+    ws['!cols'] = [{ wch: 12 }, { wch: 28 }, { wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 10 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Productos')
+    XLSX.writeFile(wb, `productos_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
+
   return (
     <div className="sec">
       <div className="ph">
@@ -119,6 +139,7 @@ export default function Productos({ productos, categorias, loading, onNuevo, onE
           <div className="ps">Gestión de artículos, stock y precios</div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
+          <button className="bg2" onClick={handleExportExcel}>📥 Exportar Excel</button>
           <button className="bg2" onClick={() => fileRef.current?.click()}>📊 Importar Excel</button>
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={handleExcel} />
           <button className="bg2" onClick={abrirBulk}>📋 Actualizar precios</button>
