@@ -405,10 +405,13 @@ export default function App() {
     addToast('✓ Venta registrada correctamente')
   }, [saveVenta, updateStock, addToast])
 
-  const handleAnularVenta = useCallback(async (id) => {
-    try { await anularVenta(id, updateStock); addToast('Venta anulada') }
-    catch (e) { addToast('Error: ' + e.message, 'err') }
-  }, [anularVenta, updateStock, addToast])
+  const handleAnularVenta = useCallback((id) => {
+    askPin('Vas a anular esta venta. Se revertirá el stock.', async () => {
+      setPinModal({ show: false, onConfirm: null, msg: '' })
+      try { await anularVenta(id, updateStock); addToast('Venta anulada') }
+      catch (e) { addToast('Error: ' + e.message, 'err') }
+    })
+  }, [anularVenta, updateStock, addToast, askPin])
 
   // ── Handlers compras ──
   const handleSaveCompra = useCallback(async (compra, items) => {
@@ -488,7 +491,7 @@ export default function App() {
         {activeSection === 'config' && (
           <div className="sec">
             <Config config={config} updateConfig={updateConfig} addToast={addToast} productos={productos} categorias={categorias}
-              empleados={empleados} saveEmpleado={saveEmpleado} toggleEmpleado={toggleEmpleado} deleteEmpleado={deleteEmpleado} />
+              empleados={empleados} saveEmpleado={saveEmpleado} toggleEmpleado={toggleEmpleado} deleteEmpleado={deleteEmpleado} askPin={askPin} />
           </div>
         )}
 
@@ -533,6 +536,7 @@ export default function App() {
             onAbrir={handleAbrirCaja}
             onCerrar={handleCerrarCaja}
             addToast={addToast}
+            askPin={askPin}
           />
         )}
 

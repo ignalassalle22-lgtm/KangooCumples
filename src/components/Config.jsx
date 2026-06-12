@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 
 
-export default function Config({ config, updateConfig, addToast, productos = [], categorias = [], empleados = [], saveEmpleado, toggleEmpleado, deleteEmpleado }) {
+export default function Config({ config, updateConfig, addToast, productos = [], categorias = [], empleados = [], saveEmpleado, toggleEmpleado, deleteEmpleado, askPin }) {
   const [nmN, setNmN] = useState('')
   const [nempN, setNempN] = useState('')
   const [nmP, setNmP] = useState('')
@@ -418,7 +418,7 @@ export default function Config({ config, updateConfig, addToast, productos = [],
                   <button className="bg2 bsm" onClick={() => toggleEmpleado(e.id, !e.activo)}>
                     {e.activo ? 'Desactivar' : 'Activar'}
                   </button>
-                  <button className="bdng" onClick={() => { if (window.confirm(`¿Eliminás a ${e.nombre}?`)) deleteEmpleado(e.id) }}>✕</button>
+                  <button className="bdng" onClick={() => askPin(`Vas a eliminar al empleado ${e.nombre}.`, () => deleteEmpleado(e.id))}>✕</button>
                 </div>
               </div>
             ))

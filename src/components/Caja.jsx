@@ -41,7 +41,7 @@ function TicketDetalle({ venta, onClose }) {
   )
 }
 
-function CajaCard({ caja, ventas, onCerrar, addToast }) {
+function CajaCard({ caja, ventas, onCerrar, addToast, askPin }) {
   const [cerrando, setCerrando] = useState(false)
   const [saldoFinal, setSaldoFinal] = useState('')
   const [obs, setObs] = useState('')
@@ -72,13 +72,14 @@ function CajaCard({ caja, ventas, onCerrar, addToast }) {
   async function handleCerrar() {
     const sf = parseFloat(saldoFinal)
     if (isNaN(sf) || sf < 0) { addToast('Ingresá el efectivo contado en caja', 'err'); return }
-    if (!window.confirm(`¿Cerrar "${caja.nombre || 'Caja'}"? Esta acción no se puede deshacer.`)) return
-    setSaving(true)
-    try {
-      await onCerrar({ cajaId: caja.id, saldo_final: sf, obs_cierre: obs, total_ventas: totalVentas, total_efectivo: totalEfectivo })
-      addToast(`✓ Caja "${caja.nombre || ''}" cerrada`)
-    } catch (e) { addToast('Error: ' + e.message, 'err') }
-    finally { setSaving(false) }
+    askPin(`Vas a cerrar la caja "${caja.nombre || 'Caja'}". Esta acción no se puede deshacer.`, async () => {
+      setSaving(true)
+      try {
+        await onCerrar({ cajaId: caja.id, saldo_final: sf, obs_cierre: obs, total_ventas: totalVentas, total_efectivo: totalEfectivo })
+        addToast(`✓ Caja "${caja.nombre || ''}" cerrada`)
+      } catch (e) { addToast('Error: ' + e.message, 'err') }
+      finally { setSaving(false) }
+    })
   }
 
   return (
@@ -226,7 +227,7 @@ function CajaCard({ caja, ventas, onCerrar, addToast }) {
   )
 }
 
-export default function Caja({ cajasAbiertas, historial, loading, ventas, onAbrir, onCerrar, addToast }) {
+export default function Caja({ cajasAbiertas, historial, loading, ventas, onAbrir, onCerrar, addToast, askPin }) {
   const [nombre, setNombre] = useState('')
   const [turno, setTurno] = useState('')
   const [saldoInicial, setSaldoInicial] = useState('')
@@ -311,7 +312,7 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, onAbri
               <div className="sdv">Cajas abiertas ({cajasAbiertas.length})</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {cajasAbiertas.map(c => (
-                  <CajaCard key={c.id} caja={c} ventas={ventas} onCerrar={onCerrar} addToast={addToast} />
+                  <CajaCard key={c.id} caja={c} ventas={ventas} onCerrar={onCerrar} addToast={addToast} askPin={askPin} />
                 ))}
               </div>
             </div>

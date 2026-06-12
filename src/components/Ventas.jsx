@@ -127,9 +127,7 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
                     <div className="eact">
                       <button className="bg2 bsm" onClick={() => setShowDetalle(v)}>Ver</button>
                       {v.estado !== 'anulada' && (
-                        <button className="bdng" onClick={() => {
-                          if (window.confirm('¿Anular esta venta? Se revertirá el stock.')) onAnular(v.id)
-                        }}>Anular</button>
+                        <button className="bdng" onClick={() => onAnular(v.id)}>Anular</button>
                       )}
                     </div>
                   </td>
