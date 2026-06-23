@@ -627,7 +627,7 @@ export default function App() {
       {/* ── MODALS CUMPLEAÑOS ── */}
       {modalOpen && (
         <EventoModal
-          evento={editingEvento} eventos={eventos} config={config}
+          evento={editingEvento} eventos={eventos} config={config} productos={productos}
           onSave={handleSave} onClose={() => setModalOpen(false)} addToast={addToast}
         />
       )}

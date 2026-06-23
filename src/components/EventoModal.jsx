@@ -29,12 +29,14 @@ function getHora(form) {
   return ''
 }
 
-export default function EventoModal({ evento, eventos, config, onSave, onClose, addToast }) {
+export default function EventoModal({ evento, eventos, config, productos = [], onSave, onClose, addToast }) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [mrows, setMrows] = useState([]) // [{rid, mid, qty}]
   const [extraQtys, setExtraQtys] = useState({}) // {eid: qty}
   const [extraPrices, setExtraPrices] = useState({}) // {eid: customPrice}
   const [adHocExtras, setAdHocExtras] = useState([]) // [{rid, desc, qty, p}]
+  const [articulosEvento, setArticulosEvento] = useState([]) // [{rid, producto_id, nombre, qty, precio}]
+  const [artBusca, setArtBusca] = useState('')
   const [saving, setSaving] = useState(false)
 
   // Populate form from evento
@@ -82,12 +84,22 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
       setExtraQtys(qtys)
       setExtraPrices(prices)
       setAdHocExtras(adHoc)
+      const arts = (evento.articulos || []).map(a => ({
+        rid: Date.now() + Math.random(),
+        producto_id: a.producto_id,
+        nombre: a.nombre,
+        qty: a.qty || 1,
+        precio: a.precio || 0,
+      }))
+      setArticulosEvento(arts)
     } else {
       setForm(EMPTY_FORM)
       setMrows([{ rid: Date.now(), mid: '', qty: 1 }])
       setExtraQtys({})
       setExtraPrices({})
       setAdHocExtras([])
+      setArticulosEvento([])
+      setArtBusca('')
     }
   }, [evento])
 
@@ -121,15 +133,16 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
       const price = extraPrices[String(eid)] !== undefined ? extraPrices[String(eid)] : (ex ? ex.p : 0)
       return acc + price * (qty || 0)
     }, 0) + adHocExtras.reduce((acc, r) => acc + (parseFloat(r.p) || 0) * (parseInt(r.qty) || 0), 0)
+    const artTot = articulosEvento.reduce((acc, a) => acc + (a.precio || 0) * (a.qty || 0), 0)
     let dto = 0
     if (form.promoId) {
       const pr = config.promos.find(p => String(p.id) === String(form.promoId))
-      if (pr) dto = (base + mTot + eTot) * pr.pct / 100
+      if (pr) dto = (base + mTot + eTot + artTot) * pr.pct / 100
     }
-    const total = base + mTot + eTot - dto
+    const total = base + mTot + eTot + artTot - dto
     const monto = parseFloat(form.monto) || 0
-    return { base, mTot, eTot, dto, total, monto, rest: Math.max(0, total - monto) }
-  }, [form.chi, form.adu, form.promoId, form.monto, extraQtys, extraPrices, adHocExtras, config, mrows])
+    return { base, mTot, eTot, artTot, dto, total, monto, rest: Math.max(0, total - monto) }
+  }, [form.chi, form.adu, form.promoId, form.monto, extraQtys, extraPrices, adHocExtras, articulosEvento, config, mrows])
 
   // Duplicate check
   const dupAlert = useMemo(() => {
@@ -172,6 +185,10 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
       return
     }
 
+    const articulosSave = articulosEvento
+      .filter(a => a.producto_id && a.qty > 0)
+      .map(a => ({ producto_id: a.producto_id, nombre: a.nombre, qty: a.qty, precio: a.precio }))
+
     const mrowsSave = mrows.filter(r => r.mid).map(r => ({ mid: r.mid, qty: parseInt(r.qty) || 0 }))
     const extrasSave = [
       ...Object.entries(extraQtys)
@@ -207,6 +224,7 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
       adu: parseInt(form.adu) || 0,
       mrows: mrowsSave,
       extras: extrasSave,
+      articulos: articulosSave,
       promoId: form.promoId || null,
       obs: form.obs,
       pago: form.pago,
@@ -416,6 +434,72 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
           <div className="adp show" style={{ marginTop: 10 }}>{menuAlert}</div>
         )}
 
+        {/* Artículos del evento */}
+        <div className="sdv">Artículos del evento</div>
+        <div style={{ fontSize: 11, color: 'var(--mu)', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+          Productos del catálogo incluidos en el precio del evento (ej: bebidas, souvenirs). El stock se descuenta al inicio del evento.
+        </div>
+        {/* Buscador */}
+        <div style={{ position: 'relative', marginBottom: 10 }}>
+          <input
+            type="text"
+            value={artBusca}
+            onChange={e => setArtBusca(e.target.value)}
+            placeholder="Buscar producto por nombre..."
+            style={{ width: '100%', border: '1px solid var(--bd2)', borderRadius: 10, padding: '9px 13px', fontSize: 13 }}
+          />
+          {artBusca.trim().length > 0 && (() => {
+            const q = artBusca.toLowerCase()
+            const filtrados = productos.filter(p => p.activo !== false && (p.nombre.toLowerCase().includes(q) || (p.codigo || '').toLowerCase().includes(q))).slice(0, 6)
+            return filtrados.length > 0 ? (
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, background: 'var(--wh)', border: '1px solid var(--bd2)', borderRadius: 10, boxShadow: 'var(--sh2)', marginTop: 4, overflow: 'hidden' }}>
+                {filtrados.map(p => (
+                  <div key={p.id}
+                    onMouseDown={e => {
+                      e.preventDefault()
+                      setArticulosEvento(prev => {
+                        const existe = prev.find(a => a.producto_id === p.id)
+                        if (existe) return prev.map(a => a.producto_id === p.id ? { ...a, qty: a.qty + 1 } : a)
+                        return [...prev, { rid: Date.now() + Math.random(), producto_id: p.id, nombre: p.nombre, qty: 1, precio: p.precio_venta || 0 }]
+                      })
+                      setArtBusca('')
+                    }}
+                    style={{ padding: '9px 13px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--bd)', fontSize: 13 }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--nv3)'}
+                    onMouseLeave={e => e.currentTarget.style.background = ''}
+                  >
+                    <span style={{ fontWeight: 600 }}>{p.nombre}</span>
+                    <span style={{ color: 'var(--gn)', fontWeight: 700 }}>{fmt(p.precio_venta || 0)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null
+          })()}
+        </div>
+        {/* Lista de artículos */}
+        {articulosEvento.length > 0 && (
+          <div className="mrc">
+            {articulosEvento.map(a => (
+              <div key={a.rid} className="mr">
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--nv)', flex: 2 }}>{a.nombre}</div>
+                <input
+                  type="number" min={0} step="0.01" value={a.precio}
+                  onChange={e => setArticulosEvento(prev => prev.map(x => x.rid === a.rid ? { ...x, precio: parseFloat(e.target.value) || 0 } : x))}
+                  style={{ width: 90, textAlign: 'right' }}
+                  title="Precio unitario"
+                />
+                <input
+                  type="number" min={1} step="1" value={a.qty}
+                  onChange={e => setArticulosEvento(prev => prev.map(x => x.rid === a.rid ? { ...x, qty: Math.max(1, parseInt(e.target.value) || 1) } : x))}
+                  style={{ width: 70, textAlign: 'center' }}
+                />
+                <div className="mrp">{fmt(a.precio * a.qty)}</div>
+                <button className="bdng" style={{ padding: '5px 10px' }} onClick={() => setArticulosEvento(prev => prev.filter(x => x.rid !== a.rid))}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Promoción */}
         <div className="sdv">Promoción aplicable</div>
         <div className="fg" style={{ marginBottom: 6 }}>
@@ -546,6 +630,9 @@ export default function EventoModal({ evento, eventos, config, onSave, onClose, 
           <div className="tr"><span className="tl">Precio base (chicos + adultos)</span><span className="tv">{fmt(calc.base)}</span></div>
           {calc.mTot > 0 && (
             <div className="tr"><span className="tl">Menús</span><span className="tv">{fmt(calc.mTot)}</span></div>
+          )}
+          {calc.artTot > 0 && (
+            <div className="tr"><span className="tl">Artículos</span><span className="tv">{fmt(calc.artTot)}</span></div>
           )}
           {calc.eTot > 0 && (
             <div className="tr"><span className="tl">Extras</span><span className="tv">{fmt(calc.eTot)}</span></div>

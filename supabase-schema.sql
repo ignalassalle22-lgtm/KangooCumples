@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS public.eventos (
 -- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS consumos JSONB DEFAULT '[]';
 -- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS consumos_cobrados BOOLEAN DEFAULT FALSE;
 -- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS menus_stock_aplicado BOOLEAN DEFAULT FALSE;
+-- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS articulos JSONB DEFAULT '[]';
 
 -- ── Tabla de configuración (clave→valor JSON) ──
 CREATE TABLE IF NOT EXISTS public.configuracion (

@@ -46,6 +46,14 @@ export default function CajaEventoModal({
 
   const hasMenuComponentes = menuItems.length > 0
 
+  const articulosItems = useMemo(() => {
+    return (evento.articulos || [])
+      .filter(a => a.producto_id && a.qty > 0)
+      .map(a => ({ productoId: a.producto_id, nombreProducto: a.nombre, qty: a.qty }))
+  }, [evento.articulos])
+
+  const hasArticulos = articulosItems.length > 0
+
   const prodsFiltrados = useMemo(() => {
     if (!searchQ.trim() || selectedProd) return []
     const q = searchQ.toLowerCase()
@@ -88,11 +96,12 @@ export default function CajaEventoModal({
   }
 
   const handleAplicarMenuStock = async () => {
-    if (menuStockAplicado || !hasMenuComponentes) return
+    if (menuStockAplicado || (!hasMenuComponentes && !hasArticulos)) return
     setAplicandoMenus(true)
     try {
-      await onAplicarMenuStock(evento.id, menuItems)
-      addToast('✓ Stock de menús descontado')
+      const todosItems = [...menuItems, ...articulosItems]
+      await onAplicarMenuStock(evento.id, todosItems)
+      addToast('✓ Stock descontado')
     } catch (e) { addToast('Error: ' + e.message, 'err') }
     finally { setAplicandoMenus(false) }
   }
@@ -145,7 +154,7 @@ export default function CajaEventoModal({
         </div>
 
         {/* Sección: Stock de menús */}
-        {hasMenuComponentes && (
+        {(hasMenuComponentes || hasArticulos) && (
           <div style={{ marginBottom: 22 }}>
             <div className="ct" style={{ marginBottom: 8 }}>
               <div className="ct-icon">🍔</div>Stock de menús del evento
@@ -153,34 +162,62 @@ export default function CajaEventoModal({
             <div style={{ fontSize: 12, color: 'var(--mu)', marginBottom: 10 }}>
               Productos de stock consumidos según los menús elegidos al reservar.
             </div>
-            <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse', marginBottom: 10 }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--bd2)', color: 'var(--mu)' }}>
-                  <th style={{ textAlign: 'left', padding: '4px 6px' }}>Menú origen</th>
-                  <th style={{ textAlign: 'left', padding: '4px 6px' }}>Producto</th>
-                  <th style={{ textAlign: 'right', padding: '4px 6px' }}>Cant.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {menuItems.map((it, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid var(--bd2)' }}>
-                    <td style={{ padding: '5px 6px', color: 'var(--mu)', fontSize: 12 }}>{it.menuNombre}</td>
-                    <td style={{ padding: '5px 6px' }}>{it.nombreProducto}</td>
-                    <td style={{ padding: '5px 6px', textAlign: 'right' }}>{it.qty}</td>
+            {hasMenuComponentes && (
+              <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse', marginBottom: 10 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--bd2)', color: 'var(--mu)' }}>
+                    <th style={{ textAlign: 'left', padding: '4px 6px' }}>Menú origen</th>
+                    <th style={{ textAlign: 'left', padding: '4px 6px' }}>Producto</th>
+                    <th style={{ textAlign: 'right', padding: '4px 6px' }}>Cant.</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {menuItems.map((it, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--bd2)' }}>
+                      <td style={{ padding: '5px 6px', color: 'var(--mu)', fontSize: 12 }}>{it.menuNombre}</td>
+                      <td style={{ padding: '5px 6px' }}>{it.nombreProducto}</td>
+                      <td style={{ padding: '5px 6px', textAlign: 'right' }}>{it.qty}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {hasArticulos && (
+              <>
+                {hasMenuComponentes && <div style={{ marginTop: 12, marginBottom: 6, fontSize: 12, fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase' }}>Artículos incluidos</div>}
+                <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse', marginBottom: 10 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--bd2)', color: 'var(--mu)' }}>
+                      <th style={{ textAlign: 'left', padding: '4px 6px' }}>Artículo</th>
+                      <th style={{ textAlign: 'right', padding: '4px 6px' }}>Cant.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {articulosItems.map((it, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid var(--bd2)' }}>
+                        <td style={{ padding: '5px 6px' }}>{it.nombreProducto}</td>
+                        <td style={{ padding: '5px 6px', textAlign: 'right' }}>{it.qty}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button
                 className={menuStockAplicado ? 'bg2 bsm' : 'bn bsm'}
                 disabled={menuStockAplicado || aplicandoMenus}
                 onClick={handleAplicarMenuStock}
               >
-                {menuStockAplicado ? '✓ Stock de menús descontado' : aplicandoMenus ? 'Descontando...' : '⬇ Descontar stock de menús'}
+                {menuStockAplicado
+                  ? '✓ Stock descontado'
+                  : aplicandoMenus
+                    ? 'Descontando...'
+                    : `⬇ Descontar stock${hasMenuComponentes && hasArticulos ? ' de menús y artículos' : hasMenuComponentes ? ' de menús' : ' de artículos'}`
+                }
               </button>
               {menuStockAplicado && onDeshacerMenuStock && (
-                <button className="bdng bsm" onClick={() => onDeshacerMenuStock(evento.id, menuItems)}>
+                <button className="bdng bsm" onClick={() => onDeshacerMenuStock(evento.id, [...menuItems, ...articulosItems])}>
                   ↩ Deshacer
                 </button>
               )}
