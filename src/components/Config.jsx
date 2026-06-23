@@ -17,6 +17,10 @@ export default function Config({ config, updateConfig, addToast, productos = [],
   const [pricesOk, setPricesOk] = useState(false)
   const [newPin, setNewPin] = useState('')
   const [pinOk, setPinOk] = useState(false)
+  const [nuevaClavNombre, setNuevaClavNombre] = useState('')
+  const [nuevaClavPin, setNuevaClavPin] = useState('')
+  const [editClavIdx, setEditClavIdx] = useState(null)
+  const [editClavPin, setEditClavPin] = useState('')
   const [menuExpandido, setMenuExpandido] = useState(null)
   const [compProdSearch, setCompProdSearch] = useState('')
   const [compProdSel, setCompProdSel] = useState(null)
@@ -160,7 +164,7 @@ export default function Config({ config, updateConfig, addToast, productos = [],
     addToast('Precio actualizado ✓')
   }
 
-  // ── PIN de seguridad ──
+  // ── PIN de seguridad (legacy, no usado) ──
   const savePin = () => {
     const p = newPin.trim()
     if (!/^\d{4}$/.test(p)) { addToast('El código debe ser de exactamente 4 dígitos numéricos', 'err'); return }
@@ -169,6 +173,39 @@ export default function Config({ config, updateConfig, addToast, productos = [],
     setPinOk(true)
     setTimeout(() => setPinOk(false), 3000)
     addToast('Código de seguridad guardado ✓')
+  }
+
+  // ── Claves de seguridad ──
+  const claves = config.claves || []
+
+  const addClave = () => {
+    const nombre = nuevaClavNombre.trim().toLowerCase()
+    const pin = nuevaClavPin.trim()
+    if (!nombre) { addToast('Ingresá un nombre para la clave', 'err'); return }
+    if (!/^\d{4}$/.test(pin)) { addToast('El código debe ser exactamente 4 dígitos', 'err'); return }
+    if (claves.find(c => c.nombre === nombre)) { addToast('Ya existe una clave con ese nombre', 'err'); return }
+    updateConfig('claves', [...claves, { nombre, pin }])
+    setNuevaClavNombre(''); setNuevaClavPin('')
+    addToast(`Clave "${nombre}" agregada ✓`)
+  }
+
+  const deleteClave = (nombre) => {
+    updateConfig('claves', claves.filter(c => c.nombre !== nombre))
+    addToast(`Clave "${nombre}" eliminada`)
+  }
+
+  const startEditClave = (idx) => {
+    setEditClavIdx(idx)
+    setEditClavPin('')
+  }
+
+  const saveEditClave = (idx) => {
+    const pin = editClavPin.trim()
+    if (!/^\d{4}$/.test(pin)) { addToast('El código debe ser exactamente 4 dígitos', 'err'); return }
+    const updated = claves.map((c, i) => i === idx ? { ...c, pin } : c)
+    updateConfig('claves', updated)
+    setEditClavIdx(null); setEditClavPin('')
+    addToast(`Código de "${claves[idx].nombre}" actualizado ✓`)
   }
 
   // ── Precios base ──
@@ -429,26 +466,72 @@ export default function Config({ config, updateConfig, addToast, productos = [],
           </div>
         </div>
 
-        {/* PIN de seguridad */}
+        {/* Claves de seguridad */}
         <div className="cc">
-          <div className="ct"><div className="ct-icon">🔐</div>Código de seguridad</div>
+          <div className="ct"><div className="ct-icon">🔐</div>Claves de seguridad</div>
           <div style={{ fontSize: 12, color: 'var(--mu)', marginBottom: 12 }}>
-            Código de 4 dígitos requerido para confirmar eliminaciones y acciones sensibles.
-            {config.pin ? ' Ya tenés un código configurado.' : ' Todavía no configuraste un código.'}
+            Cada clave tiene un nombre y un código de 4 dígitos. Cualquier clave válida autoriza una acción, y queda registrado cuál se usó.
           </div>
-          <div className="ar">
-            <input
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              value={newPin}
-              onChange={e => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              placeholder="Nuevo código (4 dígitos)"
-              style={{ width: 200, letterSpacing: 4 }}
-            />
-            <button className="bn bsm" onClick={savePin}>💾 Guardar código</button>
+
+          {/* Lista de claves existentes */}
+          {claves.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--mu2)', marginBottom: 12 }}>No hay claves configuradas aún.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+              {claves.map((c, idx) => (
+                <div key={c.nombre} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', borderRadius: 8, padding: '8px 12px' }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>{c.nombre}</span>
+                  {editClavIdx === idx ? (
+                    <>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={4}
+                        value={editClavPin}
+                        onChange={e => setEditClavPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        placeholder="Nuevo código"
+                        style={{ width: 120, letterSpacing: 4, fontSize: 14 }}
+                        autoFocus
+                      />
+                      <button className="bn bsm" onClick={() => saveEditClave(idx)}>✓</button>
+                      <button className="bg2 bsm" onClick={() => setEditClavIdx(null)}>✕</button>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ fontSize: 12, color: 'var(--mu)', fontFamily: 'monospace', letterSpacing: 4 }}>••••</span>
+                      <button className="bg2 bsm" onClick={() => startEditClave(idx)}>Cambiar código</button>
+                      <button className="bdng bsm" onClick={() => deleteClave(c.nombre)}>✕</button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Agregar nueva clave */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div className="fgg" style={{ flex: '1 1 140px' }}>
+              <label>Nombre de la clave</label>
+              <input
+                value={nuevaClavNombre}
+                onChange={e => setNuevaClavNombre(e.target.value)}
+                placeholder="Ej: joaco"
+              />
+            </div>
+            <div className="fgg" style={{ flex: '0 0 140px' }}>
+              <label>Código (4 dígitos)</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={nuevaClavPin}
+                onChange={e => setNuevaClavPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="••••"
+                style={{ letterSpacing: 4 }}
+              />
+            </div>
+            <button className="bn bsm" onClick={addClave} style={{ marginBottom: 2 }}>+ Agregar clave</button>
           </div>
-          {pinOk && <div style={{ fontSize: 13, color: 'var(--gn)', marginTop: 8, fontWeight: 600 }}>✓ Código guardado correctamente</div>}
         </div>
 
         {/* Extras */}

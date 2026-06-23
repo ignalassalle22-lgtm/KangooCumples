@@ -33,6 +33,7 @@ export const DEFAULT_CONFIG = {
   pChico: 5000,
   pAdulto: 2500,
   pin: '',
+  claves: [],
   mets_caja: ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro'],
   menu_digital: {
     activo: false,

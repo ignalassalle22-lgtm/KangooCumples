@@ -158,6 +158,16 @@ CREATE TABLE IF NOT EXISTS public.compra_items (
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Log de autorizaciones (registra qué clave autorizó cada acción sensible)
+CREATE TABLE IF NOT EXISTS public.audit_log (
+  id           BIGSERIAL PRIMARY KEY,
+  accion       TEXT NOT NULL,
+  clave_nombre TEXT NOT NULL,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow all audit_log" ON public.audit_log FOR ALL USING (TRUE) WITH CHECK (TRUE);
+
 -- Proveedores
 CREATE TABLE IF NOT EXISTS public.proveedores (
   id         BIGSERIAL PRIMARY KEY,

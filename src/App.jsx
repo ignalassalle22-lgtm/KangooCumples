@@ -1,13 +1,16 @@
 import React, { useState, useCallback, useEffect } from 'react'
+import { supabase } from './supabase'
 
-function PinModal({ storedPin, msg, onConfirm, onCancel }) {
+function PinModal({ claves, msg, onConfirm, onCancel }) {
   const [pin, setPin] = React.useState('')
   const [err, setErr] = React.useState(false)
+  const hayClaves = Array.isArray(claves) && claves.length > 0
 
   const tryPin = (val) => {
     if (val.length < 4) return
-    if (val === String(storedPin)) {
-      onConfirm()
+    const match = (claves || []).find(c => String(c.pin) === val)
+    if (match) {
+      onConfirm(match.nombre)
     } else {
       setErr(true)
       setPin('')
@@ -25,9 +28,9 @@ function PinModal({ storedPin, msg, onConfirm, onCancel }) {
           </div>
           <button className="xcl" onClick={onCancel}>✕</button>
         </div>
-        {!storedPin ? (
+        {!hayClaves ? (
           <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--mu)', fontSize: 14 }}>
-            No hay código configurado. Configurá uno en <b>Datos de venta</b> antes de poder continuar.
+            No hay claves configuradas. Configuralas en <b>Datos de venta</b> antes de continuar.
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
               <button className="bg2" onClick={onCancel}>Cerrar</button>
             </div>
@@ -36,7 +39,7 @@ function PinModal({ storedPin, msg, onConfirm, onCancel }) {
           <>
             {msg && <p style={{ color: 'var(--mu)', fontSize: 14, marginBottom: 16 }}>{msg}</p>}
             <p style={{ color: 'var(--mu)', fontSize: 13, marginBottom: 20 }}>
-              Ingresá el código de 4 dígitos para confirmar. Esta acción no se puede deshacer.
+              Ingresá tu código de 4 dígitos para confirmar. Esta acción no se puede deshacer.
             </p>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
               <input
@@ -143,7 +146,6 @@ export default function App() {
   const [activeSection, setActiveSection] = useState('eventos')
   const [calView, setCalView] = useState('semana')
   const [pinModal, setPinModal] = useState({ show: false, onConfirm: null, msg: '' })
-  const askPin = useCallback((msg, onConfirm) => setPinModal({ show: true, onConfirm, msg }), [])
 
   const handleNavToCofre = useCallback(() => {
     askPin('Acceso al módulo Cofre.', () => {
@@ -184,6 +186,26 @@ export default function App() {
     setToasts(prev => [...prev, { id, msg, type }])
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500)
   }, [])
+
+  // Registra en audit_log quién autorizó cada acción sensible
+  const logAudit = useCallback(async (accion, clave_nombre) => {
+    try {
+      await supabase.from('audit_log').insert({ accion, clave_nombre })
+    } catch (e) {
+      console.warn('audit_log error:', e)
+    }
+  }, [])
+
+  const askPin = useCallback((msg, onConfirm) => {
+    setPinModal({
+      show: true,
+      msg,
+      onConfirm: async (clave_nombre) => {
+        await logAudit(msg, clave_nombre)
+        await onConfirm(clave_nombre)
+      },
+    })
+  }, [logAudit])
 
   // ── Pedidos (menú digital) ──
   const handleNuevoPedido = useCallback((pedido) => {
@@ -711,7 +733,7 @@ export default function App() {
 
       {pinModal.show && (
         <PinModal
-          storedPin={config.pin}
+          claves={config.claves || []}
           msg={pinModal.msg}
           onConfirm={pinModal.onConfirm}
           onCancel={() => setPinModal({ show: false, onConfirm: null, msg: '' })}
