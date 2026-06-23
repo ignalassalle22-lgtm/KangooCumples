@@ -105,6 +105,7 @@ import { useCompras } from './hooks/useCompras'
 import { useCaja } from './hooks/useCaja'
 import { useEmpleados } from './hooks/useEmpleados'
 import { usePedidos } from './hooks/usePedidos'
+import { useProveedores } from './hooks/useProveedores'
 
 export default function App() {
   // ── Cumpleaños ──
@@ -119,7 +120,8 @@ export default function App() {
   // ── Ventas ──
   const { productos, categorias, loading: prodLoading, saveProducto, deleteProducto, updateStock, updateCosto, bulkUpdatePrecios, saveCategoria } = useProductos()
   const { ventas, loading: ventasLoading, fetchVentas, saveVenta, anularVenta } = useVentas()
-  const { compras, loading: comprasLoading, saveCompra } = useCompras()
+  const { compras, loading: comprasLoading, saveCompra, updateCompra, anularCompra } = useCompras()
+  const { proveedores, saveProveedor, deleteProveedor } = useProveedores()
   const { cajasAbiertas, historial: cajaHistorial, loading: cajaLoading, abrirCaja, cerrarCaja } = useCaja()
   const cajaActual = cajasAbiertas[0] || null
   const { empleados, saveEmpleado, toggleEmpleado, deleteEmpleado } = useEmpleados()
@@ -172,6 +174,7 @@ export default function App() {
   const [editingProductoId, setEditingProductoId] = useState(null)
   const [ticketModalOpen, setTicketModalOpen] = useState(false)
   const [compraModalOpen, setCompraModalOpen] = useState(false)
+  const [editingCompra, setEditingCompra] = useState(null)
   const [pedidoParaCobrar, setPedidoParaCobrar] = useState(null)
 
   const [toasts, setToasts] = useState([])
@@ -435,11 +438,33 @@ export default function App() {
   }, [anularVenta, updateStock, addToast, askPin])
 
   // ── Handlers compras ──
-  const handleSaveCompra = useCallback(async (compra, items) => {
-    await saveCompra(compra, items, updateStock, updateCosto)
-    setCompraModalOpen(false)
-    addToast('✓ Compra registrada · stock y costos actualizados')
-  }, [saveCompra, updateStock, updateCosto, addToast])
+  const handleSaveCompra = useCallback(async (compra, items, oldItems) => {
+    if (compra.id) {
+      await updateCompra(compra, items, oldItems || [], updateStock, updateCosto)
+      setEditingCompra(null)
+      addToast('✓ Compra actualizada · stock y costos recalculados')
+    } else {
+      await saveCompra(compra, items, updateStock, updateCosto)
+      setCompraModalOpen(false)
+      addToast('✓ Compra registrada · stock y costos actualizados')
+    }
+  }, [saveCompra, updateCompra, updateStock, updateCosto, addToast])
+
+  const handleEditarCompra = useCallback((compra) => {
+    setEditingCompra(compra)
+  }, [])
+
+  const handleAnularCompra = useCallback((compra) => {
+    askPin(`Vas a anular la compra a "${compra.proveedor || 'sin proveedor'}". Se revertirá el stock ingresado.`, async () => {
+      setPinModal({ show: false, onConfirm: null, msg: '' })
+      try {
+        await anularCompra(compra.id, compra.compra_items || [], updateStock)
+        addToast('Compra anulada · stock revertido', 'err')
+      } catch (e) {
+        addToast('Error: ' + e.message, 'err')
+      }
+    })
+  }, [anularCompra, updateStock, addToast, askPin])
 
   // ── Handlers caja ──
   const handleAbrirCaja = useCallback(async ({ saldo_inicial, nombre, turno }) => {
@@ -548,6 +573,13 @@ export default function App() {
           <Compras
             compras={compras} loading={comprasLoading}
             onNueva={() => setCompraModalOpen(true)}
+            onEditar={handleEditarCompra}
+            onAnular={handleAnularCompra}
+            proveedores={proveedores}
+            onSaveProveedor={saveProveedor}
+            onDeleteProveedor={deleteProveedor}
+            addToast={addToast}
+            askPin={askPin}
           />
         )}
 
@@ -665,11 +697,14 @@ export default function App() {
         />
       )}
 
-      {compraModalOpen && (
+      {(compraModalOpen || editingCompra) && (
         <CompraModal
+          compra={editingCompra}
           productos={productos}
+          proveedores={proveedores}
           metodosPago={config.mets_caja}
-          onSave={handleSaveCompra} onClose={() => setCompraModalOpen(false)}
+          onSave={handleSaveCompra}
+          onClose={() => { setCompraModalOpen(false); setEditingCompra(null) }}
           addToast={addToast}
         />
       )}

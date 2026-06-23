@@ -37,7 +37,6 @@ export function useCompras() {
     const { error: itemsError } = await supabase.from('compra_items').insert(itemsToInsert)
     if (itemsError) throw new Error(itemsError.message)
 
-    // Incrementar stock y actualizar costo
     for (const it of itemsToInsert) {
       if (it.producto_id) {
         if (updateStockFn) await updateStockFn(it.producto_id, it.cantidad)
@@ -50,5 +49,67 @@ export function useCompras() {
     return compraCompleta
   }
 
-  return { compras, loading, fetchCompras, saveCompra }
+  const updateCompra = async (compra, newItems, oldItems, updateStockFn, updateCostoFn) => {
+    // 1. Revertir stock de ítems anteriores
+    if (updateStockFn) {
+      for (const it of oldItems) {
+        if (it.producto_id) await updateStockFn(it.producto_id, -it.cantidad)
+      }
+    }
+
+    // 2. Actualizar cabecera
+    const { error: updError } = await supabase
+      .from('compras')
+      .update({
+        proveedor: compra.proveedor,
+        fecha: compra.fecha,
+        numero_remito: compra.numero_remito,
+        total: compra.total,
+        metodo_pago: compra.metodo_pago,
+        obs: compra.obs,
+      })
+      .eq('id', compra.id)
+    if (updError) throw new Error(updError.message)
+
+    // 3. Reemplazar ítems
+    await supabase.from('compra_items').delete().eq('compra_id', compra.id)
+    const itemsToInsert = newItems.map(it => ({
+      compra_id: compra.id,
+      producto_id: it.producto_id,
+      nombre_producto: it.nombre_producto,
+      precio_unitario: it.precio_unitario,
+      cantidad: it.cantidad,
+      subtotal: it.subtotal,
+    }))
+    if (itemsToInsert.length > 0) {
+      const { error: itemsError } = await supabase.from('compra_items').insert(itemsToInsert)
+      if (itemsError) throw new Error(itemsError.message)
+    }
+
+    // 4. Aplicar stock y costo de nuevos ítems
+    for (const it of itemsToInsert) {
+      if (it.producto_id) {
+        if (updateStockFn) await updateStockFn(it.producto_id, it.cantidad)
+        if (updateCostoFn && it.precio_unitario > 0) await updateCostoFn(it.producto_id, it.precio_unitario)
+      }
+    }
+
+    const compraActualizada = { ...compra, compra_items: itemsToInsert }
+    setCompras(prev => prev.map(c => c.id === compra.id ? compraActualizada : c))
+    return compraActualizada
+  }
+
+  const anularCompra = async (id, items, updateStockFn) => {
+    // Revertir stock
+    if (updateStockFn) {
+      for (const it of items) {
+        if (it.producto_id) await updateStockFn(it.producto_id, -it.cantidad)
+      }
+    }
+    const { error } = await supabase.from('compras').delete().eq('id', id)
+    if (error) throw new Error(error.message)
+    setCompras(prev => prev.filter(c => c.id !== id))
+  }
+
+  return { compras, loading, fetchCompras, saveCompra, updateCompra, anularCompra }
 }

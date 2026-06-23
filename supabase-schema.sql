@@ -157,6 +157,17 @@ CREATE TABLE IF NOT EXISTS public.compra_items (
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Proveedores
+CREATE TABLE IF NOT EXISTS public.proveedores (
+  id         BIGSERIAL PRIMARY KEY,
+  nombre     TEXT NOT NULL,
+  cuit       TEXT,
+  obs        TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.proveedores ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow all proveedores" ON public.proveedores FOR ALL USING (TRUE) WITH CHECK (TRUE);
+
 -- ── Pedidos (menú digital) ──
 CREATE TABLE IF NOT EXISTS public.pedidos (
   id         BIGSERIAL PRIMARY KEY,

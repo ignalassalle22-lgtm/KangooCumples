@@ -1,9 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 const hoy = () => new Date().toISOString().slice(0, 10)
 
-export default function CompraModal({ productos, metodosPago = [], onSave, onClose, addToast }) {
+export default function CompraModal({ compra, productos, proveedores = [], metodosPago = [], onSave, onClose, addToast }) {
+  const esEdicion = !!compra?.id
+
   const [proveedor, setProveedor] = useState('')
   const [fecha, setFecha] = useState(hoy())
   const [remito, setRemito] = useState('')
@@ -12,6 +14,25 @@ export default function CompraModal({ productos, metodosPago = [], onSave, onClo
   const [items, setItems] = useState([])
   const [busca, setBusca] = useState('')
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (compra) {
+      setProveedor(compra.proveedor || '')
+      setFecha(compra.fecha || hoy())
+      setRemito(compra.numero_remito || '')
+      setMetodo(compra.metodo_pago || 'Efectivo')
+      setObs(compra.obs || '')
+      setItems((compra.compra_items || []).map(it => ({
+        producto_id: it.producto_id,
+        nombre_producto: it.nombre_producto,
+        precio_unitario: it.precio_unitario || 0,
+        cantidad: it.cantidad || 1,
+        subtotal: it.subtotal || 0,
+      })))
+    }
+  }, [compra])
+
+  const METODOS = metodosPago.length ? metodosPago : ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
   const prodsFiltrados = productos.filter(p =>
     p.activo !== false && p.tipo === 'simple' &&
@@ -47,7 +68,9 @@ export default function CompraModal({ productos, metodosPago = [], onSave, onClo
     if (items.length === 0) { addToast('Agregá al menos un producto', 'err'); return }
     setSaving(true)
     try {
-      await onSave({ proveedor, fecha, numero_remito: remito, total, metodo_pago: metodo, obs }, items)
+      const data = { proveedor, fecha, numero_remito: remito, total, metodo_pago: metodo, obs }
+      if (esEdicion) data.id = compra.id
+      await onSave(data, items, esEdicion ? compra.compra_items : null)
     } catch (e) {
       addToast('Error: ' + e.message, 'err')
     } finally {
@@ -59,7 +82,7 @@ export default function CompraModal({ productos, metodosPago = [], onSave, onClo
     <div className="ov op" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="mo" style={{ maxWidth: 800 }}>
         <div className="moh">
-          <div className="mot"><div className="mot-icon">📥</div>Nueva compra</div>
+          <div className="mot"><div className="mot-icon">📥</div>{esEdicion ? 'Editar compra' : 'Nueva compra'}</div>
           <button className="xcl" onClick={onClose}>✕</button>
         </div>
 
@@ -67,8 +90,33 @@ export default function CompraModal({ productos, metodosPago = [], onSave, onClo
         <div className="fg">
           <div className="fgg">
             <label>Proveedor</label>
-            <input value={proveedor} onChange={e => setProveedor(e.target.value)} placeholder="Nombre del proveedor" />
+            {proveedores.length > 0 ? (
+              <select value={proveedor} onChange={e => setProveedor(e.target.value)}
+                style={{ border: '1px solid var(--bd2)', borderRadius: 10, padding: '9px 13px', fontSize: 13, background: 'var(--bg)', color: 'var(--tx)', width: '100%' }}>
+                <option value="">Seleccionar proveedor...</option>
+                {proveedores.map(p => (
+                  <option key={p.id} value={p.nombre}>{p.nombre}{p.cuit ? ` — ${p.cuit}` : ''}</option>
+                ))}
+                <option value="__otro__">Otro (escribir)</option>
+              </select>
+            ) : (
+              <input value={proveedor} onChange={e => setProveedor(e.target.value)} placeholder="Nombre del proveedor" />
+            )}
           </div>
+
+          {/* Si eligieron "Otro" o no hay proveedores, mostrar campo libre */}
+          {proveedores.length > 0 && proveedor === '__otro__' && (
+            <div className="fgg">
+              <label>Nombre del proveedor</label>
+              <input
+                value={''}
+                onChange={e => setProveedor(e.target.value)}
+                placeholder="Escribí el nombre..."
+                autoFocus
+              />
+            </div>
+          )}
+
           <div className="fgg">
             <label>N° Remito / Factura</label>
             <input value={remito} onChange={e => setRemito(e.target.value)} placeholder="Ej: 0001-00012345" />
@@ -80,9 +128,7 @@ export default function CompraModal({ productos, metodosPago = [], onSave, onClo
           <div className="fgg">
             <label>Método de pago</label>
             <select value={metodo} onChange={e => setMetodo(e.target.value)}>
-              {(metodosPago.length ? metodosPago : ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']).map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
+              {METODOS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div className="fgg">
@@ -144,7 +190,7 @@ export default function CompraModal({ productos, metodosPago = [], onSave, onClo
                   <tr key={it.producto_id}>
                     <td style={{ fontWeight: 700 }}>{it.nombre_producto}</td>
                     <td className="num">
-                      <input type="number" min="0.01" step="0.01" value={it.cantidad}
+                      <input type="number" min="1" step="1" value={it.cantidad}
                         onChange={e => cambiar(it.producto_id, 'cantidad', e.target.value)}
                         style={{ width: 80, textAlign: 'right', border: '1px solid var(--bd2)', borderRadius: 7, padding: '4px 8px', fontSize: 13 }}
                       />
@@ -173,7 +219,7 @@ export default function CompraModal({ productos, metodosPago = [], onSave, onClo
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
           <button className="bg2" onClick={onClose}>Cancelar</button>
           <button className="bp" onClick={handleGuardar} disabled={saving || items.length === 0}>
-            {saving ? 'Guardando...' : '✓ Registrar compra'}
+            {saving ? 'Guardando...' : esEdicion ? '💾 Guardar cambios' : '✓ Registrar compra'}
           </button>
         </div>
       </div>
