@@ -112,23 +112,16 @@ import { usePedidos } from './hooks/usePedidos'
 import { useProveedores } from './hooks/useProveedores'
 
 export default function App() {
-  // ── Auth ──
   const [usuario, setUsuario] = useState(() => {
     try { return JSON.parse(localStorage.getItem('kf_usuario')) || null } catch { return null }
   })
-
-  const handleLogin = (u) => {
-    setUsuario(u)
-    localStorage.setItem('kf_usuario', JSON.stringify(u))
-  }
-
-  const handleLogout = () => {
-    setUsuario(null)
-    localStorage.removeItem('kf_usuario')
-  }
-
+  const handleLogin = (u) => { setUsuario(u); localStorage.setItem('kf_usuario', JSON.stringify(u)) }
+  const handleLogout = () => { setUsuario(null); localStorage.removeItem('kf_usuario') }
   if (!usuario) return <Login onLogin={handleLogin} />
+  return <AppInner usuario={usuario} onLogout={handleLogout} />
+}
 
+function AppInner({ usuario, onLogout }) {
   const isAdmin = usuario.rol === 'admin'
 
   // ── Cumpleaños ──
@@ -548,13 +541,13 @@ export default function App() {
         cajaActual={cajaActual}
         onNavCofre={handleNavToCofre}
         usuario={usuario}
-        onLogout={handleLogout}
+        onLogout={onLogout}
       />
 
       <div className="content">
         {error && (
           <div style={{ background: 'var(--rdb)', border: '1px solid rgba(163,32,32,.35)', borderRadius: 10, padding: '11px 16px', color: 'var(--rd)', fontSize: 13, fontWeight: 600, marginBottom: 16 }}>
-            ⚠ Supabase no configurado — trabajando en modo local.
+            ⚠ Error al conectar con la base de datos: {error}
           </div>
         )}
 
