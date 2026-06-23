@@ -15,6 +15,9 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
   const [descuento, setDescuento] = useState('')
   const [descuentoTipo, setDescuentoTipo] = useState('monto')
   const [metodo, setMetodo] = useState('Efectivo')
+  const [pagaCon, setPagaCon] = useState('')
+  const [multiMetodo, setMultiMetodo] = useState(false)
+  const [metodosPagados, setMetodosPagados] = useState([{ id: 1, met: 'Efectivo', monto: '' }])
   const [obs, setObs] = useState('')
   const [saving, setSaving] = useState(false)
   const buscaRef = useRef()
@@ -84,10 +87,51 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
     : parseFloat(descuento) || 0
   const total = Math.max(0, subtotal - descuentoNum)
 
+  // Vuelto en modo single Efectivo
+  const pagaConNum = parseFloat(pagaCon) || 0
+  const vuelto = metodo === 'Efectivo' && pagaConNum > 0 ? pagaConNum - total : 0
+
+  // Multi-método
+  function addMetodoPago() {
+    setMetodosPagados(prev => [...prev, { id: Date.now(), met: 'Efectivo', monto: '' }])
+  }
+  function removeMetodoPago(id) {
+    setMetodosPagados(prev => prev.filter(m => m.id !== id))
+  }
+  function updateMetodoPago(id, field, val) {
+    setMetodosPagados(prev => prev.map(m => m.id === id ? { ...m, [field]: val } : m))
+  }
+
+  const totalCubierto = metodosPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+  const restante = total - totalCubierto
+
+  // Vuelto en modo multi: sumar lo pagado en efectivo y comparar
+  const efectivoMulti = metodosPagados.filter(m => m.met === 'Efectivo').reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+  const vueltoMulti = multiMetodo && efectivoMulti > 0 && totalCubierto > total
+    ? efectivoMulti - Math.max(0, efectivoMulti - (efectivoMulti - (totalCubierto - total)))
+    : 0
+
+  function toggleMultiMetodo() {
+    if (!multiMetodo) {
+      // Al activar multi: preinicializar con el método actual
+      setMetodosPagados([{ id: 1, met: metodo, monto: '' }])
+      setMultiMetodo(true)
+    } else {
+      setMultiMetodo(false)
+      setMetodosPagados([{ id: 1, met: 'Efectivo', monto: '' }])
+    }
+  }
+
   async function handleGuardar() {
     if (items.length === 0) { addToast('Agregá al menos un producto', 'err'); return }
 
-    // Advertir sin bloquear cuando hay stock insuficiente (solo productos que manejan stock)
+    if (multiMetodo) {
+      const vacíos = metodosPagados.some(m => !m.monto || parseFloat(m.monto) <= 0)
+      if (vacíos) { addToast('Completá los montos de cada método de pago.', 'err'); return }
+      if (metodosPagados.length < 2) { addToast('Usá al menos 2 métodos, o desactivá el modo multi.', 'err'); return }
+    }
+
+    // Advertir sin bloquear cuando hay stock insuficiente
     const sinStock = items.filter(it => it._tipo === 'simple' && it.maneja_stock !== false && (it._stockActual || 0) < it.cantidad)
     if (sinStock.length > 0) {
       const lista = sinStock.map(it => `• ${it.nombre_producto} (stock: ${it._stockActual || 0}, pedido: ${it.cantidad})`).join('\n')
@@ -95,10 +139,17 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
       if (!ok) return
     }
 
-    // Advertir si no hay caja seleccionada
     if (!cajaSeleccionadaId) {
       const ok = window.confirm('No hay ninguna caja seleccionada.\n\n¿Querés registrar la venta igualmente sin asignarla a una caja?')
       if (!ok) return
+    }
+
+    // Armar string de método de pago
+    let metodoPagoFinal
+    if (multiMetodo) {
+      metodoPagoFinal = metodosPagados.map(m => `${m.met} ${fmt(parseFloat(m.monto) || 0)}`).join(' + ')
+    } else {
+      metodoPagoFinal = metodo
     }
 
     setSaving(true)
@@ -107,7 +158,7 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
         {
           fecha: hoy(), hora: hora(), cliente,
           subtotal, descuento: descuentoNum, total,
-          metodo_pago: metodo,
+          metodo_pago: metodoPagoFinal,
           caja_id: cajaSeleccionadaId || null,
           empleado_id: empleadoId ? Number(empleadoId) : null,
           obs,
@@ -196,7 +247,7 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
                               Stock: {it._stockActual || 0}{(it._stockActual || 0) < it.cantidad ? ' ⚠ insuficiente' : ''}
                             </div>
                           )}
-                        {it.maneja_stock === false && (
+                          {it.maneja_stock === false && (
                             <div style={{ fontSize: 11, color: 'var(--mu2)' }}>Sin control de stock</div>
                           )}
                         </td>
@@ -262,16 +313,120 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
               </>
             )}
 
-            <div className="sdv">Pago</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {METODOS.map(m => (
-                <button key={m} type="button"
-                  className={`rp ${metodo === m ? 'spaid' : ''}`}
-                  onClick={() => setMetodo(m)}
-                  style={{ textAlign: 'left', padding: '8px 14px' }}
-                >{m}</button>
-              ))}
+            <div className="sdv" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Pago</span>
+              <button
+                type="button"
+                onClick={toggleMultiMetodo}
+                style={{
+                  fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                  border: `1.5px solid ${multiMetodo ? 'var(--nv)' : 'var(--bd2)'}`,
+                  background: multiMetodo ? 'var(--nv3)' : 'transparent',
+                  color: multiMetodo ? 'var(--nv)' : 'var(--mu)',
+                  cursor: 'pointer', fontFamily: "'Nunito', sans-serif",
+                }}
+              >
+                {multiMetodo ? '✓ Múltiple' : '+ Más de un método'}
+              </button>
             </div>
+
+            {!multiMetodo ? (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {METODOS.map(m => (
+                    <button key={m} type="button"
+                      className={`rp ${metodo === m ? 'spaid' : ''}`}
+                      onClick={() => { setMetodo(m); setPagaCon('') }}
+                      style={{ textAlign: 'left', padding: '8px 14px' }}
+                    >{m}</button>
+                  ))}
+                </div>
+
+                {/* Paga con / Vuelto - solo para Efectivo */}
+                {metodo === 'Efectivo' && (
+                  <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                      ¿Con cuánto paga?
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={pagaCon}
+                      onChange={e => setPagaCon(e.target.value)}
+                      placeholder={fmt(total)}
+                      style={{ border: '1px solid var(--bd2)', borderRadius: 8, padding: '8px 12px', fontSize: 15, width: '100%' }}
+                    />
+                    {pagaConNum > 0 && (
+                      <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '8px 12px', borderRadius: 8,
+                        background: vuelto >= 0 ? 'rgba(34,197,94,.12)' : 'rgba(239,68,68,.12)',
+                        border: `1.5px solid ${vuelto >= 0 ? 'var(--gn)' : 'var(--rd, #ef4444)'}`,
+                      }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: vuelto >= 0 ? 'var(--gn)' : 'var(--rd, #ef4444)' }}>
+                          {vuelto >= 0 ? 'Vuelto' : 'Falta'}
+                        </span>
+                        <span style={{ fontSize: 17, fontWeight: 800, color: vuelto >= 0 ? 'var(--gn)' : 'var(--rd, #ef4444)' }}>
+                          {fmt(Math.abs(vuelto))}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Modo multi-método */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {metodosPagados.map((mp, idx) => (
+                  <div key={mp.id} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <select
+                      value={mp.met}
+                      onChange={e => updateMetodoPago(mp.id, 'met', e.target.value)}
+                      style={{ flex: 1, border: '1px solid var(--bd2)', borderRadius: 8, padding: '8px 10px', fontSize: 13, background: 'var(--bg)', color: 'var(--tx)' }}
+                    >
+                      {METODOS.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={mp.monto}
+                      onChange={e => updateMetodoPago(mp.id, 'monto', e.target.value)}
+                      placeholder="Monto"
+                      style={{ width: 100, border: '1px solid var(--bd2)', borderRadius: 8, padding: '8px 10px', fontSize: 13, textAlign: 'right' }}
+                    />
+                    {metodosPagados.length > 1 && (
+                      <button className="bdng" style={{ padding: '5px 8px' }} onClick={() => removeMetodoPago(mp.id)}>✕</button>
+                    )}
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  className="bg2 bsm"
+                  onClick={addMetodoPago}
+                  style={{ alignSelf: 'flex-start', marginTop: 2 }}
+                >
+                  + Agregar método
+                </button>
+
+                {/* Resumen cubierto */}
+                <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: 'var(--mu)', fontWeight: 600 }}>Cubierto</span>
+                    <span style={{ fontWeight: 700 }}>{fmt(totalCubierto)}</span>
+                  </div>
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 800,
+                    color: restante <= 0 ? 'var(--gn)' : 'var(--am)',
+                  }}>
+                    <span>{restante <= 0 ? (restante < 0 ? 'Vuelto (efectivo)' : 'Cubierto exacto') : 'Falta cubrir'}</span>
+                    <span>{fmt(Math.abs(restante))}</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="sdv">Descuento</div>
             <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
