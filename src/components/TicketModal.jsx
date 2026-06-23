@@ -62,7 +62,7 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
   }
 
   function cambiarCantidad(pid, valor) {
-    const qty = parseFloat(valor) || 0
+    const qty = Math.max(1, Math.round(parseFloat(valor) || 1))
     setItems(prev => prev.map(it => it.producto_id === pid
       ? { ...it, cantidad: qty, subtotal: qty * it.precio_unitario }
       : it
@@ -131,12 +131,12 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
       if (metodosPagados.length < 2) { addToast('Usá al menos 2 métodos, o desactivá el modo multi.', 'err'); return }
     }
 
-    // Advertir sin bloquear cuando hay stock insuficiente
+    // Bloquear venta cuando hay stock insuficiente
     const sinStock = items.filter(it => it._tipo === 'simple' && it.maneja_stock !== false && (it._stockActual || 0) < it.cantidad)
     if (sinStock.length > 0) {
       const lista = sinStock.map(it => `• ${it.nombre_producto} (stock: ${it._stockActual || 0}, pedido: ${it.cantidad})`).join('\n')
-      const ok = window.confirm(`Stock insuficiente para:\n\n${lista}\n\n¿Querés registrar la venta igual?`)
-      if (!ok) return
+      addToast(`Stock insuficiente:\n${lista}`, 'err')
+      return
     }
 
     if (!cajaSeleccionadaId) {
@@ -252,7 +252,7 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
                           )}
                         </td>
                         <td className="num">
-                          <input type="number" min="0.01" step="0.01" value={it.cantidad}
+                          <input type="number" min="1" step="1" value={it.cantidad}
                             onChange={e => cambiarCantidad(it.producto_id, e.target.value)}
                             style={{ width: 70, textAlign: 'right', border: '1px solid var(--bd2)', borderRadius: 7, padding: '4px 8px', fontSize: 13 }}
                           />
