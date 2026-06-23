@@ -25,6 +25,8 @@ export default function Config({ config, updateConfig, addToast, productos = [],
   const [auditLog, setAuditLog] = useState(null) // null = no cargado, [] = vacío
   const [auditLoading, setAuditLoading] = useState(false)
   const [auditFiltro, setAuditFiltro] = useState('')
+  const [auditDesde, setAuditDesde] = useState('')
+  const [auditHasta, setAuditHasta] = useState('')
   const [menuExpandido, setMenuExpandido] = useState(null)
   const [compProdSearch, setCompProdSearch] = useState('')
   const [compProdSel, setCompProdSel] = useState(null)
@@ -700,8 +702,17 @@ export default function Config({ config, updateConfig, addToast, productos = [],
                   placeholder="Filtrar por clave o acción..."
                   value={auditFiltro}
                   onChange={e => setAuditFiltro(e.target.value)}
-                  style={{ flex: 1, minWidth: 200 }}
+                  style={{ flex: 1, minWidth: 180 }}
                 />
+                <input type="date" value={auditDesde} onChange={e => setAuditDesde(e.target.value)}
+                  style={{ width: 145 }} title="Desde" />
+                <input type="date" value={auditHasta} onChange={e => setAuditHasta(e.target.value)}
+                  style={{ width: 145 }} title="Hasta" />
+                {(auditDesde || auditHasta || auditFiltro) && (
+                  <button className="bg2 bsm" onClick={() => { setAuditDesde(''); setAuditHasta(''); setAuditFiltro('') }}>
+                    ✕ Limpiar
+                  </button>
+                )}
                 <button className="bg2 bsm" onClick={fetchAuditLog} disabled={auditLoading}>
                   {auditLoading ? '...' : '↺ Actualizar'}
                 </button>
@@ -711,15 +722,22 @@ export default function Config({ config, updateConfig, addToast, productos = [],
               </div>
 
               {(() => {
-                const filtrados = auditFiltro.trim()
-                  ? auditLog.filter(r =>
-                      r.clave_nombre?.toLowerCase().includes(auditFiltro.toLowerCase()) ||
-                      r.accion?.toLowerCase().includes(auditFiltro.toLowerCase())
-                    )
-                  : auditLog
+                const filtrados = auditLog.filter(r => {
+                  if (auditFiltro.trim()) {
+                    const q = auditFiltro.toLowerCase()
+                    if (!r.clave_nombre?.toLowerCase().includes(q) && !r.accion?.toLowerCase().includes(q)) return false
+                  }
+                  if (auditDesde) {
+                    if (r.created_at.slice(0, 10) < auditDesde) return false
+                  }
+                  if (auditHasta) {
+                    if (r.created_at.slice(0, 10) > auditHasta) return false
+                  }
+                  return true
+                })
                 return filtrados.length === 0 ? (
                   <div style={{ fontSize: 13, color: 'var(--mu2)', padding: '10px 0' }}>
-                    {auditFiltro ? 'Sin resultados para ese filtro.' : 'No hay registros aún.'}
+                    Sin resultados para los filtros aplicados.
                   </div>
                 ) : (
                   <div className="vtable-wrap">
