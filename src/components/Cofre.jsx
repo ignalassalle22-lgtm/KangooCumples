@@ -33,7 +33,7 @@ export default function Cofre({ movimientos, saldo, loading, onAddRetiro, emplea
     if (!m || m <= 0) { addToast('Ingresá un monto válido', 'err'); return }
     if (!persona) { addToast('Indicá quién realiza el retiro', 'err'); return }
     if (m > saldo) { addToast('El monto supera el saldo disponible en el cofre', 'err'); return }
-    askPin('Vas a registrar un retiro del cofre.', async () => {
+    askPin(`Retiro del cofre: $${m} — responsable: ${persona}${obs.trim() ? ` — "${obs.trim()}"` : ''}.`, async () => {
       setSaving(true)
       try {
         await onAddRetiro({ tipo: 'retiro', monto: m, persona, obs: obs.trim() })

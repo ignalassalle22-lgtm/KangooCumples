@@ -84,7 +84,7 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
   async function handleCerrar() {
     const sf = parseFloat(saldoFinal)
     if (isNaN(sf) || sf < 0) { addToast('Ingresá el efectivo contado en caja', 'err'); return }
-    askPin(`Vas a cerrar la caja "${caja.nombre || 'Caja'}". Esta acción no se puede deshacer.`, async () => {
+    askPin(`Cerrar caja "${caja.nombre || 'Caja'}"${caja.turno ? ` (${caja.turno})` : ''} — efectivo contado: $${sf}.`, async () => {
       setSaving(true)
       try {
         await onCerrar({ cajaId: caja.id, saldo_final: sf, obs_cierre: obs, total_ventas: totalVentas, total_efectivo: totalEfectivo })
@@ -100,7 +100,7 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
     if (!gastoDetalle.trim()) { addToast('Ingresá el detalle del gasto', 'err'); return }
     if (!gastoPersona) { addToast('Indicá quién realiza el gasto', 'err'); return }
     if (m > efectivoEsperado) { addToast(`El monto supera el efectivo disponible en caja (${fmt(efectivoEsperado)})`, 'err'); return }
-    askPin('Vas a registrar un gasto desde esta caja.', async () => {
+    askPin(`Gasto en caja "${caja.nombre || 'Caja'}": $${m} — "${gastoDetalle.trim()}" — responsable: ${gastoPersona.trim()}.`, async () => {
       try {
         await onAddGasto({ caja_id: caja.id, monto: m, detalle: gastoDetalle.trim(), persona: gastoPersona.trim() })
         setGastoMonto(''); setGastoDetalle(''); setGastoPersona('')
@@ -114,7 +114,7 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
     if (!m || m <= 0) { addToast('Ingresá un monto válido', 'err'); return }
     if (!cofrePersona) { addToast('Indicá quién realiza el traspaso', 'err'); return }
     if (m > efectivoEsperado) { addToast(`El monto supera el efectivo disponible en caja (${fmt(efectivoEsperado)})`, 'err'); return }
-    askPin('Vas a traspasar efectivo de esta caja al cofre.', async () => {
+    askPin(`Traspaso al cofre desde "${caja.nombre || 'Caja'}": $${m} — responsable: ${cofrePersona.trim()}.`, async () => {
       try {
         const obsText = cofreObs.trim()
         await onAddCofreIngreso({ tipo: 'ingreso', monto: m, persona: cofrePersona.trim(), obs: obsText || `Traspaso desde ${caja.nombre || 'Caja'}` })

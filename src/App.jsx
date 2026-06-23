@@ -225,7 +225,9 @@ export default function App() {
   const { pedidos, loading: pedidosLoading, updateEstado: updateEstadoPedido, marcarCobrado, anularPedido } = usePedidos(handleNuevoPedido)
 
   const handleAnularPedido = useCallback((id) => {
-    askPin('Vas a cancelar este pedido.', async () => {
+    const p = pedidos.find(x => x.id === id)
+    const info = p ? `Pedido #${p.numero} — ${p.nombre || 'sin nombre'}` : `Pedido #${id}`
+    askPin(`Cancelar ${info}.`, async () => {
       setPinModal({ show: false, onConfirm: null, msg: '' })
       try { await anularPedido(id); addToast('Pedido cancelado') }
       catch (e) { addToast('Error: ' + e.message, 'err') }
@@ -269,7 +271,9 @@ export default function App() {
   }, [saveEvento, addToast])
 
   const handleDelete = useCallback((id) => {
-    askPin('Vas a eliminar este evento permanentemente.', async () => {
+    const ev = eventos.find(e => e.id === id)
+    const info = ev ? `evento de ${ev.cumple || ev.reservante || '?'} — ${ev.fecha}` : `evento #${id}`
+    askPin(`Eliminar permanentemente: ${info}.`, async () => {
       setPinModal({ show: false, onConfirm: null, msg: '' })
       try { await deleteEvento(id); addToast('Evento eliminado', 'err') }
       catch (e) { addToast('Error: ' + e.message, 'err') }
@@ -308,7 +312,9 @@ export default function App() {
   }, [updateStock, marcarMenusStockAplicado, productos])
 
   const handleDeshacerMenuStock = useCallback((eventoId, menuItems) => {
-    askPin('Se va a restaurar todo el stock descontado de menús.', async () => {
+    const ev = eventos.find(e => e.id === eventoId)
+    const info = ev ? `${ev.cumple || ev.reservante || '?'} — ${ev.fecha}` : `#${eventoId}`
+    askPin(`Deshacer stock de menús/artículos: evento ${info}.`, async () => {
       setPinModal({ show: false, onConfirm: null, msg: '' })
       for (const item of menuItems) {
         await restaurarStockItem(item.productoId, item.qty)
@@ -319,7 +325,9 @@ export default function App() {
   }, [restaurarStockItem, resetMenusStockAplicado, addToast, askPin])
 
   const handleDeshacerCobro = useCallback((eventoId, consumos) => {
-    askPin('Se va a deshacer el cobro y restaurar el stock de adicionales.', async () => {
+    const ev = eventos.find(e => e.id === eventoId)
+    const info = ev ? `${ev.cumple || ev.reservante || '?'} — ${ev.fecha}` : `#${eventoId}`
+    askPin(`Deshacer cobro de adicionales: evento ${info}.`, async () => {
       setPinModal({ show: false, onConfirm: null, msg: '' })
       const cobrados = consumos.filter(c => c.cobrado)
       for (const c of cobrados) {
@@ -436,7 +444,9 @@ export default function App() {
   }, [saveProducto, addToast])
 
   const handleDeleteProducto = useCallback((id) => {
-    askPin('Vas a eliminar este producto permanentemente.', async () => {
+    const prod = productos.find(p => p.id === id)
+    const info = prod ? `"${prod.nombre}"` : `#${id}`
+    askPin(`Eliminar producto ${info} permanentemente.`, async () => {
       setPinModal({ show: false, onConfirm: null, msg: '' })
       try { await deleteProducto(id); addToast('Producto eliminado', 'err') }
       catch (e) { addToast('Error: ' + e.message, 'err') }
@@ -451,7 +461,9 @@ export default function App() {
   }, [saveVenta, updateStock, addToast])
 
   const handleAnularVenta = useCallback((id) => {
-    askPin('Vas a anular esta venta. Se revertirá el stock.', async () => {
+    const v = ventas.find(x => x.id === id)
+    const info = v ? `ticket #${v.numero || id} — ${v.cliente || 'sin cliente'} — $${v.total}` : `#${id}`
+    askPin(`Anular venta: ${info}. Se revertirá el stock.`, async () => {
       setPinModal({ show: false, onConfirm: null, msg: '' })
       try { await anularVenta(id, updateStock); addToast('Venta anulada') }
       catch (e) { addToast('Error: ' + e.message, 'err') }
@@ -476,7 +488,7 @@ export default function App() {
   }, [])
 
   const handleAnularCompra = useCallback((compra) => {
-    askPin(`Vas a anular la compra a "${compra.proveedor || 'sin proveedor'}". Se revertirá el stock ingresado.`, async () => {
+    askPin(`Anular compra: ${compra.proveedor || 'sin proveedor'}${compra.numero_remito ? ` remito ${compra.numero_remito}` : ''} — $${compra.total}. Se revertirá el stock.`, async () => {
       setPinModal({ show: false, onConfirm: null, msg: '' })
       try {
         await anularCompra(compra.id, compra.compra_items || [], updateStock)
