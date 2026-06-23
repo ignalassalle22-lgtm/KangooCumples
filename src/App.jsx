@@ -146,6 +146,32 @@ export default function App() {
   const [activeSection, setActiveSection] = useState('eventos')
   const [calView, setCalView] = useState('semana')
   const [pinModal, setPinModal] = useState({ show: false, onConfirm: null, msg: '' })
+  const [toasts, setToasts] = useState([])
+
+  const addToast = useCallback((msg, type = 'ok') => {
+    const id = Date.now()
+    setToasts(prev => [...prev, { id, msg, type }])
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500)
+  }, [])
+
+  const logAudit = useCallback(async (accion, clave_nombre) => {
+    try {
+      await supabase.from('audit_log').insert({ accion, clave_nombre })
+    } catch (e) {
+      console.warn('audit_log error:', e)
+    }
+  }, [])
+
+  const askPin = useCallback((msg, onConfirm) => {
+    setPinModal({
+      show: true,
+      msg,
+      onConfirm: async (clave_nombre) => {
+        await logAudit(msg, clave_nombre)
+        await onConfirm(clave_nombre)
+      },
+    })
+  }, [logAudit])
 
   const handleNavToCofre = useCallback(() => {
     askPin('Acceso al módulo Cofre.', () => {
@@ -179,33 +205,6 @@ export default function App() {
   const [editingCompra, setEditingCompra] = useState(null)
   const [pedidoParaCobrar, setPedidoParaCobrar] = useState(null)
 
-  const [toasts, setToasts] = useState([])
-
-  const addToast = useCallback((msg, type = 'ok') => {
-    const id = Date.now()
-    setToasts(prev => [...prev, { id, msg, type }])
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500)
-  }, [])
-
-  // Registra en audit_log quién autorizó cada acción sensible
-  const logAudit = useCallback(async (accion, clave_nombre) => {
-    try {
-      await supabase.from('audit_log').insert({ accion, clave_nombre })
-    } catch (e) {
-      console.warn('audit_log error:', e)
-    }
-  }, [])
-
-  const askPin = useCallback((msg, onConfirm) => {
-    setPinModal({
-      show: true,
-      msg,
-      onConfirm: async (clave_nombre) => {
-        await logAudit(msg, clave_nombre)
-        await onConfirm(clave_nombre)
-      },
-    })
-  }, [logAudit])
 
   // ── Pedidos (menú digital) ──
   const handleNuevoPedido = useCallback((pedido) => {
