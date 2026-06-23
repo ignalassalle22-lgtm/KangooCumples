@@ -158,6 +158,23 @@ CREATE TABLE IF NOT EXISTS public.compra_items (
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Usuarios del sistema
+CREATE TABLE IF NOT EXISTS public.usuarios (
+  id         BIGSERIAL PRIMARY KEY,
+  username   TEXT UNIQUE NOT NULL,
+  password   TEXT NOT NULL,
+  rol        TEXT NOT NULL DEFAULT 'pos',  -- 'admin' | 'pos'
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.usuarios ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow all usuarios" ON public.usuarios FOR ALL USING (TRUE) WITH CHECK (TRUE);
+
+-- Datos iniciales de usuarios
+INSERT INTO public.usuarios (username, password, rol) VALUES
+  ('kangaroo1', '123', 'admin'),
+  ('kangaroo2', '123', 'pos')
+ON CONFLICT (username) DO NOTHING;
+
 -- Log de autorizaciones (registra qué clave autorizó cada acción sensible)
 CREATE TABLE IF NOT EXISTS public.audit_log (
   id           BIGSERIAL PRIMARY KEY,

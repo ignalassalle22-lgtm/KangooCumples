@@ -74,6 +74,7 @@ function PinModal({ claves, msg, onConfirm, onCancel }) {
 }
 
 import Topbar from './components/Topbar'
+import Login from './components/Login'
 
 // Cumpleaños
 import EventosList from './components/EventosList'
@@ -111,6 +112,25 @@ import { usePedidos } from './hooks/usePedidos'
 import { useProveedores } from './hooks/useProveedores'
 
 export default function App() {
+  // ── Auth ──
+  const [usuario, setUsuario] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('kf_usuario')) || null } catch { return null }
+  })
+
+  const handleLogin = (u) => {
+    setUsuario(u)
+    localStorage.setItem('kf_usuario', JSON.stringify(u))
+  }
+
+  const handleLogout = () => {
+    setUsuario(null)
+    localStorage.removeItem('kf_usuario')
+  }
+
+  if (!usuario) return <Login onLogin={handleLogin} />
+
+  const isAdmin = usuario.rol === 'admin'
+
   // ── Cumpleaños ──
   const {
     eventos, loading: evLoading, error,
@@ -143,8 +163,14 @@ export default function App() {
   }, [cajasAbiertas])
 
   // ── UI State ──
+  const SECCIONES_POS = ['eventos', 'calendario', 'ventas', 'pedidos', 'compras', 'caja', 'productos']
   const [activeSection, setActiveSection] = useState('eventos')
   const [calView, setCalView] = useState('semana')
+
+  const handleNav = useCallback((sec) => {
+    if (!isAdmin && !SECCIONES_POS.includes(sec)) return
+    setActiveSection(sec)
+  }, [isAdmin])
   const [pinModal, setPinModal] = useState({ show: false, onConfirm: null, msg: '' })
   const [toasts, setToasts] = useState([])
 
@@ -517,10 +543,12 @@ export default function App() {
     <>
       <Topbar
         activeSection={activeSection}
-        onNav={setActiveSection}
+        onNav={handleNav}
         onNuevo={() => handleOpenModal()}
         cajaActual={cajaActual}
         onNavCofre={handleNavToCofre}
+        usuario={usuario}
+        onLogout={handleLogout}
       />
 
       <div className="content">
