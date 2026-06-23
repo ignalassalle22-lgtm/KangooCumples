@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
+import { supabase } from '../supabase'
 
 
 export default function Config({ config, updateConfig, addToast, productos = [], categorias = [], empleados = [], saveEmpleado, toggleEmpleado, deleteEmpleado, askPin }) {
@@ -21,6 +22,9 @@ export default function Config({ config, updateConfig, addToast, productos = [],
   const [nuevaClavPin, setNuevaClavPin] = useState('')
   const [editClavIdx, setEditClavIdx] = useState(null)
   const [editClavPin, setEditClavPin] = useState('')
+  const [auditLog, setAuditLog] = useState(null) // null = no cargado, [] = vacío
+  const [auditLoading, setAuditLoading] = useState(false)
+  const [auditFiltro, setAuditFiltro] = useState('')
   const [menuExpandido, setMenuExpandido] = useState(null)
   const [compProdSearch, setCompProdSearch] = useState('')
   const [compProdSel, setCompProdSel] = useState(null)
@@ -207,6 +211,18 @@ export default function Config({ config, updateConfig, addToast, productos = [],
     setEditClavIdx(null); setEditClavPin('')
     addToast(`Código de "${claves[idx].nombre}" actualizado ✓`)
   }
+
+  const fetchAuditLog = useCallback(async () => {
+    setAuditLoading(true)
+    const { data, error } = await supabase
+      .from('audit_log')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    if (error) { addToast('Error al cargar historial: ' + error.message, 'err') }
+    else { setAuditLog(data || []) }
+    setAuditLoading(false)
+  }, [addToast])
 
   // ── Precios base ──
   const savePrices = () => {
@@ -666,6 +682,81 @@ export default function Config({ config, updateConfig, addToast, productos = [],
             </div>
           )}
         </div>
+        {/* Historial de autorizaciones */}
+        <div className="cc" style={{ gridColumn: '1/-1' }}>
+          <div className="ct"><div className="ct-icon">📋</div>Historial de autorizaciones</div>
+          <div style={{ fontSize: 12, color: 'var(--mu)', marginBottom: 12 }}>
+            Registro de todas las acciones sensibles autorizadas con clave, con fecha/hora y qué clave se usó.
+          </div>
+
+          {auditLog === null ? (
+            <button className="bn bsm" onClick={fetchAuditLog} disabled={auditLoading}>
+              {auditLoading ? 'Cargando...' : '🔍 Ver historial'}
+            </button>
+          ) : (
+            <>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+                <input
+                  placeholder="Filtrar por clave o acción..."
+                  value={auditFiltro}
+                  onChange={e => setAuditFiltro(e.target.value)}
+                  style={{ flex: 1, minWidth: 200 }}
+                />
+                <button className="bg2 bsm" onClick={fetchAuditLog} disabled={auditLoading}>
+                  {auditLoading ? '...' : '↺ Actualizar'}
+                </button>
+                <span style={{ fontSize: 12, color: 'var(--mu)' }}>
+                  {auditLog.length} registros
+                </span>
+              </div>
+
+              {(() => {
+                const filtrados = auditFiltro.trim()
+                  ? auditLog.filter(r =>
+                      r.clave_nombre?.toLowerCase().includes(auditFiltro.toLowerCase()) ||
+                      r.accion?.toLowerCase().includes(auditFiltro.toLowerCase())
+                    )
+                  : auditLog
+                return filtrados.length === 0 ? (
+                  <div style={{ fontSize: 13, color: 'var(--mu2)', padding: '10px 0' }}>
+                    {auditFiltro ? 'Sin resultados para ese filtro.' : 'No hay registros aún.'}
+                  </div>
+                ) : (
+                  <div className="vtable-wrap">
+                    <table className="vtable">
+                      <thead>
+                        <tr>
+                          <th>Fecha y hora</th>
+                          <th>Clave</th>
+                          <th>Acción autorizada</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtrados.map(r => {
+                          const dt = new Date(r.created_at)
+                          const fecha = dt.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                          const hora = dt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+                          return (
+                            <tr key={r.id}>
+                              <td style={{ fontSize: 12, color: 'var(--mu)', whiteSpace: 'nowrap' }}>{fecha} {hora}</td>
+                              <td>
+                                <span style={{ background: 'var(--nv3)', color: 'var(--nv)', fontWeight: 700, fontSize: 12, padding: '2px 10px', borderRadius: 20 }}>
+                                  {r.clave_nombre}
+                                </span>
+                              </td>
+                              <td style={{ fontSize: 13 }}>{r.accion}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })()}
+            </>
+          )}
+        </div>
+
       </div>
     </>
   )
