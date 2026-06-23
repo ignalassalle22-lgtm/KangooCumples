@@ -19,7 +19,7 @@ export default function Login({ onLogin }) {
       .eq('password', password)
       .maybeSingle()
     setLoading(false)
-    if (error) { setErr('Error de conexión. Intentá de nuevo.'); return }
+    if (error) { setErr('Error: ' + error.message); return }
     if (!data) { setErr('Usuario o contraseña incorrectos.'); return }
     onLogin(data)
   }
