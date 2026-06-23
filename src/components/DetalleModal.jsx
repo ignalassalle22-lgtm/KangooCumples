@@ -29,8 +29,13 @@ export default function DetalleModal({ evento: ev, config, onClose, onEditar, on
 
   const extrasDetail = ev.extras && ev.extras.length
     ? ev.extras.map(e => {
+        if (e.custom) {
+          return e.desc ? `${e.desc} ×${e.qty} = ${fmt((e.p || 0) * e.qty)}` : null
+        }
         const ex = config.extras.find(x => String(x.id) === String(e.eid))
-        return ex ? `${ex.n} ×${e.qty} = ${fmt(ex.p * e.qty)}` : null
+        if (!ex) return null
+        const price = e.p !== undefined ? e.p : ex.p
+        return `${ex.n} ×${e.qty} = ${fmt(price * e.qty)}`
       }).filter(Boolean).join(' | ')
     : null
 
