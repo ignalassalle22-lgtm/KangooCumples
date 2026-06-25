@@ -21,70 +21,75 @@ function imprimirCierre({ caja, horaCierre, ticketsCount, totalVentas, totalEfec
     `<tr><td style="padding:2px 0 2px 20px;color:#555;font-size:12px">${m}</td><td style="text-align:right;font-size:12px">${fmtP(desglose[m])}</td></tr>`
   ).join('')
 
+  const sep  = '--------------------------------'
+  const sep2 = '================================'
+
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Cierre de Caja — ${caja.nombre || 'Caja'}</title>
+<title>Cierre — ${caja.nombre || 'Caja'}</title>
 <style>
+  @page { size: 80mm auto; margin: 2mm 3mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Courier New', monospace; font-size: 13px; color: #111; background: #fff; padding: 20px; max-width: 360px; }
-  h1 { font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 2px; letter-spacing: 1px; }
-  .sub { text-align: center; font-size: 11px; color: #666; margin-bottom: 10px; }
-  hr { border: none; border-top: 1px dashed #aaa; margin: 8px 0; }
-  hr.solid { border-top: 1px solid #333; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 11px; color: #000; background: #fff; width: 74mm; }
+  h1 { font-size: 13px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 1px; }
+  .sub { text-align: center; font-size: 10px; margin-bottom: 4px; }
+  pre { font-family: inherit; font-size: 11px; margin: 3px 0; color: #555; }
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 3px 0; vertical-align: top; }
-  td:last-child { text-align: right; white-space: nowrap; }
-  .section-title { font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: .08em; color: #888; margin: 8px 0 4px; }
-  .total-row td { font-weight: bold; font-size: 14px; padding-top: 6px; }
-  .dif-row td { font-weight: bold; font-size: 15px; color: ${difColor}; }
-  @media print { @page { margin: 6mm; } }
+  td { padding: 1px 0; vertical-align: top; font-size: 11px; }
+  td.r { text-align: right; white-space: nowrap; }
+  td.ind { padding-left: 10px; color: #444; }
+  .section { font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: .06em; margin: 5px 0 2px; }
+  .bold td { font-weight: bold; }
+  .big td { font-size: 13px; font-weight: bold; padding-top: 3px; }
+  .dif td { font-size: 13px; font-weight: bold; color: ${difColor}; }
+  .foot { text-align: center; font-size: 10px; color: #666; margin-top: 6px; }
 </style>
 </head>
 <body>
 <h1>CIERRE DE CAJA</h1>
 <div class="sub">Kangaroo Fun</div>
-<hr class="solid">
+<pre>${sep2}</pre>
 <table>
-  <tr><td>Caja</td><td><b>${caja.nombre || 'Caja'}</b></td></tr>
-  ${caja.turno ? `<tr><td>Turno</td><td>${caja.turno}</td></tr>` : ''}
-  <tr><td>Fecha</td><td>${caja.fecha || ''}</td></tr>
-  <tr><td>Apertura</td><td>${caja.hora_apertura || '—'} hs</td></tr>
-  <tr><td>Cierre</td><td>${horaCierre} hs</td></tr>
+  <tr><td>Caja</td><td class="r"><b>${caja.nombre || 'Caja'}</b></td></tr>
+  ${caja.turno ? `<tr><td>Turno</td><td class="r">${caja.turno}</td></tr>` : ''}
+  <tr><td>Fecha</td><td class="r">${caja.fecha || ''}</td></tr>
+  <tr><td>Apertura</td><td class="r">${caja.hora_apertura || '—'} hs</td></tr>
+  <tr><td>Cierre</td><td class="r">${horaCierre} hs</td></tr>
 </table>
-<hr>
+<pre>${sep}</pre>
 
-<div class="section-title">Ventas</div>
+<div class="section">Ventas</div>
 <table>
-  <tr><td>Total tickets</td><td>${ticketsCount}</td></tr>
-  <tr><td>Total ventas</td><td><b>${fmtP(totalVentas)}</b></td></tr>
-  <tr><td>Efectivo</td><td>${fmtP(totalEfectivo)}</td></tr>
-  <tr><td>Online</td><td>${fmtP(totalOnline)}</td></tr>
+  <tr><td>Tickets</td><td class="r">${ticketsCount}</td></tr>
+  <tr class="bold"><td>Total ventas</td><td class="r">${fmtP(totalVentas)}</td></tr>
+  <tr><td>Efectivo</td><td class="r">${fmtP(totalEfectivo)}</td></tr>
+  <tr><td>Online</td><td class="r">${fmtP(totalOnline)}</td></tr>
   ${onlineRows}
 </table>
 
 ${totalGastos > 0 ? `
-<hr>
-<div class="section-title">Egresos</div>
+<pre>${sep}</pre>
+<div class="section">Egresos</div>
 <table>
-  <tr><td><b>Total egresos</b></td><td style="color:#dc2626"><b>−${fmtP(totalGastos)}</b></td></tr>
+  <tr class="bold"><td>Total egresos</td><td class="r">−${fmtP(totalGastos)}</td></tr>
   ${gastosRows}
 </table>
 ` : ''}
 
-<hr class="solid">
-<div class="section-title">Balance</div>
+<pre>${sep2}</pre>
+<div class="section">Balance</div>
 <table>
-  <tr><td>Saldo inicial</td><td>${fmtP(caja.saldo_inicial)}</td></tr>
-  <tr><td>+ Efectivo cobrado</td><td>+${fmtP(totalEfectivo)}</td></tr>
-  ${totalGastos > 0 ? `<tr><td>− Egresos</td><td style="color:#dc2626">−${fmtP(totalGastos)}</td></tr>` : ''}
-  <tr class="total-row"><td>Total teórico</td><td>${fmtP(efectivoEsperado)}</td></tr>
-  <tr><td>Total real (contado)</td><td>${fmtP(saldoFinal)}</td></tr>
-  <tr class="dif-row"><td>Diferencia</td><td>${signo(diferencia)}${fmtP(diferencia)}</td></tr>
+  <tr><td>Saldo inicial</td><td class="r">${fmtP(caja.saldo_inicial)}</td></tr>
+  <tr><td>+ Efectivo cobrado</td><td class="r">+${fmtP(totalEfectivo)}</td></tr>
+  ${totalGastos > 0 ? `<tr><td>− Egresos</td><td class="r">−${fmtP(totalGastos)}</td></tr>` : ''}
+  <tr class="big"><td>Total teorico</td><td class="r">${fmtP(efectivoEsperado)}</td></tr>
+  <tr class="big"><td>Total real</td><td class="r">${fmtP(saldoFinal)}</td></tr>
+  <tr class="dif"><td>Diferencia</td><td class="r">${signo(diferencia)}${fmtP(diferencia)}</td></tr>
 </table>
-<hr class="solid">
-<p style="text-align:center;font-size:11px;color:#888;margin-top:8px">Kangaroo Fun · ${new Date().toLocaleString('es-AR')}</p>
+<pre>${sep2}</pre>
+<div class="foot">${new Date().toLocaleString('es-AR')}</div>
 </body></html>`
 
   const iframe = document.createElement('iframe')
