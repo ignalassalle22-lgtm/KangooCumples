@@ -27,18 +27,17 @@ export default function ReportesVentas({ ventas }) {
     return { total, count, ticket, descuentos }
   }, [ventasFiltradas])
 
-  // Por producto — excluye ventas generadas por cierres/adicionales de eventos
-  const esVentaEvento = (v) => v.obs && (
-    v.obs.startsWith('Adicionales evento') ||
-    v.obs.startsWith('Finalización evento')
-  )
-
+  // Por producto — excluye ventas y líneas generadas por cierres/adicionales de eventos
   const porProducto = useMemo(() => {
     const map = {}
     for (const v of ventasFiltradas) {
-      if (esVentaEvento(v)) continue
+      // Excluir ventas completas de eventos por su obs
+      const obs = v.obs || ''
+      if (obs.startsWith('Adicionales evento') || obs.startsWith('Finalización evento')) continue
       for (const it of (v.venta_items || [])) {
         const key = it.nombre_producto || '(sin nombre)'
+        // Excluir ítems de saldo de evento aunque el obs no matchee
+        if (key.startsWith('Saldo evento')) continue
         if (!map[key]) map[key] = { nombre: key, cantidad: 0, total: 0 }
         map[key].cantidad += it.cantidad
         map[key].total += it.subtotal
