@@ -559,6 +559,7 @@ function AppInner({ usuario, onLogout }) {
               onEditar={handleOpenModal} onEliminar={handleDelete}
               onNuevo={() => handleOpenModal()} onVerDetalle={handleOpenDetalle}
               onAbrirCaja={handleAbrirCajaEvento} onFinalizar={handleAbrirFinalizar}
+              isAdmin={isAdmin}
             />
           </div>
         )}
@@ -580,7 +581,22 @@ function AppInner({ usuario, onLogout }) {
             </div>
             {calView === 'semana'
               ? <CalendarioSemana eventos={eventos} onEditar={handleOpenModal} onVerDetalle={handleOpenDetalle} />
-              : <CalendarioMes eventos={eventos} onEditar={handleOpenModal} onVerDetalle={handleOpenDetalle} />
+              : <CalendarioMes
+                  eventos={eventos} onEditar={handleOpenModal} onVerDetalle={handleOpenDetalle}
+                  notas={config.notas_calendario || []}
+                  onSaveNota={async (nota) => {
+                    const notas = config.notas_calendario || []
+                    const newNotas = nota.id
+                      ? notas.map(n => n.id === nota.id ? nota : n)
+                      : [...notas, { ...nota, id: String(Date.now()) }]
+                    await updateConfig('notas_calendario', newNotas)
+                  }}
+                  onDeleteNota={async (id) => {
+                    const notas = config.notas_calendario || []
+                    await updateConfig('notas_calendario', notas.filter(n => n.id !== id))
+                  }}
+                  isAdmin={isAdmin}
+                />
             }
           </div>
         )}
@@ -620,6 +636,7 @@ function AppInner({ usuario, onLogout }) {
             onAnular={handleAnularVenta}
             fetchVentas={fetchVentas}
             empleados={empleados}
+            isAdmin={isAdmin}
           />
         )}
 

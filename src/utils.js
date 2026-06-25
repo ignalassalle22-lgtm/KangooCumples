@@ -34,6 +34,7 @@ export const DEFAULT_CONFIG = {
   pAdulto: 2500,
   pin: '',
   claves: [],
+  notas_calendario: [],
   mets_caja: ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro'],
   menu_digital: {
     activo: false,

@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react'
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 const hoy = () => new Date().toISOString().slice(0, 10)
 
-export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular, fetchVentas, empleados = [] }) {
+export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular, fetchVentas, empleados = [], isAdmin = true }) {
   const [desde, setDesde] = useState(hoy())
   const [hasta, setHasta] = useState(hoy())
   const [filtroEstado, setFiltroEstado] = useState('')
@@ -54,12 +54,14 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
         </div>
       )}
 
-      <div className="sr" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 20 }}>
-        <div className="sc"><div className="sl">Ventas</div><div className="sv">{stats.count}</div></div>
-        <div className="sc"><div className="sl">Total facturado</div><div className="sv gn">{fmt(stats.total)}</div></div>
-        <div className="sc"><div className="sl">Ticket promedio</div><div className="sv">{fmt(stats.ticket)}</div></div>
-        <div className="sc"><div className="sl">Efectivo</div><div className="sv">{fmt(stats.efectivo)}</div></div>
-      </div>
+      {isAdmin && (
+        <div className="sr" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 20 }}>
+          <div className="sc"><div className="sl">Ventas</div><div className="sv">{stats.count}</div></div>
+          <div className="sc"><div className="sl">Total facturado</div><div className="sv gn">{fmt(stats.total)}</div></div>
+          <div className="sc"><div className="sl">Ticket promedio</div><div className="sv">{fmt(stats.ticket)}</div></div>
+          <div className="sc"><div className="sl">Efectivo</div><div className="sv">{fmt(stats.efectivo)}</div></div>
+        </div>
+      )}
 
       <div className="filter-bar" style={{ marginBottom: 16, background: 'var(--wh)', border: '1px solid var(--bd)', borderRadius: 12, padding: '14px 16px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>

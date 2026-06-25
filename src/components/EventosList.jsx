@@ -13,7 +13,7 @@ function getMonthLabel(key) {
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
-export default function EventosList({ eventos, loading, onEditar, onEliminar, onNuevo, onVerDetalle, onAbrirCaja, onFinalizar }) {
+export default function EventosList({ eventos, loading, onEditar, onEliminar, onNuevo, onVerDetalle, onAbrirCaja, onFinalizar, isAdmin = true }) {
   const [search, setSearch] = useState('')
   const [filterPago, setFilterPago] = useState('')
   const [filterFecha, setFilterFecha] = useState('')
@@ -84,12 +84,14 @@ export default function EventosList({ eventos, loading, onEditar, onEliminar, on
         <button className="bp" onClick={onNuevo}>＋ Nuevo evento</button>
       </div>
 
-      <div className="sr">
-        <div className="sc"><div className="sl">Eventos este mes</div><div className="sv">{stats.mesMes}</div></div>
-        <div className="sc"><div className="sl">Total cobrado</div><div className="sv gn">{fmt(stats.cobrado)}</div></div>
-        <div className="sc"><div className="sl">Pendiente de cobro</div><div className="sv am">{fmt(stats.pend)}</div></div>
-        <div className="sc"><div className="sl">Chicos este mes</div><div className="sv">{stats.chicos}</div></div>
-      </div>
+      {isAdmin && (
+        <div className="sr">
+          <div className="sc"><div className="sl">Eventos este mes</div><div className="sv">{stats.mesMes}</div></div>
+          <div className="sc"><div className="sl">Total cobrado</div><div className="sv gn">{fmt(stats.cobrado)}</div></div>
+          <div className="sc"><div className="sl">Pendiente de cobro</div><div className="sv am">{fmt(stats.pend)}</div></div>
+          <div className="sc"><div className="sl">Chicos este mes</div><div className="sv">{stats.chicos}</div></div>
+        </div>
+      )}
 
       <div className="filter-bar">
         <input
