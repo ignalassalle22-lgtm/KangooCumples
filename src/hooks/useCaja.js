@@ -41,11 +41,11 @@ export function useCaja() {
     return data
   }
 
-  const cerrarCaja = async ({ cajaId, saldo_final, obs_cierre, total_ventas, total_efectivo }) => {
+  const cerrarCaja = async ({ cajaId, saldo_final, obs_cierre, total_ventas, total_efectivo, empleado_cierre }) => {
     const hora_cierre = new Date().toTimeString().slice(0, 5)
     const { data, error } = await supabase
       .from('cajas')
-      .update({ saldo_final, obs_cierre, hora_cierre, estado: 'cerrada', total_ventas, total_efectivo })
+      .update({ saldo_final, obs_cierre, hora_cierre, estado: 'cerrada', total_ventas, total_efectivo, empleado_cierre: empleado_cierre || null })
       .eq('id', cajaId)
       .select()
       .single()

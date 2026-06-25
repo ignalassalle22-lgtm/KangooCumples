@@ -191,7 +191,7 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
       setSaving(true)
       const horaCierre = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
       try {
-        await onCerrar({ cajaId: caja.id, saldo_final: sf, obs_cierre: obs, total_ventas: totalVentas, total_efectivo: totalEfectivo })
+        await onCerrar({ cajaId: caja.id, saldo_final: sf, obs_cierre: obs, total_ventas: totalVentas, total_efectivo: totalEfectivo, empleado_cierre: empleadoCierre })
         addToast(`✓ Caja "${caja.nombre || ''}" cerrada`)
         imprimirCierre({
           caja,
@@ -624,6 +624,7 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                       <th className="num">Efect. esperado</th>
                       <th className="num">Contado</th>
                       <th className="num">Diferencia</th>
+                      <th>Responsable</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -658,6 +659,9 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                             }}>
                               {diff >= 0 ? '+' : ''}{fmt(diff)}
                             </td>
+                            <td style={{ fontSize: 13, color: 'var(--mu)', fontWeight: c.empleado_cierre ? 600 : 400 }}>
+                              {c.empleado_cierre || '—'}
+                            </td>
                             <td style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
                               <button
                                 className="bg2 bsm"
@@ -671,6 +675,7 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                                 onClick={() => imprimirCierre({
                                   caja: c,
                                   horaCierre: c.hora_cierre || '—',
+                                  empleado: c.empleado_cierre || '',
                                   ticketsCount: ventasCerrada.length,
                                   totalVentas: c.total_ventas || 0,
                                   totalEfectivo: c.total_efectivo || 0,

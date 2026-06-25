@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS public.cajas (
 -- Migración (si la tabla ya existe, ejecutar en Supabase SQL Editor):
 -- ALTER TABLE public.cajas ADD COLUMN IF NOT EXISTS nombre TEXT DEFAULT 'Caja';
 -- ALTER TABLE public.cajas ADD COLUMN IF NOT EXISTS turno TEXT;
+-- ALTER TABLE public.cajas ADD COLUMN IF NOT EXISTS empleado_cierre TEXT;
 
 -- Empleados
 CREATE TABLE IF NOT EXISTS public.empleados (
