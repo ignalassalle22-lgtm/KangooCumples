@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { Chart, registerables } from 'chart.js'
-import { fmt } from '../utils'
+import { fmt, downloadCSV } from '../utils'
 
 Chart.register(...registerables)
 
@@ -251,7 +251,35 @@ export default function Metricas({ eventos }) {
 
       {/* Tabla por mes */}
       <div className="met-table-wrap">
-        <div className="met-chart-title">Detalle por mes</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div className="met-chart-title" style={{ marginBottom: 0 }}>Detalle por mes</div>
+          {sortedMonths.length > 0 && (
+            <button className="bg2 bsm" onClick={() => {
+              const rows = [['Mes', 'Eventos', 'Chicos', 'Prom. chicos', 'Ingresos', 'Cobrado', 'Pendiente', 'Ticket prom.']]
+              sortedMonths.forEach(m => {
+                const d = byMonth[m]
+                const [y, mo] = m.split('-')
+                const lbl = new Date(y, mo - 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+                rows.push([
+                  lbl.charAt(0).toUpperCase() + lbl.slice(1),
+                  d.count, d.chicos,
+                  d.count ? (d.chicos / d.count).toFixed(1) : 0,
+                  d.ingresos.toFixed(2), d.cobrado.toFixed(2),
+                  (d.ingresos - d.cobrado).toFixed(2),
+                  d.count ? Math.round(d.ingresos / d.count) : 0,
+                ])
+              })
+              rows.push(['TOTAL', kpis.total, kpis.totalChicos,
+                kpis.total ? (kpis.totalChicos / kpis.total).toFixed(1) : 0,
+                kpis.ingresos.toFixed(2), kpis.cobrado.toFixed(2),
+                kpis.pendiente.toFixed(2), kpis.total ? Math.round(kpis.avgIngreso) : 0,
+              ])
+              downloadCSV(rows, `metricas-cumples_${desde}_${hasta}.csv`)
+            }}>
+              ⬇ Excel
+            </button>
+          )}
+        </div>
         {sortedMonths.length === 0 ? (
           <div style={{ padding: 16, color: 'var(--mu)', fontSize: 13 }}>Sin datos para mostrar.</div>
         ) : (

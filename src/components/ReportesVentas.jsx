@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react'
+import { downloadCSV } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
+const fmtNum = (n) => Number(n || 0).toFixed(2)
 
 function primerDiaMes() {
   const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10)
@@ -135,7 +137,17 @@ export default function ReportesVentas({ ventas }) {
       <div className="met-row2" style={{ gridTemplateColumns: '2fr 1fr' }}>
         {/* Ventas por día */}
         <div className="met-dist-wrap">
-          <div className="met-chart-title">Ventas por día</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div className="met-chart-title" style={{ marginBottom: 0 }}>Ventas por día</div>
+            {porDia.length > 0 && (
+              <button className="bg2 bsm" onClick={() => downloadCSV([
+                ['Fecha', 'Ventas', 'Total'],
+                ...porDia.map(d => [d.fecha, d.count, fmtNum(d.total)]),
+              ], `ventas-por-dia_${desde}_${hasta}.csv`)}>
+                ⬇ Excel
+              </button>
+            )}
+          </div>
           {porDia.length === 0
             ? <p style={{ fontSize: 13, color: 'var(--mu2)' }}>Sin datos en el período.</p>
             : porDia.map(d => (
@@ -174,7 +186,18 @@ export default function ReportesVentas({ ventas }) {
 
       {/* Top productos */}
       <div className="met-table-wrap">
-        <div className="met-chart-title">Ventas por artículo</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div className="met-chart-title" style={{ marginBottom: 0 }}>Ventas por artículo</div>
+          {porProducto.length > 0 && (
+            <button className="bg2 bsm" onClick={() => downloadCSV([
+              ['#', 'Producto', 'Unidades vendidas', 'Total'],
+              ...porProducto.map((p, i) => [i + 1, p.nombre, p.cantidad, fmtNum(p.total)]),
+              ['', 'TOTAL', porProducto.reduce((s, p) => s + p.cantidad, 0), fmtNum(porProducto.reduce((s, p) => s + p.total, 0))],
+            ], `ventas-por-articulo_${desde}_${hasta}.csv`)}>
+              ⬇ Excel
+            </button>
+          )}
+        </div>
         {porProducto.length === 0 ? (
           <p style={{ fontSize: 13, color: 'var(--mu2)' }}>Sin datos en el período.</p>
         ) : (
@@ -217,7 +240,21 @@ export default function ReportesVentas({ ventas }) {
 
       {/* Detalle de ventas */}
       <div className="met-table-wrap">
-        <div className="met-chart-title">Detalle de ventas del período</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div className="met-chart-title" style={{ marginBottom: 0 }}>Detalle de ventas del período</div>
+          {ventasFiltradas.length > 0 && (
+            <button className="bg2 bsm" onClick={() => downloadCSV([
+              ['Ticket', 'Fecha', 'Hora', 'Cliente', 'Método de pago', 'Subtotal', 'Descuento', 'Total', 'Estado', 'Obs'],
+              ...ventasFiltradas.map(v => [
+                v.numero || '', v.fecha, v.hora || '', v.cliente || '',
+                v.metodo_pago || '', fmtNum(v.subtotal), fmtNum(v.descuento),
+                fmtNum(v.total), v.estado || '', v.obs || '',
+              ]),
+            ], `detalle-ventas_${desde}_${hasta}.csv`)}>
+              ⬇ Excel
+            </button>
+          )}
+        </div>
         {ventasFiltradas.length === 0 ? (
           <p style={{ fontSize: 13, color: 'var(--mu2)' }}>Sin ventas en el período seleccionado.</p>
         ) : (
