@@ -45,21 +45,22 @@ function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descu
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Ticket ${numero}</title>
+<title></title>
 <style>
+  @page { size: 80mm 400mm; margin: 3mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Courier New', Courier, monospace; font-size: 6px; color: #000; background: #fff; width: 74mm; }
-  h1 { font-size: 8px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 1px; }
-  .sub2 { text-align: center; font-size: 6px; margin-bottom: 2px; }
-  pre { font-family: inherit; font-size: 6px; margin: 1px 0; color: #555; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 8px; color: #000; background: #fff; width: 74mm; }
+  h1 { font-size: 10px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 2px; }
+  .sub2 { text-align: center; font-size: 7px; margin-bottom: 2px; }
+  pre { font-family: inherit; font-size: 8px; margin: 2px 0; color: #555; }
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 1px 0; vertical-align: top; font-size: 6px; }
+  td { padding: 1px 0; vertical-align: top; font-size: 8px; }
   td.r { text-align: right; white-space: nowrap; }
-  td.sub { color: #444; font-size: 6px; padding-bottom: 2px; }
-  .big td { font-size: 7px; font-weight: bold; padding-top: 1px; }
-  .foot { text-align: center; font-size: 6px; color: #666; margin-top: 3px; }
-  .label { font-size: 7px; font-weight: bold; color: #000; letter-spacing: 1px; margin-bottom: 1px; }
-  .copy { page-break-after: always; padding-bottom: 3px; }
+  td.sub { color: #444; font-size: 7px; padding-bottom: 2px; }
+  .big td { font-size: 9px; font-weight: bold; padding-top: 2px; }
+  .foot { text-align: center; font-size: 7px; color: #666; margin-top: 4px; }
+  .label { font-size: 9px; font-weight: bold; color: #000; letter-spacing: 1px; margin-bottom: 1px; }
+  .copy { page-break-after: always; padding-bottom: 4px; }
   .copy:last-child { page-break-after: avoid; }
 </style>
 </head>

@@ -29,22 +29,23 @@ function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas,
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Cierre — ${caja.nombre || 'Caja'}</title>
+<title></title>
 <style>
+  @page { size: 80mm 250mm; margin: 3mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Courier New', Courier, monospace; font-size: 6px; color: #000; background: #fff; width: 74mm; }
-  h1 { font-size: 7px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 1px; }
-  .sub { text-align: center; font-size: 6px; margin-bottom: 2px; }
-  pre { font-family: inherit; font-size: 6px; margin: 1px 0; color: #555; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 8px; color: #000; background: #fff; width: 74mm; }
+  h1 { font-size: 10px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 2px; }
+  .sub { text-align: center; font-size: 8px; margin-bottom: 3px; }
+  pre { font-family: inherit; font-size: 8px; margin: 2px 0; color: #555; }
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 1px 0; vertical-align: top; font-size: 6px; }
+  td { padding: 1px 0; vertical-align: top; font-size: 8px; }
   td.r { text-align: right; white-space: nowrap; }
   td.ind { padding-left: 8px; color: #444; }
-  .section { font-size: 6px; font-weight: bold; text-transform: uppercase; letter-spacing: .04em; margin: 2px 0 1px; }
+  .section { font-size: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: .04em; margin: 3px 0 1px; }
   .bold td { font-weight: bold; }
-  .big td { font-size: 7px; font-weight: bold; padding-top: 1px; }
-  .dif td { font-size: 7px; font-weight: bold; color: ${difColor}; }
-  .foot { text-align: center; font-size: 6px; color: #666; margin-top: 3px; }
+  .big td { font-size: 9px; font-weight: bold; padding-top: 2px; }
+  .dif td { font-size: 9px; font-weight: bold; color: ${difColor}; }
+  .foot { text-align: center; font-size: 7px; color: #666; margin-top: 4px; }
 </style>
 </head>
 <body>
