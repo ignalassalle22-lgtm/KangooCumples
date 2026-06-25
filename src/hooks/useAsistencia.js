@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '../supabase'
 
+function diasEnMes(año, mes) { return new Date(año, mes, 0).getDate() }
+
 export function useAsistencia() {
   const [asistencias, setAsistencias] = useState([])
   const [observaciones, setObservaciones] = useState([])
@@ -10,10 +12,13 @@ export function useAsistencia() {
     setLoading(true)
     const desde = `${año}-${String(mes).padStart(2, '0')}-01`
     const hasta = `${año}-${String(mes).padStart(2, '0')}-31`
+    const hasta2 = `${año}-${String(mes).padStart(2, '0')}-${String(diasEnMes(año, mes)).padStart(2, '0')}`
     const [asistRes, obsRes] = await Promise.all([
-      supabase.from('asistencias').select('*').gte('fecha', desde).lte('fecha', hasta),
+      supabase.from('asistencias').select('*').gte('fecha', desde).lte('fecha', hasta2),
       supabase.from('asistencia_obs').select('*').eq('año', año).eq('mes', mes),
     ])
+    if (asistRes.error) console.error('Error fetch asistencias:', asistRes.error)
+    if (obsRes.error) console.error('Error fetch obs:', obsRes.error)
     setAsistencias(asistRes.data || [])
     setObservaciones(obsRes.data || [])
     setLoading(false)
