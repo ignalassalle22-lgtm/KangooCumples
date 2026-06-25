@@ -27,17 +27,26 @@ export default function ReportesVentas({ ventas }) {
     return { total, count, ticket, descuentos }
   }, [ventasFiltradas])
 
-  // Por producto — excluye ventas y líneas generadas por cierres/adicionales de eventos
+  // Detecta si una venta fue generada por cierre/adicionales de evento
+  const esVentaEvento = (v) => {
+    const obs = (v.obs || '').toLowerCase()
+    const cliente = (v.cliente || '').toLowerCase()
+    return (
+      obs.includes('adicionales evento') ||
+      obs.includes('finalización evento') ||
+      obs.includes('finalizacion evento') ||
+      cliente.endsWith('(evento)')
+    )
+  }
+
+  // Por producto — excluye ventas y líneas de eventos
   const porProducto = useMemo(() => {
     const map = {}
     for (const v of ventasFiltradas) {
-      // Excluir ventas completas de eventos por su obs
-      const obs = v.obs || ''
-      if (obs.startsWith('Adicionales evento') || obs.startsWith('Finalización evento')) continue
+      if (esVentaEvento(v)) continue
       for (const it of (v.venta_items || [])) {
         const key = it.nombre_producto || '(sin nombre)'
-        // Excluir ítems de saldo de evento aunque el obs no matchee
-        if (key.startsWith('Saldo evento')) continue
+        if (key.toLowerCase().startsWith('saldo evento')) continue
         if (!map[key]) map[key] = { nombre: key, cantidad: 0, total: 0 }
         map[key].cantidad += it.cantidad
         map[key].total += it.subtotal
@@ -113,9 +122,13 @@ export default function ReportesVentas({ ventas }) {
         <div className="met-kpi">
           <div className="met-kpi-label">Artículos vendidos</div>
           <div className="met-kpi-val or">
-            {ventasFiltradas.reduce((s, v) => s + (v.venta_items || []).reduce((a, it) => a + it.cantidad, 0), 0)}
+            {ventasFiltradas
+              .filter(v => !esVentaEvento(v))
+              .reduce((s, v) => s + (v.venta_items || [])
+                .filter(it => !(it.nombre_producto || '').toLowerCase().startsWith('saldo evento'))
+                .reduce((a, it) => a + it.cantidad, 0), 0)}
           </div>
-          <div className="met-kpi-sub">unidades</div>
+          <div className="met-kpi-sub">unidades (sin eventos)</div>
         </div>
       </div>
 
