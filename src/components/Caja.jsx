@@ -87,12 +87,16 @@ ${totalGastos > 0 ? `
 <p style="text-align:center;font-size:11px;color:#888;margin-top:8px">Kangaroo Fun · ${new Date().toLocaleString('es-AR')}</p>
 </body></html>`
 
-  const win = window.open('', '_blank', 'width=420,height=700,menubar=no,toolbar=no,scrollbars=yes')
-  if (!win) { alert('Habilitá las ventanas emergentes para imprimir.'); return }
-  win.document.write(html)
-  win.document.close()
-  win.focus()
-  setTimeout(() => { win.print() }, 400)
+  const iframe = document.createElement('iframe')
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none'
+  document.body.appendChild(iframe)
+  iframe.contentDocument.open()
+  iframe.contentDocument.write(html)
+  iframe.contentDocument.close()
+  setTimeout(() => {
+    try { iframe.contentWindow.focus(); iframe.contentWindow.print() } catch (_) {}
+    setTimeout(() => { try { document.body.removeChild(iframe) } catch (_) {} }, 2000)
+  }, 400)
 }
 
 function TicketDetalle({ venta, onClose }) {
@@ -607,7 +611,9 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                   </thead>
                   <tbody>
                     {historial.map(c => {
-                      const esperado = (c.saldo_inicial || 0) + (c.total_efectivo || 0)
+                      const gastosCaja = gastos.filter(g => g.caja_id === c.id)
+                      const totalGastosCaja = gastosCaja.reduce((s, g) => s + (g.monto || 0), 0)
+                      const esperado = (c.saldo_inicial || 0) + (c.total_efectivo || 0) - totalGastosCaja
                       const diff = (c.saldo_final || 0) - esperado
                       const expanded = histExpanded[c.id]
                       const ventasCerrada = ventas.filter(v => v.caja_id === c.id && v.estado !== 'anulada')
@@ -634,12 +640,31 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                             }}>
                               {diff >= 0 ? '+' : ''}{fmt(diff)}
                             </td>
-                            <td>
+                            <td style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
                               <button
                                 className="bg2 bsm"
                                 onClick={() => setHistExpanded(prev => ({ ...prev, [c.id]: !prev[c.id] }))}
                               >
                                 {expanded ? '▲' : '▼ Detalle'}
+                              </button>
+                              <button
+                                className="bg2 bsm"
+                                title="Reimprimir ticket de cierre"
+                                onClick={() => imprimirCierre({
+                                  caja: c,
+                                  horaCierre: c.hora_cierre || '—',
+                                  ticketsCount: ventasCerrada.length,
+                                  totalVentas: c.total_ventas || 0,
+                                  totalEfectivo: c.total_efectivo || 0,
+                                  desglose,
+                                  gastos: gastosCaja,
+                                  totalGastos: totalGastosCaja,
+                                  efectivoEsperado: esperado,
+                                  saldoFinal: c.saldo_final || 0,
+                                  diferencia: diff,
+                                })}
+                              >
+                                🖨
                               </button>
                             </td>
                           </tr>
