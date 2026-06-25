@@ -77,7 +77,7 @@ ${totalGastos > 0 ? `
 <div class="section-title">Balance</div>
 <table>
   <tr><td>Saldo inicial</td><td>${fmtP(caja.saldo_inicial)}</td></tr>
-  <tr><td>+ Ventas</td><td>+${fmtP(totalVentas)}</td></tr>
+  <tr><td>+ Efectivo cobrado</td><td>+${fmtP(totalEfectivo)}</td></tr>
   ${totalGastos > 0 ? `<tr><td>− Egresos</td><td style="color:#dc2626">−${fmtP(totalGastos)}</td></tr>` : ''}
   <tr class="total-row"><td>Total teórico</td><td>${fmtP(efectivoEsperado)}</td></tr>
   <tr><td>Total real (contado)</td><td>${fmtP(saldoFinal)}</td></tr>
