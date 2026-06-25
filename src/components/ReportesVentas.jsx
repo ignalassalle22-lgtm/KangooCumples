@@ -27,14 +27,21 @@ export default function ReportesVentas({ ventas }) {
     return { total, count, ticket, descuentos }
   }, [ventasFiltradas])
 
-  // Por producto
+  // Por producto — excluye ventas generadas por cierres/adicionales de eventos
+  const esVentaEvento = (v) => v.obs && (
+    v.obs.startsWith('Adicionales evento') ||
+    v.obs.startsWith('Finalización evento')
+  )
+
   const porProducto = useMemo(() => {
     const map = {}
     for (const v of ventasFiltradas) {
+      if (esVentaEvento(v)) continue
       for (const it of (v.venta_items || [])) {
-        if (!map[it.nombre_producto]) map[it.nombre_producto] = { nombre: it.nombre_producto, cantidad: 0, total: 0 }
-        map[it.nombre_producto].cantidad += it.cantidad
-        map[it.nombre_producto].total += it.subtotal
+        const key = it.nombre_producto || '(sin nombre)'
+        if (!map[key]) map[key] = { nombre: key, cantidad: 0, total: 0 }
+        map[key].cantidad += it.cantidad
+        map[key].total += it.subtotal
       }
     }
     return Object.values(map).sort((a, b) => b.total - a.total)
