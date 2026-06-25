@@ -14,11 +14,11 @@ function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas,
   const difColor = diferencia === 0 ? '#16a34a' : diferencia > 0 ? '#d97706' : '#dc2626'
 
   const gastosRows = gastos.map(g =>
-    `<tr><td style="padding:2px 0 2px 20px;color:#555;font-size:12px">${g.detalle || '—'}${g.persona ? ` (${g.persona})` : ''}</td><td style="text-align:right;color:#dc2626;font-size:12px">−${fmtP(g.monto)}</td></tr>`
+    `<tr><td style="padding:1px 0 1px 12px;color:#555">${g.detalle || '—'}${g.persona ? ` (${g.persona})` : ''}</td><td style="text-align:right;color:#dc2626">−${fmtP(g.monto)}</td></tr>`
   ).join('')
 
   const onlineRows = onlineMetodos.map(m =>
-    `<tr><td style="padding:2px 0 2px 20px;color:#555;font-size:12px">${m}</td><td style="text-align:right;font-size:12px">${fmtP(desglose[m])}</td></tr>`
+    `<tr><td style="padding:1px 0 1px 12px;color:#555">${m}</td><td style="text-align:right">${fmtP(desglose[m])}</td></tr>`
   ).join('')
 
   const sep  = '--------------------------------'
@@ -30,21 +30,22 @@ function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas,
 <meta charset="UTF-8">
 <title>Cierre — ${caja.nombre || 'Caja'}</title>
 <style>
-  @page { size: 80mm auto; margin: 2mm 3mm; }
+  @page { size: 80mm auto; margin: 1mm 3mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Courier New', Courier, monospace; font-size: 11px; color: #000; background: #fff; width: 74mm; }
-  h1 { font-size: 13px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 1px; }
-  .sub { text-align: center; font-size: 10px; margin-bottom: 4px; }
-  pre { font-family: inherit; font-size: 11px; margin: 3px 0; color: #555; }
+  html, body { height: auto; overflow: hidden; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 9px; color: #000; background: #fff; width: 74mm; }
+  h1 { font-size: 11px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 1px; }
+  .sub { text-align: center; font-size: 8px; margin-bottom: 3px; }
+  pre { font-family: inherit; font-size: 9px; margin: 2px 0; color: #555; }
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 1px 0; vertical-align: top; font-size: 11px; }
+  td { padding: 1px 0; vertical-align: top; font-size: 9px; }
   td.r { text-align: right; white-space: nowrap; }
   td.ind { padding-left: 10px; color: #444; }
-  .section { font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: .06em; margin: 5px 0 2px; }
+  .section { font-size: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: .06em; margin: 4px 0 1px; }
   .bold td { font-weight: bold; }
-  .big td { font-size: 13px; font-weight: bold; padding-top: 3px; }
-  .dif td { font-size: 13px; font-weight: bold; color: ${difColor}; }
-  .foot { text-align: center; font-size: 10px; color: #666; margin-top: 6px; }
+  .big td { font-size: 10px; font-weight: bold; padding-top: 2px; }
+  .dif td { font-size: 10px; font-weight: bold; color: ${difColor}; }
+  .foot { text-align: center; font-size: 8px; color: #666; margin-top: 5px; }
 </style>
 </head>
 <body>
