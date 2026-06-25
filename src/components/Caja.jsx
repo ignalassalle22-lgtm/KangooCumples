@@ -31,7 +31,7 @@ function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas,
 <meta charset="UTF-8">
 <title></title>
 <style>
-  @page { size: 80mm 250mm; margin: 3mm; }
+  @page { size: 80mm 130mm; margin: 3mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Courier New', Courier, monospace; font-size: 8px; color: #000; background: #fff; width: 74mm; }
   h1 { font-size: 10px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 2px; }
