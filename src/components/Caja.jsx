@@ -1,8 +1,99 @@
 import React, { useState, useMemo } from 'react'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
+const fmtNum = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 
 const METODOS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
+
+function imprimirCierre({ caja, horaCierre, ticketsCount, totalVentas, totalEfectivo, desglose, gastos, totalGastos, efectivoEsperado, saldoFinal, diferencia }) {
+  const totalOnline = totalVentas - totalEfectivo
+  const onlineMetodos = METODOS_PAGO.filter(m => m !== 'Efectivo' && desglose[m] > 0)
+
+  const fmtP = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
+  const signo = (n) => n >= 0 ? '+' : ''
+  const difColor = diferencia === 0 ? '#16a34a' : diferencia > 0 ? '#d97706' : '#dc2626'
+
+  const gastosRows = gastos.map(g =>
+    `<tr><td style="padding:2px 0 2px 20px;color:#555;font-size:12px">${g.detalle || '—'}${g.persona ? ` (${g.persona})` : ''}</td><td style="text-align:right;color:#dc2626;font-size:12px">−${fmtP(g.monto)}</td></tr>`
+  ).join('')
+
+  const onlineRows = onlineMetodos.map(m =>
+    `<tr><td style="padding:2px 0 2px 20px;color:#555;font-size:12px">${m}</td><td style="text-align:right;font-size:12px">${fmtP(desglose[m])}</td></tr>`
+  ).join('')
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Cierre de Caja — ${caja.nombre || 'Caja'}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Courier New', monospace; font-size: 13px; color: #111; background: #fff; padding: 20px; max-width: 360px; }
+  h1 { font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 2px; letter-spacing: 1px; }
+  .sub { text-align: center; font-size: 11px; color: #666; margin-bottom: 10px; }
+  hr { border: none; border-top: 1px dashed #aaa; margin: 8px 0; }
+  hr.solid { border-top: 1px solid #333; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 3px 0; vertical-align: top; }
+  td:last-child { text-align: right; white-space: nowrap; }
+  .section-title { font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: .08em; color: #888; margin: 8px 0 4px; }
+  .total-row td { font-weight: bold; font-size: 14px; padding-top: 6px; }
+  .dif-row td { font-weight: bold; font-size: 15px; color: ${difColor}; }
+  @media print { @page { margin: 6mm; } }
+</style>
+</head>
+<body>
+<h1>CIERRE DE CAJA</h1>
+<div class="sub">Kangaroo Fun</div>
+<hr class="solid">
+<table>
+  <tr><td>Caja</td><td><b>${caja.nombre || 'Caja'}</b></td></tr>
+  ${caja.turno ? `<tr><td>Turno</td><td>${caja.turno}</td></tr>` : ''}
+  <tr><td>Fecha</td><td>${caja.fecha || ''}</td></tr>
+  <tr><td>Apertura</td><td>${caja.hora_apertura || '—'} hs</td></tr>
+  <tr><td>Cierre</td><td>${horaCierre} hs</td></tr>
+</table>
+<hr>
+
+<div class="section-title">Ventas</div>
+<table>
+  <tr><td>Total tickets</td><td>${ticketsCount}</td></tr>
+  <tr><td>Total ventas</td><td><b>${fmtP(totalVentas)}</b></td></tr>
+  <tr><td>Efectivo</td><td>${fmtP(totalEfectivo)}</td></tr>
+  <tr><td>Online</td><td>${fmtP(totalOnline)}</td></tr>
+  ${onlineRows}
+</table>
+
+${totalGastos > 0 ? `
+<hr>
+<div class="section-title">Egresos</div>
+<table>
+  <tr><td><b>Total egresos</b></td><td style="color:#dc2626"><b>−${fmtP(totalGastos)}</b></td></tr>
+  ${gastosRows}
+</table>
+` : ''}
+
+<hr class="solid">
+<div class="section-title">Balance</div>
+<table>
+  <tr><td>Saldo inicial</td><td>${fmtP(caja.saldo_inicial)}</td></tr>
+  <tr><td>+ Ventas</td><td>+${fmtP(totalVentas)}</td></tr>
+  ${totalGastos > 0 ? `<tr><td>− Egresos</td><td style="color:#dc2626">−${fmtP(totalGastos)}</td></tr>` : ''}
+  <tr class="total-row"><td>Total teórico</td><td>${fmtP(efectivoEsperado)}</td></tr>
+  <tr><td>Total real (contado)</td><td>${fmtP(saldoFinal)}</td></tr>
+  <tr class="dif-row"><td>Diferencia</td><td>${signo(diferencia)}${fmtP(diferencia)}</td></tr>
+</table>
+<hr class="solid">
+<p style="text-align:center;font-size:11px;color:#888;margin-top:8px">Kangaroo Fun · ${new Date().toLocaleString('es-AR')}</p>
+</body></html>`
+
+  const win = window.open('', '_blank', 'width=420,height=700,menubar=no,toolbar=no,scrollbars=yes')
+  if (!win) { alert('Habilitá las ventanas emergentes para imprimir.'); return }
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  setTimeout(() => { win.print() }, 400)
+}
 
 function TicketDetalle({ venta, onClose }) {
   const fmt2 = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
@@ -86,9 +177,23 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
     if (isNaN(sf) || sf < 0) { addToast('Ingresá el efectivo contado en caja', 'err'); return }
     askPin(`Cerrar caja "${caja.nombre || 'Caja'}"${caja.turno ? ` (${caja.turno})` : ''} — efectivo contado: $${sf}.`, async () => {
       setSaving(true)
+      const horaCierre = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
       try {
         await onCerrar({ cajaId: caja.id, saldo_final: sf, obs_cierre: obs, total_ventas: totalVentas, total_efectivo: totalEfectivo })
         addToast(`✓ Caja "${caja.nombre || ''}" cerrada`)
+        imprimirCierre({
+          caja,
+          horaCierre,
+          ticketsCount: ventasCaja.length,
+          totalVentas,
+          totalEfectivo,
+          desglose,
+          gastos,
+          totalGastos,
+          efectivoEsperado,
+          saldoFinal: sf,
+          diferencia: sf - efectivoEsperado,
+        })
       } catch (e) { addToast('Error: ' + e.message, 'err') }
       finally { setSaving(false) }
     })
