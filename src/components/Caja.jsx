@@ -95,15 +95,22 @@ ${totalGastos > 0 ? `
 </body></html>`
 
   const iframe = document.createElement('iframe')
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none'
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;height:1px;border:none;visibility:hidden'
   document.body.appendChild(iframe)
   iframe.contentDocument.open()
   iframe.contentDocument.write(html)
   iframe.contentDocument.close()
   setTimeout(() => {
-    try { iframe.contentWindow.focus(); iframe.contentWindow.print() } catch (_) {}
+    try {
+      const body = iframe.contentDocument.body
+      const h = body.scrollHeight
+      body.style.height = h + 'px'
+      iframe.contentDocument.documentElement.style.height = h + 'px'
+      iframe.contentWindow.focus()
+      iframe.contentWindow.print()
+    } catch (_) {}
     setTimeout(() => { try { document.body.removeChild(iframe) } catch (_) {} }, 2000)
-  }, 400)
+  }, 500)
 }
 
 function TicketDetalle({ venta, onClose }) {
