@@ -4,6 +4,83 @@ const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', c
 const hoy = () => new Date().toISOString().slice(0, 10)
 const hora = () => new Date().toTimeString().slice(0, 5)
 
+function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descuento, total, metodoPago }) {
+  const sep = '--------------------------------'
+  const itemRows = items.map(it =>
+    `<tr>
+      <td>${it.nombre_producto}</td>
+      <td class="r">${it.cantidad} x ${fmt(it.precio_unitario)}</td>
+    </tr>
+    <tr><td colspan="2" class="r sub">${fmt(it.subtotal)}</td></tr>`
+  ).join('')
+
+  function copia(label) {
+    return `
+    <div class="copy">
+      <h1>KANGAROO FUN</h1>
+      <div class="sub2">Ticket de venta</div>
+      <pre>${sep}</pre>
+      <table>
+        <tr><td>Nº</td><td class="r"><b>${numero}</b></td></tr>
+        <tr><td>Fecha</td><td class="r">${fecha} ${horaStr}</td></tr>
+        ${cliente ? `<tr><td>Cliente</td><td class="r">${cliente}</td></tr>` : ''}
+      </table>
+      <pre>${sep}</pre>
+      <table>${itemRows}</table>
+      <pre>${sep}</pre>
+      <table>
+        ${descuento > 0 ? `<tr><td>Subtotal</td><td class="r">${fmt(subtotal)}</td></tr>
+        <tr><td>Descuento</td><td class="r">-${fmt(descuento)}</td></tr>` : ''}
+        <tr class="big"><td>TOTAL</td><td class="r">${fmt(total)}</td></tr>
+        <tr><td>Pago</td><td class="r">${metodoPago}</td></tr>
+      </table>
+      <pre>${sep}</pre>
+      <div class="foot label">${label}</div>
+      <div class="foot">Gracias por tu visita!</div>
+    </div>`
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Ticket ${numero}</title>
+<style>
+  @page { size: 80mm auto; margin: 1mm 3mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: auto; overflow: hidden; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 9px; color: #000; background: #fff; width: 74mm; }
+  h1 { font-size: 12px; font-weight: bold; text-align: center; letter-spacing: 2px; margin-bottom: 1px; }
+  .sub2 { text-align: center; font-size: 8px; margin-bottom: 3px; }
+  pre { font-family: inherit; font-size: 9px; margin: 2px 0; color: #555; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 1px 0; vertical-align: top; font-size: 9px; }
+  td.r { text-align: right; white-space: nowrap; }
+  td.sub { color: #444; font-size: 8px; padding-bottom: 3px; }
+  .big td { font-size: 11px; font-weight: bold; padding-top: 2px; }
+  .foot { text-align: center; font-size: 8px; color: #666; margin-top: 4px; }
+  .label { font-size: 10px; font-weight: bold; color: #000; letter-spacing: 2px; margin-bottom: 1px; }
+  .copy { page-break-after: always; padding-bottom: 4px; }
+  .copy:last-child { page-break-after: avoid; }
+</style>
+</head>
+<body>
+  ${copia('— CLIENTE —')}
+  ${copia('— COCINA —')}
+</body></html>`
+
+  const iframe = document.createElement('iframe')
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none'
+  document.body.appendChild(iframe)
+  iframe.contentDocument.open()
+  iframe.contentDocument.write(html)
+  iframe.contentDocument.close()
+  setTimeout(() => {
+    try { iframe.contentWindow.focus(); iframe.contentWindow.print() } catch (_) {}
+    setTimeout(() => { try { document.body.removeChild(iframe) } catch (_) {} }, 2000)
+  }, 400)
+}
+
 const METODOS_DEFAULT = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
 export default function TicketModal({ productos, cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, metodosPago, empleados = [], itemsIniciales = [], clienteInicial = '', onSave, onClose, addToast }) {
@@ -154,9 +231,11 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
 
     setSaving(true)
     try {
-      await onSave(
+      const fechaStr = hoy()
+      const horaStr = hora()
+      const ventaGuardada = await onSave(
         {
-          fecha: hoy(), hora: hora(), cliente,
+          fecha: fechaStr, hora: horaStr, cliente,
           subtotal, descuento: descuentoNum, total,
           metodo_pago: metodoPagoFinal,
           caja_id: cajaSeleccionadaId || null,
@@ -165,6 +244,19 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
         },
         items
       )
+      if (ventaGuardada) {
+        imprimirVenta({
+          numero: ventaGuardada.numero,
+          fecha: fechaStr,
+          horaStr,
+          cliente,
+          items,
+          subtotal,
+          descuento: descuentoNum,
+          total,
+          metodoPago: metodoPagoFinal,
+        })
+      }
     } catch (e) {
       addToast('Error: ' + e.message, 'err')
     } finally {

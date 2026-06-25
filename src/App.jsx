@@ -474,9 +474,10 @@ function AppInner({ usuario, onLogout }) {
 
   // ── Handlers ventas ──
   const handleSaveVenta = useCallback(async (venta, items) => {
-    await saveVenta(venta, items, updateStock)
+    const ventaGuardada = await saveVenta(venta, items, updateStock)
     setTicketModalOpen(false)
     addToast('✓ Venta registrada correctamente')
+    return ventaGuardada
   }, [saveVenta, updateStock, addToast])
 
   const handleAnularVenta = useCallback((id) => {
