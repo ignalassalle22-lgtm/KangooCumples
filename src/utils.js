@@ -1,17 +1,48 @@
 export const fmt = n => '$' + Math.round(n).toLocaleString('es-AR')
 
 // Imprime HTML en tiktetera de 80mm.
-// IMPORTANTE: En Chrome, desactivar "Encabezados y pies de página" en el diálogo de impresión.
+// Hace dos pasadas: primero mide el contenido real, luego reescribe el HTML
+// con el @page exacto para evitar hoja en blanco.
+// IMPORTANTE: En Chrome, desactivar "Encabezados y pies de página".
 export function imprimirTicket(html) {
   const iframe = document.createElement('iframe')
   iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;height:1px;border:none;visibility:hidden'
   document.body.appendChild(iframe)
-  iframe.contentDocument.open()
-  iframe.contentDocument.write(html)
-  iframe.contentDocument.close()
+
+  function escribir(contenido) {
+    iframe.contentDocument.open()
+    iframe.contentDocument.write(contenido)
+    iframe.contentDocument.close()
+  }
+
+  // Pasada 1: renderizar para medir
+  escribir(html)
+
   setTimeout(() => {
-    try { iframe.contentWindow.focus(); iframe.contentWindow.print() } catch (_) {}
-    setTimeout(() => { try { document.body.removeChild(iframe) } catch (_) {} }, 3000)
+    try {
+      const doc = iframe.contentDocument
+      // Medir 1mm en px (independiente del DPI de la pantalla)
+      const ruler = doc.createElement('div')
+      ruler.style.cssText = 'position:absolute;width:10mm;height:0;visibility:hidden'
+      doc.body.appendChild(ruler)
+      const oneMmPx = ruler.getBoundingClientRect().width / 10
+      doc.body.removeChild(ruler)
+      const heightMm = Math.ceil(doc.body.scrollHeight / oneMmPx) + 6
+
+      // Pasada 2: reescribir con @page correcto desde el inicio del documento
+      const htmlFinal = html.replace(
+        '</head>',
+        `<style>@page{size:80mm ${heightMm}mm;margin:3mm}</style></head>`
+      )
+      escribir(htmlFinal)
+
+      setTimeout(() => {
+        try { iframe.contentWindow.focus(); iframe.contentWindow.print() } catch (_) {}
+        setTimeout(() => { try { document.body.removeChild(iframe) } catch (_) {} }, 3000)
+      }, 400)
+    } catch (_) {
+      setTimeout(() => { try { document.body.removeChild(iframe) } catch (_) {} }, 3000)
+    }
   }, 500)
 }
 
