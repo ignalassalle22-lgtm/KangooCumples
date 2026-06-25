@@ -33,10 +33,12 @@ export function useAsistencia() {
     })
 
     if (isEmpty) {
-      await supabase.from('asistencias').delete().eq('empleado_id', empleadoId).eq('fecha', fecha)
+      const { error } = await supabase.from('asistencias').delete().eq('empleado_id', empleadoId).eq('fecha', fecha)
+      if (error) console.error('Error eliminando asistencia:', error)
     } else {
-      await supabase.from('asistencias')
+      const { error } = await supabase.from('asistencias')
         .upsert({ empleado_id: empleadoId, fecha, hora_entrada: hora_entrada || null, hora_salida: hora_salida || null, vacaciones: !!vacaciones }, { onConflict: 'empleado_id,fecha' })
+      if (error) console.error('Error guardando asistencia:', error)
     }
   }, [])
 
