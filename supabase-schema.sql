@@ -287,3 +287,30 @@ ON CONFLICT (clave) DO NOTHING;
 INSERT INTO public.categorias (nombre) VALUES
   ('General'), ('Bebidas'), ('Alimentos'), ('Servicios'), ('Indumentaria')
 ON CONFLICT DO NOTHING;
+
+-- ── Asistencia de empleados ──
+CREATE TABLE IF NOT EXISTS public.asistencias (
+  id           BIGSERIAL PRIMARY KEY,
+  empleado_id  BIGINT REFERENCES public.empleados(id) ON DELETE CASCADE,
+  fecha        DATE NOT NULL,
+  hora_entrada TEXT,
+  hora_salida  TEXT,
+  vacaciones   BOOLEAN DEFAULT FALSE,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (empleado_id, fecha)
+);
+ALTER TABLE public.asistencias ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow all asistencias" ON public.asistencias FOR ALL USING (TRUE) WITH CHECK (TRUE);
+
+-- Observaciones mensuales por empleado
+CREATE TABLE IF NOT EXISTS public.asistencia_obs (
+  id          BIGSERIAL PRIMARY KEY,
+  empleado_id BIGINT REFERENCES public.empleados(id) ON DELETE CASCADE,
+  año         INTEGER NOT NULL,
+  mes         INTEGER NOT NULL,
+  obs         TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (empleado_id, año, mes)
+);
+ALTER TABLE public.asistencia_obs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow all asistencia_obs" ON public.asistencia_obs FOR ALL USING (TRUE) WITH CHECK (TRUE);
