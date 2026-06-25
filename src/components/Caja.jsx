@@ -5,7 +5,7 @@ const fmtNum = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency'
 
 const METODOS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
-function imprimirCierre({ caja, horaCierre, ticketsCount, totalVentas, totalEfectivo, desglose, gastos, totalGastos, efectivoEsperado, saldoFinal, diferencia }) {
+function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas, totalEfectivo, desglose, gastos, totalGastos, efectivoEsperado, saldoFinal, diferencia }) {
   const totalOnline = totalVentas - totalEfectivo
   const onlineMetodos = METODOS_PAGO.filter(m => m !== 'Efectivo' && desglose[m] > 0)
 
@@ -57,6 +57,7 @@ function imprimirCierre({ caja, horaCierre, ticketsCount, totalVentas, totalEfec
   <tr><td>Fecha</td><td class="r">${caja.fecha || ''}</td></tr>
   <tr><td>Apertura</td><td class="r">${caja.hora_apertura || '—'} hs</td></tr>
   <tr><td>Cierre</td><td class="r">${horaCierre} hs</td></tr>
+  ${empleado ? `<tr><td>Responsable</td><td class="r"><b>${empleado}</b></td></tr>` : ''}
 </table>
 <pre>${sep}</pre>
 
@@ -152,6 +153,7 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
   const [showCofre, setShowCofre] = useState(false)
   const [verGastos, setVerGastos] = useState(false)
   // Gasto form
+  const [empleadoCierre, setEmpleadoCierre] = useState('')
   const [gastoMonto, setGastoMonto] = useState('')
   const [gastoDetalle, setGastoDetalle] = useState('')
   const [gastoPersona, setGastoPersona] = useState('')
@@ -184,6 +186,7 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
   async function handleCerrar() {
     const sf = parseFloat(saldoFinal)
     if (isNaN(sf) || sf < 0) { addToast('Ingresá el efectivo contado en caja', 'err'); return }
+    if (!empleadoCierre) { addToast('Seleccioná el empleado que realiza el cierre', 'err'); return }
     askPin(`Cerrar caja "${caja.nombre || 'Caja'}"${caja.turno ? ` (${caja.turno})` : ''} — efectivo contado: $${sf}.`, async () => {
       setSaving(true)
       const horaCierre = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
@@ -193,6 +196,7 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
         imprimirCierre({
           caja,
           horaCierre,
+          empleado: empleadoCierre,
           ticketsCount: ventasCaja.length,
           totalVentas,
           totalEfectivo,
@@ -457,11 +461,20 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
           <p style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 12 }}>
             Contá el efectivo físico en caja e ingresalo para verificar diferencias.
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div className="fgg">
+              <label>Empleado que cierra</label>
+              <select value={empleadoCierre} onChange={e => setEmpleadoCierre(e.target.value)} autoFocus>
+                <option value="">Seleccionar...</option>
+                {empleados.filter(e => e.activo !== false).map(e => (
+                  <option key={e.id} value={e.nombre}>{e.nombre}</option>
+                ))}
+              </select>
+            </div>
             <div className="fgg">
               <label>Efectivo contado en caja $</label>
               <input type="number" min="0" step="0.01" value={saldoFinal}
-                onChange={e => setSaldoFinal(e.target.value)} placeholder="0" autoFocus />
+                onChange={e => setSaldoFinal(e.target.value)} placeholder="0" />
             </div>
             <div className="fgg">
               <label>Observaciones de cierre</label>
