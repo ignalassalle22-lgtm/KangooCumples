@@ -46,50 +46,38 @@ function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descu
 <meta charset="UTF-8">
 <title>Ticket ${numero}</title>
 <style>
-  @page { size: 80mm auto; margin: 0; }
+  @page { size: 80mm auto; margin: 2mm 3mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: auto; }
-  body { font-family: 'Courier New', Courier, monospace; font-size: 9px; color: #000; background: #fff; width: 74mm; padding: 2mm 3mm; }
-  h1 { font-size: 12px; font-weight: bold; text-align: center; letter-spacing: 2px; margin-bottom: 1px; }
-  .sub2 { text-align: center; font-size: 8px; margin-bottom: 3px; }
-  pre { font-family: inherit; font-size: 9px; margin: 2px 0; color: #555; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 6px; color: #000; background: #fff; width: 74mm; }
+  h1 { font-size: 8px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 1px; }
+  .sub2 { text-align: center; font-size: 6px; margin-bottom: 2px; }
+  pre { font-family: inherit; font-size: 6px; margin: 1px 0; color: #555; }
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 1px 0; vertical-align: top; font-size: 9px; }
+  td { padding: 1px 0; vertical-align: top; font-size: 6px; }
   td.r { text-align: right; white-space: nowrap; }
-  td.sub { color: #444; font-size: 8px; padding-bottom: 3px; }
-  .big td { font-size: 11px; font-weight: bold; padding-top: 2px; }
-  .foot { text-align: center; font-size: 8px; color: #666; margin-top: 4px; }
-  .label { font-size: 10px; font-weight: bold; color: #000; letter-spacing: 2px; margin-bottom: 1px; }
-  .copy { page-break-after: always; padding-bottom: 4px; }
+  td.sub { color: #444; font-size: 6px; padding-bottom: 2px; }
+  .big td { font-size: 7px; font-weight: bold; padding-top: 1px; }
+  .foot { text-align: center; font-size: 6px; color: #666; margin-top: 3px; }
+  .label { font-size: 7px; font-weight: bold; color: #000; letter-spacing: 1px; margin-bottom: 1px; }
+  .copy { page-break-after: always; padding-bottom: 3px; }
   .copy:last-child { page-break-after: avoid; }
 </style>
 </head>
 <body>
-  <div id="wrap">
-    ${copia('— CLIENTE —')}
-    ${copia('— COCINA —')}
-  </div>
+  ${copia('** CLIENTE **')}
+  ${copia('** COCINA **')}
 </body></html>`
 
   const iframe = document.createElement('iframe')
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:302px;height:1px;border:none;visibility:hidden'
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;height:1px;border:none;visibility:hidden'
   document.body.appendChild(iframe)
   iframe.contentDocument.open()
   iframe.contentDocument.write(html)
   iframe.contentDocument.close()
   setTimeout(() => {
-    try {
-      const wrap = iframe.contentDocument.getElementById('wrap')
-      const heightPx = wrap ? wrap.offsetHeight : iframe.contentDocument.body.scrollHeight
-      const heightMm = Math.ceil(heightPx * 0.2646) + 4
-      const styleEl = iframe.contentDocument.createElement('style')
-      styleEl.textContent = `@page { size: 80mm ${heightMm}mm !important; margin: 0; }`
-      iframe.contentDocument.head.appendChild(styleEl)
-      iframe.contentWindow.focus()
-      iframe.contentWindow.print()
-    } catch (_) {}
+    try { iframe.contentWindow.focus(); iframe.contentWindow.print() } catch (_) {}
     setTimeout(() => { try { document.body.removeChild(iframe) } catch (_) {} }, 2000)
-  }, 600)
+  }, 500)
 }
 
 const METODOS_DEFAULT = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
