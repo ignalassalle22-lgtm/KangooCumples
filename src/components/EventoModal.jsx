@@ -21,6 +21,12 @@ function addMinutesToHora(hora, mins) {
   return String(rh).padStart(2, '0') + ':' + String(rm).padStart(2, '0')
 }
 
+function horaToMins(hora) {
+  if (!hora || !/^\d{1,2}:\d{2}$/.test(hora)) return -1
+  const [h, m] = hora.split(':').map(Number)
+  return h * 60 + m
+}
+
 // Compute hora string from form fields
 function getHora(form) {
   const libre = form.horaLibre.trim()
@@ -144,13 +150,29 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
     return { base, mTot, eTot, artTot, dto, total, monto, rest: Math.max(0, total - monto) }
   }, [form.chi, form.adu, form.promoId, form.monto, extraQtys, extraPrices, adHocExtras, articulosEvento, config, mrows])
 
-  // Duplicate check
+  // Duplicate / overlap check — detecta solapamiento de horarios en el mismo salón
   const dupAlert = useMemo(() => {
     const hora = getHora(form)
     if (!form.fecha || !hora || !form.salon) return false
-    const key = form.fecha + 'T' + hora
-    return eventos.some(ev => (ev.fecha + 'T' + ev.hora) === key && ev.salon === form.salon && ev.id !== evento?.id)
-  }, [form.fecha, form.horaH, form.horaM, form.horaLibre, form.salon, eventos, evento])
+
+    const newStart = horaToMins(hora)
+    const newEnd = horaToMins(addMinutesToHora(hora, form.extendido ? 180 : 150))
+    if (newStart < 0 || newEnd < 0) return false
+
+    return eventos.some(ev => {
+      if (ev.id === evento?.id) return false
+      if (ev.fecha !== form.fecha || ev.salon !== form.salon) return false
+      if (ev.pago === 'cancelado') return false
+      const evStart = horaToMins(ev.hora)
+      const evEnd = horaToMins(ev.hora_hasta)
+      if (evStart < 0 || evEnd < 0) {
+        // fallback: chequeo de hora exacta si no hay hora_hasta
+        return ev.hora === hora
+      }
+      // Solapamiento: A empieza antes de que B termine Y B empieza antes de que A termine
+      return newStart < evEnd && evStart < newEnd
+    })
+  }, [form.fecha, form.horaH, form.horaM, form.horaLibre, form.salon, form.extendido, eventos, evento])
 
   // Menu qty mismatch
   const menuAlert = useMemo(() => {
