@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react'
+import { imprimirTicket } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 const hoy = () => new Date().toISOString().slice(0, 10)
@@ -46,7 +47,6 @@ function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descu
 <meta charset="UTF-8">
 <title>Ticket ${numero}</title>
 <style>
-  @page { size: 80mm auto; margin: 2mm 3mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Courier New', Courier, monospace; font-size: 6px; color: #000; background: #fff; width: 74mm; }
   h1 { font-size: 8px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 1px; }
@@ -68,16 +68,7 @@ function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descu
   ${copia('** COCINA **')}
 </body></html>`
 
-  const iframe = document.createElement('iframe')
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;height:1px;border:none;visibility:hidden'
-  document.body.appendChild(iframe)
-  iframe.contentDocument.open()
-  iframe.contentDocument.write(html)
-  iframe.contentDocument.close()
-  setTimeout(() => {
-    try { iframe.contentWindow.focus(); iframe.contentWindow.print() } catch (_) {}
-    setTimeout(() => { try { document.body.removeChild(iframe) } catch (_) {} }, 2000)
-  }, 500)
+  imprimirTicket(html)
 }
 
 const METODOS_DEFAULT = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']

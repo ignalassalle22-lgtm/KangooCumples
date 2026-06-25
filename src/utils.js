@@ -1,5 +1,35 @@
 export const fmt = n => '$' + Math.round(n).toLocaleString('es-AR')
 
+// Imprime HTML en tiktetera de 80mm midiendo el alto real del contenido
+// para evitar hoja en blanco cuando la impresora está configurada en A4.
+export function imprimirTicket(html) {
+  const iframe = document.createElement('iframe')
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;height:1px;border:none;visibility:hidden'
+  document.body.appendChild(iframe)
+  iframe.contentDocument.open()
+  iframe.contentDocument.write(html)
+  iframe.contentDocument.close()
+  setTimeout(() => {
+    try {
+      const doc = iframe.contentDocument
+      // Medir 1mm en px usando un ruler — independiente del DPI de la pantalla
+      const ruler = doc.createElement('div')
+      ruler.style.cssText = 'position:absolute;width:10mm;height:0;visibility:hidden'
+      doc.body.appendChild(ruler)
+      const oneMmPx = ruler.getBoundingClientRect().width / 10
+      doc.body.removeChild(ruler)
+      const heightMm = Math.ceil(doc.body.scrollHeight / oneMmPx) + 5
+      // Inyectar @page con el alto exacto del contenido
+      const style = doc.createElement('style')
+      style.textContent = `@page { size: 80mm ${heightMm}mm !important; margin: 2mm 3mm !important; }`
+      doc.head.appendChild(style)
+      iframe.contentWindow.focus()
+      iframe.contentWindow.print()
+    } catch (_) {}
+    setTimeout(() => { try { document.body.removeChild(iframe) } catch (_) {} }, 2000)
+  }, 600)
+}
+
 // Descarga rows como CSV compatible con Excel (BOM UTF-8)
 export function downloadCSV(rows, filename) {
   const escape = (v) => {
