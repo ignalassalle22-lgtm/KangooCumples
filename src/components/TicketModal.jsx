@@ -46,10 +46,10 @@ function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descu
 <meta charset="UTF-8">
 <title>Ticket ${numero}</title>
 <style>
-  @page { size: 80mm auto; margin: 1mm 3mm; }
+  @page { size: 80mm auto; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: auto; overflow: hidden; }
-  body { font-family: 'Courier New', Courier, monospace; font-size: 9px; color: #000; background: #fff; width: 74mm; }
+  html, body { height: auto; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 9px; color: #000; background: #fff; width: 74mm; padding: 2mm 3mm; }
   h1 { font-size: 12px; font-weight: bold; text-align: center; letter-spacing: 2px; margin-bottom: 1px; }
   .sub2 { text-align: center; font-size: 8px; margin-bottom: 3px; }
   pre { font-family: inherit; font-size: 9px; margin: 2px 0; color: #555; }
@@ -65,27 +65,31 @@ function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descu
 </style>
 </head>
 <body>
-  ${copia('— CLIENTE —')}
-  ${copia('— COCINA —')}
+  <div id="wrap">
+    ${copia('— CLIENTE —')}
+    ${copia('— COCINA —')}
+  </div>
 </body></html>`
 
   const iframe = document.createElement('iframe')
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;height:1px;border:none;visibility:hidden'
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:302px;height:1px;border:none;visibility:hidden'
   document.body.appendChild(iframe)
   iframe.contentDocument.open()
   iframe.contentDocument.write(html)
   iframe.contentDocument.close()
   setTimeout(() => {
     try {
-      const body = iframe.contentDocument.body
-      const h = body.scrollHeight
-      body.style.height = h + 'px'
-      iframe.contentDocument.documentElement.style.height = h + 'px'
+      const wrap = iframe.contentDocument.getElementById('wrap')
+      const heightPx = wrap ? wrap.offsetHeight : iframe.contentDocument.body.scrollHeight
+      const heightMm = Math.ceil(heightPx * 0.2646) + 4
+      const styleEl = iframe.contentDocument.createElement('style')
+      styleEl.textContent = `@page { size: 80mm ${heightMm}mm !important; margin: 0; }`
+      iframe.contentDocument.head.appendChild(styleEl)
       iframe.contentWindow.focus()
       iframe.contentWindow.print()
     } catch (_) {}
     setTimeout(() => { try { document.body.removeChild(iframe) } catch (_) {} }, 2000)
-  }, 500)
+  }, 600)
 }
 
 const METODOS_DEFAULT = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']

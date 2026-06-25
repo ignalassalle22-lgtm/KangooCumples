@@ -30,10 +30,10 @@ function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas,
 <meta charset="UTF-8">
 <title>Cierre — ${caja.nombre || 'Caja'}</title>
 <style>
-  @page { size: 80mm auto; margin: 0.5mm 2mm; }
+  @page { size: 80mm auto; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: auto; overflow: hidden; }
-  body { font-family: 'Courier New', Courier, monospace; font-size: 7px; color: #000; background: #fff; width: 76mm; }
+  html, body { height: auto; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 7px; color: #000; background: #fff; width: 74mm; padding: 2mm 3mm; }
   h1 { font-size: 9px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 1px; }
   .sub { text-align: center; font-size: 7px; margin-bottom: 2px; }
   pre { font-family: inherit; font-size: 7px; margin: 1px 0; color: #555; }
@@ -49,6 +49,7 @@ function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas,
 </style>
 </head>
 <body>
+<div id="wrap">
 <h1>CIERRE DE CAJA</h1>
 <div class="sub">Kangaroo Fun</div>
 <pre>${sep2}</pre>
@@ -92,25 +93,30 @@ ${totalGastos > 0 ? `
 </table>
 <pre>${sep2}</pre>
 <div class="foot">${new Date().toLocaleString('es-AR')}</div>
+</div>
 </body></html>`
 
   const iframe = document.createElement('iframe')
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;height:1px;border:none;visibility:hidden'
+  // Ancho real en px (80mm ≈ 302px a 96dpi) para que el layout se calcule bien
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:302px;height:1px;border:none;visibility:hidden'
   document.body.appendChild(iframe)
   iframe.contentDocument.open()
   iframe.contentDocument.write(html)
   iframe.contentDocument.close()
   setTimeout(() => {
     try {
-      const body = iframe.contentDocument.body
-      const h = body.scrollHeight
-      body.style.height = h + 'px'
-      iframe.contentDocument.documentElement.style.height = h + 'px'
+      const wrap = iframe.contentDocument.getElementById('wrap')
+      const heightPx = wrap ? wrap.offsetHeight : iframe.contentDocument.body.scrollHeight
+      // 1px = 0.2646mm a 96dpi
+      const heightMm = Math.ceil(heightPx * 0.2646) + 4
+      const styleEl = iframe.contentDocument.createElement('style')
+      styleEl.textContent = `@page { size: 80mm ${heightMm}mm !important; margin: 0; }`
+      iframe.contentDocument.head.appendChild(styleEl)
       iframe.contentWindow.focus()
       iframe.contentWindow.print()
     } catch (_) {}
     setTimeout(() => { try { document.body.removeChild(iframe) } catch (_) {} }, 2000)
-  }, 500)
+  }, 600)
 }
 
 function TicketDetalle({ venta, onClose }) {
