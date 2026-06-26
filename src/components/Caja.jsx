@@ -146,7 +146,7 @@ function TicketDetalle({ venta, onClose }) {
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
           <button className="bg2" onClick={onClose}>Cerrar</button>
-          <button className="bp" onClick={() => { imprimirTicket(ticketVentaHtml(venta)) }}>🖨 Imprimir</button>
+          <button className="bp" onClick={() => { imprimirVentaCaja(venta) }}>🖨 Imprimir</button>
         </div>
       </div>
     </div>
