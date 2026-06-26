@@ -44,6 +44,8 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
   const [articulosEvento, setArticulosEvento] = useState([]) // [{rid, producto_id, nombre, qty, precio}]
   const [artBusca, setArtBusca] = useState('')
   const [saving, setSaving] = useState(false)
+  const [multiMet, setMultiMet] = useState(false)
+  const [metsPagados, setMetsPagados] = useState([{ id: 1, met: 'Efectivo', monto: '' }])
 
   // Populate form from evento
   useEffect(() => {
@@ -98,6 +100,8 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
         precio: a.precio || 0,
       }))
       setArticulosEvento(arts)
+      setMultiMet(false)
+      setMetsPagados([{ id: 1, met: 'Efectivo', monto: '' }])
     } else {
       setForm(EMPTY_FORM)
       setMrows([{ rid: Date.now(), mid: '', qty: 1 }])
@@ -106,6 +110,8 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
       setAdHocExtras([])
       setArticulosEvento([])
       setArtBusca('')
+      setMultiMet(false)
+      setMetsPagados([{ id: 1, met: 'Efectivo', monto: '' }])
     }
   }, [evento])
 
@@ -124,6 +130,25 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
   const addAdHoc = () => setAdHocExtras(prev => [...prev, { rid: Date.now() + Math.random(), desc: '', qty: 1, p: 0 }])
   const removeAdHoc = rid => setAdHocExtras(prev => prev.filter(r => r.rid !== rid))
   const updateAdHoc = (rid, field, val) => setAdHocExtras(prev => prev.map(r => r.rid === rid ? { ...r, [field]: val } : r))
+
+  function toggleMultiMet() {
+    if (!multiMet) {
+      setMetsPagados([{ id: 1, met: form.met || (config.mets[0] || 'Efectivo'), monto: '' }])
+      setMultiMet(true)
+    } else {
+      setMultiMet(false)
+      setMetsPagados([{ id: 1, met: 'Efectivo', monto: '' }])
+    }
+  }
+  function addMetPagado() {
+    setMetsPagados(prev => [...prev, { id: Date.now(), met: config.mets[0] || 'Efectivo', monto: '' }])
+  }
+  function removeMetPagado(id) {
+    setMetsPagados(prev => prev.filter(m => m.id !== id))
+  }
+  function updateMetPagado(id, field, val) {
+    setMetsPagados(prev => prev.map(m => m.id === id ? { ...m, [field]: val } : m))
+  }
 
   // Computed totals
   const calc = useMemo(() => {
@@ -197,9 +222,16 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
       addToast('Duplicado: ya existe un evento con esa fecha, hora y salón.', 'err')
       return
     }
-    if (form.pago !== 'none' && form.pago !== 'cancelado' && !form.met) {
-      addToast('Seleccioná el método de pago.', 'err')
-      return
+    if (form.pago !== 'none' && form.pago !== 'cancelado') {
+      if (multiMet) {
+        if (metsPagados.some(m => !m.monto || parseFloat(m.monto) <= 0)) {
+          addToast('Completá los montos de cada método de pago.', 'err')
+          return
+        }
+      } else if (!form.met) {
+        addToast('Seleccioná el método de pago.', 'err')
+        return
+      }
     }
     const chi = parseInt(form.chi) || 0
     if (chi > 0 && menuAlert) {
@@ -229,6 +261,13 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
 
     const horaHasta = addMinutesToHora(hora, form.extendido ? 180 : 150)
 
+    let metFinal = form.met
+    let montoFinal = parseFloat(form.monto) || 0
+    if (multiMet && form.pago !== 'none' && form.pago !== 'cancelado') {
+      metFinal = metsPagados.map(m => `${m.met} $${Math.round(parseFloat(m.monto) || 0).toLocaleString('es-AR')}`).join(' + ')
+      montoFinal = metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+    }
+
     const ev = {
       id: evento?.id,
       fecha: form.fecha,
@@ -250,8 +289,8 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
       promoId: form.promoId || null,
       obs: form.obs,
       pago: form.pago,
-      monto: parseFloat(form.monto) || 0,
-      met: form.met,
+      monto: montoFinal,
+      met: metFinal,
       total: calc.total,
     }
 
@@ -557,16 +596,71 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
         {form.pago !== 'none' && form.pago !== 'cancelado' && (
           <div>
             <div className="fg" style={{ marginBottom: 10 }}>
-              <div className="fgg">
-                <label>Monto abonado / seña ($)</label>
-                <input type="number" min={0} value={form.monto} onChange={e => set('monto', e.target.value)} />
-              </div>
-              <div className="fgg">
-                <label>Método de pago</label>
-                <select value={form.met} onChange={e => set('met', e.target.value)}>
-                  <option value="">Seleccionar...</option>
-                  {config.mets.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
+              {!multiMet && (
+                <div className="fgg">
+                  <label>Monto abonado / seña ($)</label>
+                  <input type="number" min={0} value={form.monto} onChange={e => set('monto', e.target.value)} />
+                </div>
+              )}
+              <div className="fgg" style={{ gridColumn: multiMet ? '1/-1' : undefined }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ margin: 0 }}>Método de pago</label>
+                  <button
+                    type="button"
+                    onClick={toggleMultiMet}
+                    style={{
+                      fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                      border: `1.5px solid ${multiMet ? 'var(--nv)' : 'var(--bd2)'}`,
+                      background: multiMet ? 'var(--nv3)' : 'transparent',
+                      color: multiMet ? 'var(--nv)' : 'var(--mu)',
+                      cursor: 'pointer', fontFamily: "'Nunito', sans-serif",
+                    }}
+                  >
+                    {multiMet ? '✓ Múltiple' : '+ Más de un método'}
+                  </button>
+                </div>
+                {!multiMet ? (
+                  <select value={form.met} onChange={e => set('met', e.target.value)}>
+                    <option value="">Seleccionar...</option>
+                    {config.mets.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {metsPagados.map(mp => (
+                      <div key={mp.id} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <select
+                          value={mp.met}
+                          onChange={e => updateMetPagado(mp.id, 'met', e.target.value)}
+                          style={{ flex: 1, border: '1px solid var(--bd2)', borderRadius: 8, padding: '7px 10px', fontSize: 13 }}
+                        >
+                          {config.mets.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                        <input
+                          type="number"
+                          min={0}
+                          value={mp.monto}
+                          onChange={e => updateMetPagado(mp.id, 'monto', e.target.value)}
+                          placeholder="Monto $"
+                          style={{ width: 120, border: '1px solid var(--bd2)', borderRadius: 8, padding: '7px 10px', fontSize: 13, textAlign: 'right' }}
+                        />
+                        {metsPagados.length > 1 && (
+                          <button className="bdng" style={{ padding: '5px 8px' }} onClick={() => removeMetPagado(mp.id)}>✕</button>
+                        )}
+                      </div>
+                    ))}
+                    <button type="button" className="bg2 bsm" onClick={addMetPagado} style={{ alignSelf: 'flex-start', marginTop: 2 }}>
+                      + Agregar método
+                    </button>
+                    {(() => {
+                      const cubierto = metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+                      return cubierto > 0 && (
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--nv)', padding: '6px 0' }}>
+                          Total abonado: {fmt(cubierto)}
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
           </div>

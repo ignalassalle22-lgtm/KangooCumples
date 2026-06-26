@@ -10,14 +10,41 @@ export default function FinalizarEventoModal({ evento: ev, cajasAbiertas, config
   const totalFinal = saldoEvento + totalConsumos
 
   const [metodoPago, setMetodoPago] = useState((config?.mets || [])[0] || 'Efectivo')
+  const [multiMet, setMultiMet] = useState(false)
+  const [metsPagados, setMetsPagados] = useState([{ id: 1, met: (config?.mets || [])[0] || 'Efectivo', monto: '' }])
   const [cajaId, setCajaId] = useState(cajasAbiertas[0]?.id || null)
   const [cargando, setCargando] = useState(false)
 
+  function toggleMultiMet() {
+    if (!multiMet) {
+      setMetsPagados([{ id: 1, met: metodoPago, monto: '' }])
+      setMultiMet(true)
+    } else {
+      setMultiMet(false)
+      setMetsPagados([{ id: 1, met: metodoPago, monto: '' }])
+    }
+  }
+  function addMetPagado() {
+    setMetsPagados(prev => [...prev, { id: Date.now(), met: (config?.mets || [])[0] || 'Efectivo', monto: '' }])
+  }
+  function removeMetPagado(id) {
+    setMetsPagados(prev => prev.filter(m => m.id !== id))
+  }
+  function updateMetPagado(id, field, val) {
+    setMetsPagados(prev => prev.map(m => m.id === id ? { ...m, [field]: val } : m))
+  }
+
   async function handleConfirmar() {
     if (!cajaId) return
+    let metodoPagoFinal
+    if (multiMet) {
+      metodoPagoFinal = metsPagados.map(m => `${m.met} $${Math.round(parseFloat(m.monto) || 0).toLocaleString('es-AR')}`).join(' + ')
+    } else {
+      metodoPagoFinal = metodoPago
+    }
     setCargando(true)
     try {
-      await onFinalizar({ metodoPago, cajaId, saldoEvento, consumosPendientes, totalFinal })
+      await onFinalizar({ metodoPago: metodoPagoFinal, cajaId, saldoEvento, consumosPendientes, totalFinal })
     } finally {
       setCargando(false)
     }
@@ -88,30 +115,85 @@ export default function FinalizarEventoModal({ evento: ev, cajasAbiertas, config
         </div>
 
         {totalFinal > 0 && (
-          <div style={{ display: 'flex', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 160 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--mu)', display: 'block', marginBottom: 5 }}>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
                 Método de pago
               </label>
+              <button
+                type="button"
+                onClick={toggleMultiMet}
+                style={{
+                  fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                  border: `1.5px solid ${multiMet ? 'var(--nv)' : 'var(--bd2)'}`,
+                  background: multiMet ? 'var(--nv3)' : 'transparent',
+                  color: multiMet ? 'var(--nv)' : 'var(--mu)',
+                  cursor: 'pointer', fontFamily: "'Nunito', sans-serif",
+                }}
+              >
+                {multiMet ? '✓ Múltiple' : '+ Más de un método'}
+              </button>
+            </div>
+
+            {!multiMet ? (
               <select value={metodoPago} onChange={e => setMetodoPago(e.target.value)}
-                style={{ width: '100%', border: '1px solid var(--bd2)', borderRadius: 8, padding: '8px 10px', fontSize: 13 }}>
+                style={{ width: '100%', border: '1px solid var(--bd2)', borderRadius: 8, padding: '8px 10px', fontSize: 13, marginBottom: 12 }}>
                 {(config?.mets || ['Efectivo', 'Débito', 'Crédito', 'Transferencia']).map(m => (
                   <option key={m} value={m}>{m}</option>
                 ))}
               </select>
-            </div>
-            <div style={{ flex: 1, minWidth: 160 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--mu)', display: 'block', marginBottom: 5 }}>
-                Acreditar en caja
-              </label>
-              <select value={cajaId || ''} onChange={e => setCajaId(Number(e.target.value))}
-                style={{ width: '100%', border: '1px solid var(--bd2)', borderRadius: 8, padding: '8px 10px', fontSize: 13 }}>
-                {cajasAbiertas.length === 0
-                  ? <option value="">Sin cajas abiertas</option>
-                  : cajasAbiertas.map(c => <option key={c.id} value={c.id}>{c.nombre}{c.turno ? ` — ${c.turno}` : ''}</option>)
-                }
-              </select>
-            </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                {metsPagados.map(mp => (
+                  <div key={mp.id} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <select
+                      value={mp.met}
+                      onChange={e => updateMetPagado(mp.id, 'met', e.target.value)}
+                      style={{ flex: 1, border: '1px solid var(--bd2)', borderRadius: 8, padding: '8px 10px', fontSize: 13 }}
+                    >
+                      {(config?.mets || ['Efectivo', 'Débito', 'Crédito', 'Transferencia']).map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min={0}
+                      value={mp.monto}
+                      onChange={e => updateMetPagado(mp.id, 'monto', e.target.value)}
+                      placeholder="Monto $"
+                      style={{ width: 120, border: '1px solid var(--bd2)', borderRadius: 8, padding: '8px 10px', fontSize: 13, textAlign: 'right' }}
+                    />
+                    {metsPagados.length > 1 && (
+                      <button className="bdng" style={{ padding: '5px 8px' }} onClick={() => removeMetPagado(mp.id)}>✕</button>
+                    )}
+                  </div>
+                ))}
+                <button type="button" className="bg2 bsm" onClick={addMetPagado} style={{ alignSelf: 'flex-start', marginTop: 2 }}>
+                  + Agregar método
+                </button>
+                {(() => {
+                  const cubierto = metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+                  const resta = totalFinal - cubierto
+                  return (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, padding: '6px 10px', borderRadius: 8, background: resta <= 0 ? 'rgba(34,197,94,.1)' : 'rgba(232,98,26,.08)', color: resta <= 0 ? 'var(--gn)' : 'var(--am)', marginTop: 2 }}>
+                      <span>{resta <= 0 ? 'Cubierto' : 'Falta cubrir'}</span>
+                      <span>{resta <= 0 ? '✓' : `$${Math.round(Math.abs(resta)).toLocaleString('es-AR')}`}</span>
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--mu)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+              Acreditar en caja
+            </label>
+            <select value={cajaId || ''} onChange={e => setCajaId(Number(e.target.value))}
+              style={{ width: '100%', border: '1px solid var(--bd2)', borderRadius: 8, padding: '8px 10px', fontSize: 13 }}>
+              {cajasAbiertas.length === 0
+                ? <option value="">Sin cajas abiertas</option>
+                : cajasAbiertas.map(c => <option key={c.id} value={c.id}>{c.nombre}{c.turno ? ` — ${c.turno}` : ''}</option>)
+              }
+            </select>
           </div>
         )}
 
