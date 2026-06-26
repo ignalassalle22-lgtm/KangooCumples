@@ -19,7 +19,17 @@ export function useVentas() {
   useEffect(() => { fetchVentas() }, [fetchVentas])
 
   const saveVenta = async (venta, items, updateStockFn) => {
-    const numero = `V-${Date.now().toString().slice(-7)}`
+    const { data: last } = await supabase
+      .from('ventas')
+      .select('numero')
+      .like('numero', 'KF-%')
+      .order('created_at', { ascending: false })
+      .limit(1)
+    const nextNum = last?.length > 0
+      ? (parseInt(last[0].numero.replace('KF-', '')) || 0) + 1
+      : 1
+    const numero = 'KF-' + String(nextNum).padStart(7, '0')
+
     const { data: ventaData, error: ventaError } = await supabase
       .from('ventas')
       .insert({ ...venta, numero })
