@@ -6,7 +6,7 @@ const fmtNum = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency'
 
 const METODOS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
-function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas, totalEfectivo, desglose, gastos, totalGastos, efectivoEsperado, saldoFinal, diferencia }) {
+function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas, totalEfectivo, desglose, gastos, totalGastos, efectivoEsperado, saldoFinal, diferencia, obs }) {
   fetch('http://localhost:5001/print/cierre_caja', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -24,6 +24,7 @@ function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas,
       saldoFinal,
       saldoInicial: caja.saldo_inicial || 0,
       diferencia,
+      obs,
     }),
   }).catch(() => {
     // fallback: impresion browser
@@ -217,6 +218,7 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
           efectivoEsperado,
           saldoFinal: sf,
           diferencia: sf - efectivoEsperado,
+          obs,
         })
       } catch (e) { addToast('Error: ' + e.message, 'err') }
       finally { setSaving(false) }
