@@ -698,6 +698,7 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                                   efectivoEsperado: esperado,
                                   saldoFinal: c.saldo_final || 0,
                                   diferencia: diff,
+                                  obs: c.obs_cierre || '',
                                 })}
                               >
                                 🖨
