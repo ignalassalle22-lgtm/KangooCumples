@@ -1,74 +1,57 @@
 import React, { useState, useMemo, useRef } from 'react'
-import { imprimirTicket } from '../utils'
+import { imprimirTicketBrowser } from '../utils'
 
-const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
+const fmt = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('es-AR')
 const hoy = () => new Date().toISOString().slice(0, 10)
 const hora = () => new Date().toTimeString().slice(0, 5)
 
 function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descuento, total, metodoPago }) {
-  const sep = '--------------------------------'
-  const itemRows = items.map(it =>
-    `<tr>
-      <td>${it.nombre_producto}</td>
-      <td class="r">${it.cantidad} x ${fmt(it.precio_unitario)}</td>
-    </tr>
-    <tr><td colspan="2" class="r sub">${fmt(it.subtotal)}</td></tr>`
-  ).join('')
-
-  function copia(label) {
-    return `
-    <div class="copy">
-      <h1>KANGAROO FUN</h1>
-      <div class="sub2">Ticket de venta</div>
-      <pre>${sep}</pre>
-      <table>
-        <tr><td>Nº</td><td class="r"><b>${numero}</b></td></tr>
-        <tr><td>Fecha</td><td class="r">${fecha} ${horaStr}</td></tr>
-        ${cliente ? `<tr><td>Cliente</td><td class="r">${cliente}</td></tr>` : ''}
-      </table>
-      <pre>${sep}</pre>
-      <table>${itemRows}</table>
-      <pre>${sep}</pre>
-      <table>
-        ${descuento > 0 ? `<tr><td>Subtotal</td><td class="r">${fmt(subtotal)}</td></tr>
-        <tr><td>Descuento</td><td class="r">-${fmt(descuento)}</td></tr>` : ''}
-        <tr class="big"><td>TOTAL</td><td class="r">${fmt(total)}</td></tr>
-        <tr><td>Pago</td><td class="r">${metodoPago}</td></tr>
-      </table>
-      <pre>${sep}</pre>
-      <div class="foot label">${label}</div>
-      <div class="foot">Gracias por tu visita!</div>
-    </div>`
-  }
-
-  const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title></title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Courier New', Courier, monospace; font-size: 8px; color: #000; background: #fff; width: 74mm; }
-  h1 { font-size: 10px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 2px; }
-  .sub2 { text-align: center; font-size: 7px; margin-bottom: 2px; }
-  pre { font-family: inherit; font-size: 8px; margin: 2px 0; color: #555; }
-  table { width: 100%; border-collapse: collapse; }
-  td { padding: 1px 0; vertical-align: top; font-size: 8px; }
-  td.r { text-align: right; white-space: nowrap; }
-  td.sub { color: #444; font-size: 7px; padding-bottom: 2px; }
-  .big td { font-size: 9px; font-weight: bold; padding-top: 2px; }
-  .foot { text-align: center; font-size: 7px; color: #666; margin-top: 4px; }
-  .label { font-size: 9px; font-weight: bold; color: #000; letter-spacing: 1px; margin-bottom: 1px; }
-  .copy { page-break-after: always; padding-bottom: 4px; }
-  .copy:last-child { page-break-after: avoid; }
-</style>
-</head>
-<body>
-  ${copia('** CLIENTE **')}
-  ${copia('** COCINA **')}
+  fetch('http://localhost:5001/print/venta_caja', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      numero,
+      fecha,
+      hora: horaStr,
+      cliente,
+      venta_items: items.map(it => ({
+        nombre_producto: it.nombre_producto,
+        cantidad: it.cantidad,
+        subtotal: it.subtotal,
+      })),
+      subtotal,
+      descuento,
+      total,
+      metodo_pago: metodoPago,
+    }),
+  }).catch(() => {
+    const sep = '--------------------------------'
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:9px;width:74mm}
+h1{font-size:11px;font-weight:bold;text-align:center;margin-bottom:2px}
+pre{font-size:8px;margin:2px 0}table{width:100%;border-collapse:collapse}
+td{padding:1px 0;font-size:9px}td.r{text-align:right}
+.big td{font-size:10px;font-weight:bold}.foot{text-align:center;font-size:8px;margin-top:4px}
+</style></head><body>
+<h1>KANGOO CUMPLES</h1>
+<pre>${sep}</pre>
+<table>
+<tr><td>N°</td><td class="r"><b>${numero}</b></td></tr>
+<tr><td>Fecha</td><td class="r">${fecha} ${horaStr}</td></tr>
+${cliente ? `<tr><td>Cliente</td><td class="r">${cliente}</td></tr>` : ''}
+<tr><td>Pago</td><td class="r">${metodoPago}</td></tr>
+</table>
+<pre>${sep}</pre>
+<table>${items.map(it => `<tr><td>${it.nombre_producto} x${it.cantidad}</td><td class="r">${fmt(it.subtotal)}</td></tr>`).join('')}</table>
+<pre>${sep}</pre>
+<table>
+${descuento > 0 ? `<tr><td>Subtotal</td><td class="r">${fmt(subtotal)}</td></tr><tr><td>Descuento</td><td class="r">-${fmt(descuento)}</td></tr>` : ''}
+<tr class="big"><td>TOTAL</td><td class="r">${fmt(total)}</td></tr>
+</table>
+<div class="foot">Gracias por tu visita!</div>
 </body></html>`
-
-  imprimirTicket(html)
+    imprimirTicketBrowser(html)
+  })
 }
 
 const METODOS_DEFAULT = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
