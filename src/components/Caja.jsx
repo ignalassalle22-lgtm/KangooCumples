@@ -110,9 +110,9 @@ function imprimirVentaCaja(venta) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(venta),
   }).then(r => {
-    if (!r.ok) imprimirTicket(ticketVentaHtml(venta))
+    if (!r.ok) imprimirTicketBrowser(ticketVentaHtml(venta))
   }).catch(() => {
-    imprimirTicket(ticketVentaHtml(venta))
+    imprimirTicketBrowser(ticketVentaHtml(venta))
   })
 }
 
