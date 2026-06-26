@@ -71,7 +71,7 @@ ${totalGastos>0?`<tr><td>− Gastos</td><td class="r">−${fmtP(totalGastos)}</t
 }
 
 function ticketVentaHtml(venta) {
-  const f = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
+  const f = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('es-AR')
   const items = (venta.venta_items || []).map(it =>
     `<tr><td>${it.nombre_producto} ×${it.cantidad}</td><td style="text-align:right">${f(it.subtotal)}</td></tr>`
   ).join('')
@@ -146,7 +146,7 @@ function TicketDetalle({ venta, onClose }) {
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
           <button className="bg2" onClick={onClose}>Cerrar</button>
-          <button className="bp" onClick={() => { imprimirVentaCaja(venta) }}>🖨 Imprimir</button>
+          <button className="bp" onClick={() => { imprimirTicket(ticketVentaHtml(venta)) }}>🖨 Imprimir</button>
         </div>
       </div>
     </div>

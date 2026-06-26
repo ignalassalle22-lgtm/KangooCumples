@@ -4,16 +4,21 @@ export const fmt = n => '$' + Math.round(n).toLocaleString('es-AR')
 function htmlATexto(html) {
   const div = document.createElement('div')
   div.innerHTML = html
-  // Reemplazar <tr> con salto de línea para preservar filas de tabla
+  // Eliminar style/script/head para que no aparezcan como texto
+  div.querySelectorAll('style, script, head').forEach(el => el.remove())
   div.querySelectorAll('tr').forEach(tr => tr.insertAdjacentText('afterend', '\n'))
-  div.querySelectorAll('td').forEach((td, i, all) => {
-    // Si hay 2 celdas en la fila, separar con espacios para simular tabla
+  div.querySelectorAll('td').forEach((td) => {
     const row = td.parentElement
     if (row && row.children.length === 2 && td === row.children[1]) {
       td.insertAdjacentText('beforebegin', ' ')
     }
   })
-  return div.innerText || div.textContent || ''
+  // Adjuntar al DOM para que innerText funcione correctamente
+  div.style.cssText = 'position:absolute;left:-9999px;visibility:hidden'
+  document.body.appendChild(div)
+  const texto = div.innerText || div.textContent || ''
+  document.body.removeChild(div)
+  return texto
 }
 
 // Imprime en ticketera ESC/POS vía servidor local.
