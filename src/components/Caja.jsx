@@ -7,93 +7,67 @@ const fmtNum = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency'
 const METODOS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
 function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas, totalEfectivo, desglose, gastos, totalGastos, efectivoEsperado, saldoFinal, diferencia }) {
-  const totalOnline = totalVentas - totalEfectivo
-  const onlineMetodos = METODOS_PAGO.filter(m => m !== 'Efectivo' && desglose[m] > 0)
-
-  const fmtP = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
-  const signo = (n) => n >= 0 ? '+' : ''
-  const difColor = diferencia === 0 ? '#16a34a' : diferencia > 0 ? '#d97706' : '#dc2626'
-
-  const gastosRows = gastos.map(g =>
-    `<tr><td style="padding:1px 0 1px 12px;color:#555">${g.detalle || '—'}${g.persona ? ` (${g.persona})` : ''}</td><td style="text-align:right;color:#dc2626">−${fmtP(g.monto)}</td></tr>`
-  ).join('')
-
-  const onlineRows = onlineMetodos.map(m =>
-    `<tr><td style="padding:1px 0 1px 12px;color:#555">${m}</td><td style="text-align:right">${fmtP(desglose[m])}</td></tr>`
-  ).join('')
-
-  const sep  = '--------------------------------'
-  const sep2 = '================================'
-
-  const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title></title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Courier New', Courier, monospace; font-size: 8px; color: #000; background: #fff; width: 74mm; }
-  h1 { font-size: 10px; font-weight: bold; text-align: center; letter-spacing: 1px; margin-bottom: 2px; }
-  .sub { text-align: center; font-size: 8px; margin-bottom: 3px; }
-  pre { font-family: inherit; font-size: 8px; margin: 2px 0; color: #555; }
-  table { width: 100%; border-collapse: collapse; }
-  td { padding: 1px 0; vertical-align: top; font-size: 8px; }
-  td.r { text-align: right; white-space: nowrap; }
-  td.ind { padding-left: 8px; color: #444; }
-  .section { font-size: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: .04em; margin: 3px 0 1px; }
-  .bold td { font-weight: bold; }
-  .big td { font-size: 9px; font-weight: bold; padding-top: 2px; }
-  .dif td { font-size: 9px; font-weight: bold; color: ${difColor}; }
-  .foot { text-align: center; font-size: 7px; color: #666; margin-top: 4px; }
-</style>
-</head>
-<body>
-<h1>CIERRE DE CAJA</h1>
-<div class="sub">Kangaroo Fun</div>
-<pre>${sep2}</pre>
-<table>
-  <tr><td>Caja</td><td class="r"><b>${caja.nombre || 'Caja'}</b></td></tr>
-  ${caja.turno ? `<tr><td>Turno</td><td class="r">${caja.turno}</td></tr>` : ''}
-  <tr><td>Fecha</td><td class="r">${caja.fecha || ''}</td></tr>
-  <tr><td>Apertura</td><td class="r">${caja.hora_apertura || '—'} hs</td></tr>
-  <tr><td>Cierre</td><td class="r">${horaCierre} hs</td></tr>
-  ${empleado ? `<tr><td>Responsable</td><td class="r"><b>${empleado}</b></td></tr>` : ''}
-</table>
-<pre>${sep}</pre>
-
-<div class="section">Ventas</div>
-<table>
-  <tr><td>Tickets</td><td class="r">${ticketsCount}</td></tr>
-  <tr class="bold"><td>Total ventas</td><td class="r">${fmtP(totalVentas)}</td></tr>
-  <tr><td>Efectivo</td><td class="r">${fmtP(totalEfectivo)}</td></tr>
-  <tr><td>Online</td><td class="r">${fmtP(totalOnline)}</td></tr>
-  ${onlineRows}
-</table>
-
-${totalGastos > 0 ? `
-<pre>${sep}</pre>
-<div class="section">Gastos</div>
-<table>
-  <tr class="bold"><td>Total gastos</td><td class="r">−${fmtP(totalGastos)}</td></tr>
-  ${gastosRows}
-</table>
-` : ''}
-
-<pre>${sep2}</pre>
-<div class="section">Balance</div>
-<table>
-  <tr><td>Saldo inicial</td><td class="r">${fmtP(caja.saldo_inicial)}</td></tr>
-  <tr><td>+ Efectivo cobrado</td><td class="r">+${fmtP(totalEfectivo)}</td></tr>
-  ${totalGastos > 0 ? `<tr><td>− Gastos</td><td class="r">−${fmtP(totalGastos)}</td></tr>` : ''}
-  <tr class="big"><td>Total teorico</td><td class="r">${fmtP(efectivoEsperado)}</td></tr>
-  <tr class="big"><td>Total real</td><td class="r">${fmtP(saldoFinal)}</td></tr>
-  <tr class="dif"><td>Diferencia</td><td class="r">${signo(diferencia)}${fmtP(diferencia)}</td></tr>
-</table>
-<pre>${sep2}</pre>
-<div class="foot">${new Date().toLocaleString('es-AR')}</div>
-</body></html>`
-
-  imprimirTicket(html)
+  fetch('http://localhost:5001/print/cierre_caja', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      caja,
+      horaCierre,
+      empleado,
+      ticketsCount,
+      totalVentas,
+      totalEfectivo,
+      desglose,
+      gastos,
+      totalGastos,
+      efectivoEsperado,
+      saldoFinal,
+      saldoInicial: caja.saldo_inicial || 0,
+      diferencia,
+    }),
+  }).catch(() => {
+    // fallback: impresion browser
+    const fmtP = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
+    const signo = (n) => n >= 0 ? '+' : ''
+    const difColor = diferencia === 0 ? '#16a34a' : diferencia > 0 ? '#d97706' : '#dc2626'
+    const totalOnline = totalVentas - totalEfectivo
+    const onlineMetodos = METODOS_PAGO.filter(m => m !== 'Efectivo' && desglose[m] > 0)
+    const gastosRows = gastos.map(g =>
+      `<tr><td style="padding:1px 0 1px 12px;color:#555">${g.detalle || '—'}${g.persona ? ` (${g.persona})` : ''}</td><td style="text-align:right;color:#dc2626">−${fmtP(g.monto)}</td></tr>`
+    ).join('')
+    const onlineRows = onlineMetodos.map(m =>
+      `<tr><td style="padding:1px 0 1px 12px;color:#555">${m}</td><td style="text-align:right">${fmtP(desglose[m])}</td></tr>`
+    ).join('')
+    const sep = '--------------------------------'; const sep2 = '================================'
+    imprimirTicket(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:8px;color:#000;background:#fff;width:74mm}
+h1{font-size:10px;font-weight:bold;text-align:center;letter-spacing:1px;margin-bottom:2px}.sub{text-align:center;font-size:8px;margin-bottom:3px}
+pre{font-family:inherit;font-size:8px;margin:2px 0;color:#555}table{width:100%;border-collapse:collapse}td{padding:1px 0;vertical-align:top;font-size:8px}
+td.r{text-align:right;white-space:nowrap}.section{font-size:8px;font-weight:bold;text-transform:uppercase;margin:3px 0 1px}
+.bold td{font-weight:bold}.big td{font-size:9px;font-weight:bold;padding-top:2px}.dif td{font-size:9px;font-weight:bold;color:${difColor}}
+.foot{text-align:center;font-size:7px;color:#666;margin-top:4px}</style></head><body>
+<h1>CIERRE DE CAJA</h1><div class="sub">Kangaroo Fun</div><pre>${sep2}</pre>
+<table><tr><td>Caja</td><td class="r"><b>${caja.nombre||'Caja'}</b></td></tr>
+${caja.turno?`<tr><td>Turno</td><td class="r">${caja.turno}</td></tr>`:''}
+<tr><td>Fecha</td><td class="r">${caja.fecha||''}</td></tr>
+<tr><td>Apertura</td><td class="r">${caja.hora_apertura||'—'} hs</td></tr>
+<tr><td>Cierre</td><td class="r">${horaCierre} hs</td></tr>
+${empleado?`<tr><td>Responsable</td><td class="r"><b>${empleado}</b></td></tr>`:''}</table>
+<pre>${sep}</pre><div class="section">Ventas</div>
+<table><tr><td>Tickets</td><td class="r">${ticketsCount}</td></tr>
+<tr class="bold"><td>Total ventas</td><td class="r">${fmtP(totalVentas)}</td></tr>
+<tr><td>Efectivo</td><td class="r">${fmtP(totalEfectivo)}</td></tr>
+<tr><td>Online</td><td class="r">${fmtP(totalOnline)}</td></tr>${onlineRows}</table>
+${totalGastos>0?`<pre>${sep}</pre><div class="section">Gastos</div><table><tr class="bold"><td>Total gastos</td><td class="r">−${fmtP(totalGastos)}</td></tr>${gastosRows}</table>`:''}
+<pre>${sep2}</pre><div class="section">Balance</div>
+<table><tr><td>Saldo inicial</td><td class="r">${fmtP(caja.saldo_inicial)}</td></tr>
+<tr><td>+ Efectivo cobrado</td><td class="r">+${fmtP(totalEfectivo)}</td></tr>
+${totalGastos>0?`<tr><td>− Gastos</td><td class="r">−${fmtP(totalGastos)}</td></tr>`:''}
+<tr class="big"><td>Total teorico</td><td class="r">${fmtP(efectivoEsperado)}</td></tr>
+<tr class="big"><td>Total real</td><td class="r">${fmtP(saldoFinal)}</td></tr>
+<tr class="dif"><td>Diferencia</td><td class="r">${signo(diferencia)}${fmtP(diferencia)}</td></tr></table>
+<pre>${sep2}</pre><div class="foot">${new Date().toLocaleString('es-AR')}</div></body></html>`)
+  })
 }
 
 function ticketVentaHtml(venta) {
