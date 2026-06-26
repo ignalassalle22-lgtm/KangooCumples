@@ -23,6 +23,7 @@ function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descu
       descuento,
       total,
       metodo_pago: metodoPago,
+      obs,
     }),
   }).catch(() => {
     const sep = '--------------------------------'
