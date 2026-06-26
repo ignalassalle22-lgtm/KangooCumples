@@ -173,7 +173,13 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
               <button className="bg2" onClick={() => setShowDetalle(null)}>Cerrar</button>
-              <button className="bp" onClick={() => window.print()}>🖨 Imprimir ticket</button>
+              <button className="bp" onClick={() => {
+                fetch('http://localhost:5001/print/venta_caja', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(showDetalle),
+                }).catch(() => window.print())
+              }}>🖨 Imprimir ticket</button>
             </div>
           </div>
         </div>
