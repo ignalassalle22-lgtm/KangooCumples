@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { Chart, registerables } from 'chart.js'
 import { fmt, downloadCSV } from '../utils'
 
+const PRINT_URL = 'http://localhost:5000/print/cierre'
+
 Chart.register(...registerables)
 
 const pad = n => String(n).padStart(2, '0')
@@ -46,6 +48,7 @@ export default function Metricas({ eventos }) {
   const now = new Date()
   const [desde, setDesde] = useState(`${now.getFullYear()}-01-01`)
   const [hasta, setHasta] = useState(today())
+  const [printing, setPrinting] = useState(false)
   const chartRef = useRef(null)
   const chartInstance = useRef(null)
 
@@ -182,6 +185,49 @@ export default function Metricas({ eventos }) {
   const maxSalon = Math.max(...distSalones.map(d => d.v), 1)
   const maxPago = Math.max(...distPagos.map(d => d.v), 1)
 
+  // Por método de pago (solo eventos con pago registrado)
+  const porMet = useMemo(() => {
+    const map = {}
+    evs.forEach(ev => {
+      if (!ev.met || ev.pago === 'none') return
+      const monto = ev.pago === 'paid' ? (ev.total || 0) : (ev.monto || 0)
+      if (!map[ev.met]) map[ev.met] = { met: ev.met, monto: 0, cant: 0 }
+      map[ev.met].monto += monto
+      map[ev.met].cant++
+    })
+    return Object.values(map).sort((a, b) => b.monto - a.monto)
+  }, [evs])
+
+  async function handlePrintCierre() {
+    setPrinting(true)
+    try {
+      const pagados = evs.filter(e => e.pago === 'paid').length
+      const senas   = evs.filter(e => e.pago === 'sena').length
+      const sinPago = evs.filter(e => !e.pago || e.pago === 'none').length
+
+      await fetch(PRINT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          desde,
+          hasta,
+          totalEventos: kpis.total,
+          ingresos: kpis.ingresos,
+          cobrado: kpis.cobrado,
+          pendiente: kpis.pendiente,
+          porMet,
+          pagados,
+          senas,
+          sinPago,
+        }),
+      })
+    } catch {
+      alert('No se pudo conectar con el servidor de impresión.\nAsegurate de que kangoo_print_server.py esté corriendo.')
+    } finally {
+      setPrinting(false)
+    }
+  }
+
   return (
     <>
       <div className="ph">
@@ -193,6 +239,9 @@ export default function Metricas({ eventos }) {
               : 'Sin eventos en el rango seleccionado'}
           </div>
         </div>
+        <button className="bg2" onClick={handlePrintCierre} disabled={printing || kpis.total === 0}>
+          {printing ? 'Imprimiendo…' : '🖨 Imprimir cierre'}
+        </button>
       </div>
 
       {/* Filtro rango */}

@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { fmt, cumpleDisplay, fmtFechaHora } from '../utils'
 
 const TIPO_LABEL = { saltos: 'Saltos', parque: 'Parque aéreo', 'saltos+parque': 'Saltos + Parque aéreo' }
+const PRINT_URL = 'http://localhost:5000/print/venta'
 
 function Row({ label, val, valStyle }) {
   if (!val && val !== 0) return null
@@ -13,7 +14,13 @@ function Row({ label, val, valStyle }) {
   )
 }
 
+<<<<<<< HEAD:src/components/DetalleModal.jsx
 export default function DetalleModal({ evento: ev, config, onClose, onEditar, onAbrirCaja, onFinalizar }) {
+=======
+export default function DetalleModal({ evento: ev, config, onClose, onEditar }) {
+  const [printing, setPrinting] = useState(false)
+
+>>>>>>> 8e14698 (feat: impresión de tickets ESC/POS via servidor local):ignalassalle22-lgtm Meli claude-setup-kangoo-cumples-CdZWx kangoo-cumples/src/components/DetalleModal.jsx
   if (!ev) return null
 
   const rest = (ev.total || 0) - (ev.monto || 0)
@@ -41,8 +48,68 @@ export default function DetalleModal({ evento: ev, config, onClose, onEditar, on
 
   const promo = ev.promoId ? config.promos.find(p => String(p.id) === String(ev.promoId)) : null
 
+<<<<<<< HEAD:src/components/DetalleModal.jsx
   const bc = ev.pago === 'paid' ? 'bpd' : ev.pago === 'sena' ? 'bsn' : ev.pago === 'cancelado' ? 'bcn' : 'bnp'
   const bt = ev.pago === 'paid' ? '✓ Pagado completo' : ev.pago === 'sena' ? '◑ Seña dejada' : ev.pago === 'cancelado' ? '✕ Cancelado' : '✗ Sin pago'
+=======
+  async function handlePrint() {
+    setPrinting(true)
+    try {
+      // Armar lista de items para el ticket
+      const items = []
+
+      // Precio base chicos/adultos
+      if (ev.chi > 0) items.push({ n: `Chicos (${ev.chi})`, qty: ev.chi, total: ev.chi * (config.pChico || 0) })
+      if (ev.adu > 0) items.push({ n: `Adultos (${ev.adu})`, qty: ev.adu, total: ev.adu * (config.pAdulto || 0) })
+
+      // Menús
+      if (ev.mrows) ev.mrows.forEach(r => {
+        const m = config.menus.find(x => String(x.id) === String(r.mid))
+        if (m) items.push({ n: m.n, qty: r.qty, total: m.p * r.qty })
+      })
+
+      // Extras
+      if (ev.extras) ev.extras.forEach(e => {
+        const ex = config.extras.find(x => String(x.id) === String(e.eid))
+        if (ex) items.push({ n: ex.n, qty: e.qty, total: ex.p * e.qty })
+      })
+
+      const subtotal = items.reduce((s, i) => s + i.total, 0)
+      const descuento = promo ? Math.round(subtotal * promo.pct / 100) : 0
+
+      await fetch(PRINT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fecha: ev.fecha,
+          hora: ev.hora,
+          reservante: ev.reservante,
+          telefono: ev.telefono,
+          cumple: ev.cumple,
+          edad: ev.edad,
+          salon: ev.salon,
+          chi: ev.chi,
+          adu: ev.adu,
+          items,
+          subtotal,
+          descuento,
+          promo: promo ? `${promo.d}` : '',
+          total: ev.total || 0,
+          pago: ev.pago,
+          monto: ev.monto || 0,
+          met: ev.met || '',
+        }),
+      })
+    } catch {
+      alert('No se pudo conectar con el servidor de impresión.\nAsegurate de que kangoo_print_server.py esté corriendo.')
+    } finally {
+      setPrinting(false)
+    }
+  }
+
+  const bc = ev.pago === 'paid' ? 'bpd' : ev.pago === 'sena' ? 'bsn' : 'bnp'
+  const bt = ev.pago === 'paid' ? '✓ Pagado completo' : ev.pago === 'sena' ? '◑ Seña dejada' : '✗ Sin pago'
+>>>>>>> 8e14698 (feat: impresión de tickets ESC/POS via servidor local):ignalassalle22-lgtm Meli claude-setup-kangoo-cumples-CdZWx kangoo-cumples/src/components/DetalleModal.jsx
 
   return (
     <div className="ov op" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -158,6 +225,7 @@ export default function DetalleModal({ evento: ev, config, onClose, onEditar, on
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20, flexWrap: 'wrap' }}>
           <button className="bg2" onClick={onClose}>Cerrar</button>
+<<<<<<< HEAD:src/components/DetalleModal.jsx
           {onAbrirCaja && (
             <button className="bn" onClick={() => onAbrirCaja(ev.id)}>💰 Caja del evento</button>
           )}
@@ -170,6 +238,11 @@ export default function DetalleModal({ evento: ev, config, onClose, onEditar, on
               ✅ Finalizar evento
             </button>
           )}
+=======
+          <button className="bg2" onClick={handlePrint} disabled={printing}>
+            {printing ? 'Imprimiendo…' : '🖨 Imprimir ticket'}
+          </button>
+>>>>>>> 8e14698 (feat: impresión de tickets ESC/POS via servidor local):ignalassalle22-lgtm Meli claude-setup-kangoo-cumples-CdZWx kangoo-cumples/src/components/DetalleModal.jsx
           <button className="bp" onClick={() => onEditar(ev.id)}>✏ Editar</button>
         </div>
       </div>
