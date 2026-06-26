@@ -5,7 +5,7 @@ const fmt = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('es-AR')
 const hoy = () => new Date().toISOString().slice(0, 10)
 const hora = () => new Date().toTimeString().slice(0, 5)
 
-function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descuento, total, metodoPago }) {
+function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descuento, total, metodoPago, obs }) {
   fetch('http://localhost:5001/print/venta_caja', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -229,6 +229,7 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
           descuento: descuentoNum,
           total,
           metodoPago: metodoPagoFinal,
+          obs,
         })
       }
     } catch (e) {
