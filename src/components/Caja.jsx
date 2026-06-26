@@ -104,6 +104,16 @@ ${venta.obs ? `<p style="font-size:7px;margin-top:4px">${venta.obs}</p>` : ''}
 </body></html>`
 }
 
+function imprimirVentaCaja(venta) {
+  fetch('http://localhost:5001/print/venta_caja', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(venta),
+  }).catch(() => {
+    imprimirTicket(ticketVentaHtml(venta))
+  })
+}
+
 function TicketDetalle({ venta, onClose }) {
   const fmt2 = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
   return (
@@ -134,7 +144,7 @@ function TicketDetalle({ venta, onClose }) {
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
           <button className="bg2" onClick={onClose}>Cerrar</button>
-          <button className="bp" onClick={() => { imprimirTicket(ticketVentaHtml(venta)) }}>🖨 Imprimir</button>
+          <button className="bp" onClick={() => { imprimirVentaCaja(venta) }}>🖨 Imprimir</button>
         </div>
       </div>
     </div>
