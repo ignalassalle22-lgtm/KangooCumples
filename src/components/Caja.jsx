@@ -109,6 +109,8 @@ function imprimirVentaCaja(venta) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(venta),
+  }).then(r => {
+    if (!r.ok) imprimirTicket(ticketVentaHtml(venta))
   }).catch(() => {
     imprimirTicket(ticketVentaHtml(venta))
   })
