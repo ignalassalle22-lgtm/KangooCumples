@@ -35,6 +35,8 @@ export function imprimirTicket(html) {
   })
 }
 
+export function imprimirTicketBrowser(html) { _imprimirConBrowser(html) }
+
 function _imprimirConBrowser(html) {
   const iframe = document.createElement('iframe')
   iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;height:1px;border:none;visibility:hidden'

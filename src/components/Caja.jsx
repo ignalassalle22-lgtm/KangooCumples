@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { imprimirTicket } from '../utils'
+import { imprimirTicket, imprimirTicketBrowser } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 const fmtNum = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
@@ -39,7 +39,7 @@ function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas,
       `<tr><td style="padding:1px 0 1px 12px;color:#555">${m}</td><td style="text-align:right">${fmtP(desglose[m])}</td></tr>`
     ).join('')
     const sep = '--------------------------------'; const sep2 = '================================'
-    imprimirTicket(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
+    imprimirTicketBrowser(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:8px;color:#000;background:#fff;width:74mm}
 h1{font-size:10px;font-weight:bold;text-align:center;letter-spacing:1px;margin-bottom:2px}.sub{text-align:center;font-size:8px;margin-bottom:3px}
 pre{font-family:inherit;font-size:8px;margin:2px 0;color:#555}table{width:100%;border-collapse:collapse}td{padding:1px 0;vertical-align:top;font-size:8px}
