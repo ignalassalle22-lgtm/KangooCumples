@@ -96,6 +96,40 @@ ${totalGastos > 0 ? `
   imprimirTicket(html)
 }
 
+function ticketVentaHtml(venta) {
+  const f = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
+  const items = (venta.venta_items || []).map(it =>
+    `<tr><td>${it.nombre_producto} ×${it.cantidad}</td><td style="text-align:right">${f(it.subtotal)}</td></tr>`
+  ).join('')
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:8px;width:74mm}
+h1{font-size:10px;font-weight:bold;text-align:center;margin-bottom:2px}
+.sub{text-align:center;font-size:8px;margin-bottom:3px}
+table{width:100%;border-collapse:collapse}td{padding:1px 0;font-size:8px;vertical-align:top}
+.sep{letter-spacing:0;font-size:8px;margin:2px 0}
+.total td{font-size:10px;font-weight:bold;border-top:1px solid #000;padding-top:2px}
+.foot{text-align:center;font-size:7px;color:#666;margin-top:4px}
+</style></head><body>
+<h1>KANGOO CUMPLES</h1>
+<div class="sub">Ticket #${venta.numero || ''}</div>
+<pre class="sep">--------------------------------</pre>
+<table>
+<tr><td>Fecha</td><td style="text-align:right">${venta.fecha || ''} ${venta.hora || ''}</td></tr>
+${venta.cliente ? `<tr><td>Cliente</td><td style="text-align:right">${venta.cliente}</td></tr>` : ''}
+<tr><td>Pago</td><td style="text-align:right">${venta.metodo_pago || '—'}</td></tr>
+</table>
+<pre class="sep">--------------------------------</pre>
+<table>${items}</table>
+<pre class="sep">--------------------------------</pre>
+<table>
+${venta.descuento > 0 ? `<tr><td>Subtotal</td><td style="text-align:right">${f(venta.subtotal)}</td></tr><tr><td>Descuento</td><td style="text-align:right">-${f(venta.descuento)}</td></tr>` : ''}
+<tr class="total"><td>TOTAL</td><td style="text-align:right">${f(venta.total)}</td></tr>
+</table>
+${venta.obs ? `<p style="font-size:7px;margin-top:4px">${venta.obs}</p>` : ''}
+<div class="foot">Gracias por su compra!</div>
+</body></html>`
+}
+
 function TicketDetalle({ venta, onClose }) {
   const fmt2 = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
   return (
@@ -126,7 +160,7 @@ function TicketDetalle({ venta, onClose }) {
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
           <button className="bg2" onClick={onClose}>Cerrar</button>
-          <button className="bp" onClick={() => { window.print() }}>🖨 Imprimir</button>
+          <button className="bp" onClick={() => { imprimirTicket(ticketVentaHtml(venta)) }}>🖨 Imprimir</button>
         </div>
       </div>
     </div>

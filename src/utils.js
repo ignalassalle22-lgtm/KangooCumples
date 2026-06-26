@@ -1,10 +1,41 @@
 export const fmt = n => '$' + Math.round(n).toLocaleString('es-AR')
 
-// Imprime HTML en tiktetera de 80mm.
-// Hace dos pasadas: primero mide el contenido real, luego reescribe el HTML
-// con el @page exacto para evitar hoja en blanco.
-// IMPORTANTE: En Chrome, desactivar "Encabezados y pies de página".
+// Extrae texto plano de un HTML (sin tags)
+function htmlATexto(html) {
+  const div = document.createElement('div')
+  div.innerHTML = html
+  // Reemplazar <tr> con salto de línea para preservar filas de tabla
+  div.querySelectorAll('tr').forEach(tr => tr.insertAdjacentText('afterend', '\n'))
+  div.querySelectorAll('td').forEach((td, i, all) => {
+    // Si hay 2 celdas en la fila, separar con espacios para simular tabla
+    const row = td.parentElement
+    if (row && row.children.length === 2 && td === row.children[1]) {
+      td.insertAdjacentText('beforebegin', ' ')
+    }
+  })
+  return div.innerText || div.textContent || ''
+}
+
+// Imprime en ticketera ESC/POS vía servidor local.
+// Si el servidor no está disponible, cae al window.print() del browser.
+// IMPORTANTE para fallback: en Chrome desactivar "Encabezados y pies de página".
 export function imprimirTicket(html) {
+  // Intentar servidor ESC/POS local primero
+  const texto = htmlATexto(html)
+  fetch('https://localhost:5000/print/texto', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ texto }),
+  }).then(r => {
+    if (!r.ok) throw new Error('servidor respondió error')
+    // OK: el servidor imprimió, no hacemos nada más
+  }).catch(() => {
+    // Servidor no disponible → fallback al browser
+    _imprimirConBrowser(html)
+  })
+}
+
+function _imprimirConBrowser(html) {
   const iframe = document.createElement('iframe')
   iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;height:1px;border:none;visibility:hidden'
   document.body.appendChild(iframe)
@@ -15,13 +46,11 @@ export function imprimirTicket(html) {
     iframe.contentDocument.close()
   }
 
-  // Pasada 1: renderizar para medir
   escribir(html)
 
   setTimeout(() => {
     try {
       const doc = iframe.contentDocument
-      // Medir 1mm en px (independiente del DPI de la pantalla)
       const ruler = doc.createElement('div')
       ruler.style.cssText = 'position:absolute;width:10mm;height:0;visibility:hidden'
       doc.body.appendChild(ruler)
@@ -29,7 +58,6 @@ export function imprimirTicket(html) {
       doc.body.removeChild(ruler)
       const heightMm = Math.ceil(doc.body.scrollHeight / oneMmPx) + 6
 
-      // Pasada 2: reescribir con @page correcto desde el inicio del documento
       const htmlFinal = html.replace(
         '</head>',
         `<style>@page{size:80mm ${heightMm}mm;margin:3mm}</style></head>`
