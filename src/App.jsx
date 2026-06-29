@@ -135,7 +135,7 @@ function AppInner({ usuario, onLogout }) {
 
   // ── Ventas ──
   const { productos, categorias, loading: prodLoading, saveProducto, deleteProducto, updateStock, updateCosto, bulkUpdatePrecios, saveCategoria } = useProductos()
-  const { ventas, loading: ventasLoading, fetchVentas, saveVenta, anularVenta, updateVenta } = useVentas()
+  const { ventas, loading: ventasLoading, fetchVentas, saveVenta, anularVenta, updateVenta, editarVenta } = useVentas()
   const { compras, loading: comprasLoading, saveCompra, updateCompra, anularCompra } = useCompras()
   const { proveedores, saveProveedor, deleteProveedor } = useProveedores()
   const { cajasAbiertas, historial: cajaHistorial, loading: cajaLoading, abrirCaja, cerrarCaja } = useCaja()
@@ -222,6 +222,7 @@ function AppInner({ usuario, onLogout }) {
   const [ticketModalOpen, setTicketModalOpen] = useState(false)
   const [compraModalOpen, setCompraModalOpen] = useState(false)
   const [editingCompra, setEditingCompra] = useState(null)
+  const [editingVenta, setEditingVenta] = useState(null)
   const [pedidoParaCobrar, setPedidoParaCobrar] = useState(null)
 
 
@@ -490,6 +491,23 @@ function AppInner({ usuario, onLogout }) {
     })
   }, [anularVenta, updateStock, addToast, askPin])
 
+  const handleModificarVenta = useCallback((venta) => {
+    askPin(`Modificar ticket ${venta.numero}`, () => {
+      setPinModal({ show: false, onConfirm: null, msg: '' })
+      setEditingVenta(venta)
+    })
+  }, [askPin])
+
+  const handleSaveEdicionVenta = useCallback(async (id, venta, items) => {
+    try {
+      await editarVenta(id, venta, items, updateStock)
+      setEditingVenta(null)
+      addToast('✓ Venta modificada')
+    } catch (e) {
+      addToast('Error: ' + e.message, 'err')
+    }
+  }, [editarVenta, updateStock, addToast])
+
   // ── Handlers compras ──
   const handleSaveCompra = useCallback(async (compra, items, oldItems) => {
     if (compra.id) {
@@ -635,13 +653,10 @@ function AppInner({ usuario, onLogout }) {
             ventas={ventas} loading={ventasLoading} cajaActual={cajaActual}
             onNueva={() => setTicketModalOpen(true)}
             onAnular={handleAnularVenta}
-            onModificar={updateVenta}
+            onModificar={handleModificarVenta}
             fetchVentas={fetchVentas}
             empleados={empleados}
             isAdmin={isAdmin}
-            askPin={askPin}
-            metodosPago={config?.mets_caja || config?.mets || []}
-            addToast={addToast}
           />
         )}
 
@@ -750,7 +765,7 @@ function AppInner({ usuario, onLogout }) {
         />
       )}
 
-      {ticketModalOpen && (
+      {(ticketModalOpen || editingVenta) && (
         <TicketModal
           productos={productos}
           cajasAbiertas={cajasAbiertas}
@@ -758,6 +773,8 @@ function AppInner({ usuario, onLogout }) {
           onCajaChange={setCajaSeleccionadaId}
           metodosPago={config.mets_caja}
           empleados={empleados}
+          ventaEditar={editingVenta}
+          onSaveEdicion={handleSaveEdicionVenta}
           itemsIniciales={pedidoParaCobrar ? (pedidoParaCobrar.pedido_items || []).map(it => ({
             producto_id: it.producto_id || null,
             nombre_producto: it.nombre_producto,
@@ -768,7 +785,7 @@ function AppInner({ usuario, onLogout }) {
           })) : []}
           clienteInicial={pedidoParaCobrar?.nombre || ''}
           onSave={pedidoParaCobrar ? handleSaveVentaDesdePedido : handleSaveVenta}
-          onClose={() => { setTicketModalOpen(false); setPedidoParaCobrar(null) }}
+          onClose={() => { setTicketModalOpen(false); setEditingVenta(null); setPedidoParaCobrar(null) }}
           addToast={addToast}
         />
       )}

@@ -72,6 +72,56 @@ export function useVentas() {
     setVentas(prev => prev.map(v => v.id === id ? { ...v, ...changes } : v))
   }
 
+  const editarVenta = async (id, venta, newItems, updateStockFn) => {
+    // 1. Revertir stock viejo
+    const { data: oldItems } = await supabase.from('venta_items').select('*').eq('venta_id', id)
+    if (updateStockFn && oldItems) {
+      for (const it of oldItems) {
+        if (it.producto_id) await updateStockFn(it.producto_id, it.cantidad)
+      }
+    }
+    // 2. Actualizar registro principal
+    const { error: updError } = await supabase.from('ventas').update({
+      cliente: venta.cliente,
+      metodo_pago: venta.metodo_pago,
+      obs: venta.obs,
+      subtotal: venta.subtotal,
+      descuento: venta.descuento,
+      total: venta.total,
+    }).eq('id', id)
+    if (updError) throw new Error(updError.message)
+    // 3. Reemplazar items
+    await supabase.from('venta_items').delete().eq('venta_id', id)
+    const itemsToInsert = newItems.map(it => ({
+      venta_id: id,
+      producto_id: it.producto_id,
+      nombre_producto: it.nombre_producto,
+      precio_unitario: it.precio_unitario,
+      cantidad: it.cantidad,
+      subtotal: it.subtotal,
+    }))
+    if (itemsToInsert.length > 0) {
+      const { error: ie } = await supabase.from('venta_items').insert(itemsToInsert)
+      if (ie) throw new Error(ie.message)
+    }
+    // 4. Aplicar stock nuevo
+    if (updateStockFn) {
+      for (const it of newItems) {
+        if (it.producto_id && it.maneja_stock !== false) {
+          await updateStockFn(it.producto_id, -it.cantidad)
+          if (it.componentes?.length > 0) {
+            for (const comp of it.componentes) {
+              await updateStockFn(comp.producto_id, -(comp.cantidad * it.cantidad))
+            }
+          }
+        }
+      }
+    }
+    const ventaActualizada = { ...venta, id, venta_items: itemsToInsert }
+    setVentas(prev => prev.map(v => v.id === id ? ventaActualizada : v))
+    return ventaActualizada
+  }
+
   const anularVenta = async (id, updateStockFn) => {
     const venta = ventas.find(v => v.id === id)
     if (!venta) return
@@ -86,5 +136,5 @@ export function useVentas() {
     setVentas(prev => prev.map(v => v.id === id ? { ...v, estado: 'anulada' } : v))
   }
 
-  return { ventas, loading, fetchVentas, saveVenta, anularVenta, updateVenta }
+  return { ventas, loading, fetchVentas, saveVenta, anularVenta, updateVenta, editarVenta }
 }

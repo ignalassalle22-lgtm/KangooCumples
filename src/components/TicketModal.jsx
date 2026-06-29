@@ -57,19 +57,34 @@ ${descuento > 0 ? `<tr><td>Subtotal</td><td class="r">${fmt(subtotal)}</td></tr>
 
 const METODOS_DEFAULT = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
-export default function TicketModal({ productos, cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, metodosPago, empleados = [], itemsIniciales = [], clienteInicial = '', onSave, onClose, addToast }) {
+export default function TicketModal({ productos, cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, metodosPago, empleados = [], itemsIniciales = [], clienteInicial = '', onSave, onSaveEdicion, ventaEditar = null, onClose, addToast }) {
   const METODOS = metodosPago?.length ? metodosPago : METODOS_DEFAULT
-  const [items, setItems] = useState(() => itemsIniciales.length ? itemsIniciales : [])
+  const [items, setItems] = useState(() => {
+    if (ventaEditar?.venta_items?.length) {
+      return ventaEditar.venta_items.map(it => ({
+        producto_id: it.producto_id,
+        nombre_producto: it.nombre_producto,
+        precio_unitario: it.precio_unitario,
+        cantidad: it.cantidad,
+        subtotal: it.subtotal,
+        componentes: [],
+        maneja_stock: true,
+        _stockActual: undefined,
+        _tipo: undefined,
+      }))
+    }
+    return itemsIniciales.length ? itemsIniciales : []
+  })
   const [busca, setBusca] = useState('')
-  const [cliente, setCliente] = useState(clienteInicial)
-  const [empleadoId, setEmpleadoId] = useState('')
-  const [descuento, setDescuento] = useState('')
+  const [cliente, setCliente] = useState(ventaEditar?.cliente || clienteInicial)
+  const [empleadoId, setEmpleadoId] = useState(ventaEditar?.empleado_id ? String(ventaEditar.empleado_id) : '')
+  const [descuento, setDescuento] = useState(ventaEditar?.descuento > 0 ? String(ventaEditar.descuento) : '')
   const [descuentoTipo, setDescuentoTipo] = useState('monto')
-  const [metodo, setMetodo] = useState('Efectivo')
+  const [metodo, setMetodo] = useState(ventaEditar?.metodo_pago || 'Efectivo')
   const [pagaCon, setPagaCon] = useState('')
   const [multiMetodo, setMultiMetodo] = useState(false)
   const [metodosPagados, setMetodosPagados] = useState([{ id: 1, met: 'Efectivo', monto: '' }])
-  const [obs, setObs] = useState('')
+  const [obs, setObs] = useState(ventaEditar?.obs || '')
   const [saving, setSaving] = useState(false)
   const buscaRef = useRef()
 
@@ -205,32 +220,45 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
 
     setSaving(true)
     try {
-      const fechaStr = hoy()
-      const horaStr = hora()
-      const ventaGuardada = await onSave(
-        {
-          fecha: fechaStr, hora: horaStr, cliente,
-          subtotal, descuento: descuentoNum, total,
-          metodo_pago: metodoPagoFinal,
-          caja_id: cajaSeleccionadaId || null,
-          empleado_id: empleadoId ? Number(empleadoId) : null,
-          obs,
-        },
-        items
-      )
-      if (ventaGuardada) {
-        imprimirVenta({
-          numero: ventaGuardada.numero,
-          fecha: fechaStr,
-          horaStr,
+      if (ventaEditar) {
+        // MODO EDICIÓN — no reimprimir
+        await onSaveEdicion(ventaEditar.id, {
           cliente,
-          items,
+          metodo_pago: metodoPagoFinal,
+          obs,
           subtotal,
           descuento: descuentoNum,
           total,
-          metodoPago: metodoPagoFinal,
-          obs,
-        })
+        }, items)
+      } else {
+        // MODO NUEVA VENTA
+        const fechaStr = hoy()
+        const horaStr = hora()
+        const ventaGuardada = await onSave(
+          {
+            fecha: fechaStr, hora: horaStr, cliente,
+            subtotal, descuento: descuentoNum, total,
+            metodo_pago: metodoPagoFinal,
+            caja_id: cajaSeleccionadaId || null,
+            empleado_id: empleadoId ? Number(empleadoId) : null,
+            obs,
+          },
+          items
+        )
+        if (ventaGuardada) {
+          imprimirVenta({
+            numero: ventaGuardada.numero,
+            fecha: fechaStr,
+            horaStr,
+            cliente,
+            items,
+            subtotal,
+            descuento: descuentoNum,
+            total,
+            metodoPago: metodoPagoFinal,
+            obs,
+          })
+        }
       }
     } catch (e) {
       addToast('Error: ' + e.message, 'err')
@@ -243,7 +271,7 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
     <div className="ov op" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="mo" style={{ maxWidth: 860 }}>
         <div className="moh">
-          <div className="mot"><div className="mot-icon">🧾</div>Nueva venta</div>
+          <div className="mot"><div className="mot-icon">🧾</div>{ventaEditar ? `Modificar venta ${ventaEditar.numero}` : 'Nueva venta'}</div>
           <button className="xcl" onClick={onClose}>✕</button>
         </div>
 

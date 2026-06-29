@@ -3,41 +3,12 @@ import React, { useState, useMemo } from 'react'
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 const hoy = () => new Date().toISOString().slice(0, 10)
 
-export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular, onModificar, fetchVentas, empleados = [], isAdmin = true, askPin, metodosPago = [], addToast }) {
+export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular, onModificar, fetchVentas, empleados = [], isAdmin = true }) {
   const [desde, setDesde] = useState(hoy())
   const [hasta, setHasta] = useState(hoy())
   const [filtroEstado, setFiltroEstado] = useState('')
   const [busca, setBusca] = useState('')
   const [showDetalle, setShowDetalle] = useState(null)
-  const [editingVenta, setEditingVenta] = useState(null)
-  const [editForm, setEditForm] = useState({})
-  const [saving, setSaving] = useState(false)
-
-  function abrirEdicion(v) {
-    if (!askPin) return
-    askPin(`Modificar ticket ${v.numero}`, () => {
-      setEditForm({ cliente: v.cliente || '', metodo_pago: v.metodo_pago || '', obs: v.obs || '' })
-      setEditingVenta(v)
-    })
-  }
-
-  async function handleGuardarEdicion() {
-    if (!editingVenta) return
-    setSaving(true)
-    try {
-      await onModificar(editingVenta.id, {
-        cliente: editForm.cliente,
-        metodo_pago: editForm.metodo_pago,
-        obs: editForm.obs,
-      })
-      if (addToast) addToast('✓ Venta modificada')
-      setEditingVenta(null)
-    } catch (e) {
-      if (addToast) addToast('Error: ' + e.message, 'err')
-    } finally {
-      setSaving(false)
-    }
-  }
 
   function aplicarFiltro() {
     fetchVentas(desde, hasta)
@@ -158,7 +129,7 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
                     <div className="eact">
                       <button className="bg2 bsm" onClick={() => setShowDetalle(v)}>Ver</button>
                       {v.estado !== 'anulada' && (
-                        <button className="bg2 bsm" onClick={() => abrirEdicion(v)}>Modificar</button>
+                        <button className="bg2 bsm" onClick={() => onModificar(v)}>Modificar</button>
                       )}
                       {v.estado !== 'anulada' && (
                         <button className="bdng" onClick={() => onAnular(v.id)}>Anular</button>
@@ -169,56 +140,6 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {/* Modal edición de venta */}
-      {editingVenta && (
-        <div className="ov op" onClick={e => e.target === e.currentTarget && setEditingVenta(null)}>
-          <div className="dm" style={{ maxWidth: 460 }}>
-            <div className="moh">
-              <div className="mot"><div className="mot-icon">✏</div>Modificar ticket {editingVenta.numero}</div>
-              <button className="xcl" onClick={() => setEditingVenta(null)}>✕</button>
-            </div>
-            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div className="fgg">
-                <label>Cliente</label>
-                <input
-                  type="text"
-                  value={editForm.cliente}
-                  onChange={e => setEditForm(f => ({ ...f, cliente: e.target.value }))}
-                  placeholder="Nombre o número"
-                />
-              </div>
-              <div className="fgg">
-                <label>Método de pago</label>
-                <select
-                  value={editForm.metodo_pago}
-                  onChange={e => setEditForm(f => ({ ...f, metodo_pago: e.target.value }))}
-                >
-                  {metodosPago.map(m => <option key={m} value={m}>{m}</option>)}
-                  {!metodosPago.includes(editForm.metodo_pago) && editForm.metodo_pago && (
-                    <option value={editForm.metodo_pago}>{editForm.metodo_pago}</option>
-                  )}
-                </select>
-              </div>
-              <div className="fgg">
-                <label>Observaciones</label>
-                <textarea
-                  value={editForm.obs}
-                  onChange={e => setEditForm(f => ({ ...f, obs: e.target.value }))}
-                  placeholder="Observaciones..."
-                  style={{ minHeight: 60 }}
-                />
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
-              <button className="bg2" onClick={() => setEditingVenta(null)}>Cancelar</button>
-              <button className="bp" onClick={handleGuardarEdicion} disabled={saving}>
-                {saving ? 'Guardando...' : '💾 Guardar cambios'}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
