@@ -66,6 +66,12 @@ export function useVentas() {
     return ventaCompleta
   }
 
+  const updateVenta = async (id, changes) => {
+    const { error } = await supabase.from('ventas').update(changes).eq('id', id)
+    if (error) throw new Error(error.message)
+    setVentas(prev => prev.map(v => v.id === id ? { ...v, ...changes } : v))
+  }
+
   const anularVenta = async (id, updateStockFn) => {
     const venta = ventas.find(v => v.id === id)
     if (!venta) return
@@ -80,5 +86,5 @@ export function useVentas() {
     setVentas(prev => prev.map(v => v.id === id ? { ...v, estado: 'anulada' } : v))
   }
 
-  return { ventas, loading, fetchVentas, saveVenta, anularVenta }
+  return { ventas, loading, fetchVentas, saveVenta, anularVenta, updateVenta }
 }

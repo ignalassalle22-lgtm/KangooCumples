@@ -135,7 +135,7 @@ function AppInner({ usuario, onLogout }) {
 
   // ── Ventas ──
   const { productos, categorias, loading: prodLoading, saveProducto, deleteProducto, updateStock, updateCosto, bulkUpdatePrecios, saveCategoria } = useProductos()
-  const { ventas, loading: ventasLoading, fetchVentas, saveVenta, anularVenta } = useVentas()
+  const { ventas, loading: ventasLoading, fetchVentas, saveVenta, anularVenta, updateVenta } = useVentas()
   const { compras, loading: comprasLoading, saveCompra, updateCompra, anularCompra } = useCompras()
   const { proveedores, saveProveedor, deleteProveedor } = useProveedores()
   const { cajasAbiertas, historial: cajaHistorial, loading: cajaLoading, abrirCaja, cerrarCaja } = useCaja()
@@ -635,9 +635,13 @@ function AppInner({ usuario, onLogout }) {
             ventas={ventas} loading={ventasLoading} cajaActual={cajaActual}
             onNueva={() => setTicketModalOpen(true)}
             onAnular={handleAnularVenta}
+            onModificar={updateVenta}
             fetchVentas={fetchVentas}
             empleados={empleados}
             isAdmin={isAdmin}
+            askPin={askPin}
+            metodosPago={config?.mets_caja || config?.mets || []}
+            addToast={addToast}
           />
         )}
 
