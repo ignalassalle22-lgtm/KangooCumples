@@ -10,6 +10,7 @@ const EMPTY_FORM = {
   promoId: '',
   pago: 'none', monto: 0, met: '',
   extendido: false,
+  extendido_mins: 30,
 }
 
 function addMinutesToHora(hora, mins) {
@@ -73,6 +74,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
         monto: evento.monto || 0,
         met: evento.met || '',
         extendido: evento.extendido || false,
+        extendido_mins: evento.extendido_mins || 30,
       })
       // Restore menu rows
       const rows = (evento.mrows || []).map(r => ({ rid: Date.now() + Math.random(), mid: String(r.mid), qty: r.qty || 1 }))
@@ -181,7 +183,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
     if (!form.fecha || !hora || !form.salon) return false
 
     const newStart = horaToMins(hora)
-    const newEnd = horaToMins(addMinutesToHora(hora, form.extendido ? 180 : 150))
+    const newEnd = horaToMins(addMinutesToHora(hora, 150 + (form.extendido ? (form.extendido_mins || 30) : 0)))
     if (newStart < 0 || newEnd < 0) return false
 
     return eventos.some(ev => {
@@ -197,7 +199,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
       // Solapamiento: A empieza antes de que B termine Y B empieza antes de que A termine
       return newStart < evEnd && evStart < newEnd
     })
-  }, [form.fecha, form.horaH, form.horaM, form.horaLibre, form.salon, form.extendido, eventos, evento])
+  }, [form.fecha, form.horaH, form.horaM, form.horaLibre, form.salon, form.extendido, form.extendido_mins, eventos, evento])
 
   // Menu qty mismatch
   const menuAlert = useMemo(() => {
@@ -259,7 +261,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
         .map(r => ({ custom: true, desc: r.desc.trim(), qty: parseInt(r.qty), p: parseFloat(r.p) || 0 }))
     ]
 
-    const horaHasta = addMinutesToHora(hora, form.extendido ? 180 : 150)
+    const horaHasta = addMinutesToHora(hora, 150 + (form.extendido ? (form.extendido_mins || 30) : 0))
 
     let metFinal = form.met
     let montoFinal = parseFloat(form.monto) || 0
@@ -274,6 +276,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
       hora,
       hora_hasta: horaHasta,
       extendido: form.extendido,
+      extendido_mins: form.extendido ? (form.extendido_mins || 30) : 0,
       salon: form.salon,
       tipo: form.tipo,
       reservante: form.reservante.trim(),
@@ -379,31 +382,55 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
                     fontSize: 15, color: 'var(--nv)', border: '1.5px solid var(--bd2)',
                     minWidth: 64, textAlign: 'center'
                   }}>
-                    {addMinutesToHora(getHora(form), form.extendido ? 180 : 150)}
+                    {addMinutesToHora(getHora(form), 150 + (form.extendido ? (form.extendido_mins || 30) : 0))}
                   </span>
                 </>
               )}
             </div>
             <div style={{ marginTop: 8 }}>
-              <button
-                type="button"
-                onClick={() => set('extendido', !form.extendido)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 7,
-                  padding: '7px 18px', borderRadius: 22,
-                  border: `1.5px solid ${form.extendido ? 'var(--nv)' : 'var(--bd2)'}`,
-                  background: form.extendido ? 'var(--nv3)' : 'var(--wh)',
-                  color: form.extendido ? 'var(--nv)' : 'var(--mu)',
-                  cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                  fontFamily: "'Nunito', sans-serif", transition: 'all .2s',
-                }}
-              >
-                <span style={{ fontSize: 16 }}>{form.extendido ? '⏱' : '⏱'}</span>
-                <span>{form.extendido ? 'Extendido (3 hs)' : 'Extendido'}</span>
-              </button>
-              <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--mu)' }}>
-                {form.extendido ? '+30 min adicionales' : 'Duración estándar: 2:30 hs'}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => set('extendido', !form.extendido)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 7,
+                    padding: '7px 18px', borderRadius: 22,
+                    border: `1.5px solid ${form.extendido ? 'var(--nv)' : 'var(--bd2)'}`,
+                    background: form.extendido ? 'var(--nv3)' : 'var(--wh)',
+                    color: form.extendido ? 'var(--nv)' : 'var(--mu)',
+                    cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                    fontFamily: "'Nunito', sans-serif", transition: 'all .2s',
+                  }}
+                >
+                  <span>⏱</span>
+                  <span>{form.extendido ? 'Extendido' : 'Extendido'}</span>
+                </button>
+                {form.extendido && (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {[30, 60, 90, 120].map(mins => (
+                      <button
+                        key={mins}
+                        type="button"
+                        onClick={() => set('extendido_mins', mins)}
+                        style={{
+                          padding: '5px 12px', borderRadius: 18, fontSize: 12, fontWeight: 700,
+                          border: `1.5px solid ${form.extendido_mins === mins ? 'var(--nv)' : 'var(--bd2)'}`,
+                          background: form.extendido_mins === mins ? 'var(--nv3)' : 'var(--wh)',
+                          color: form.extendido_mins === mins ? 'var(--nv)' : 'var(--mu)',
+                          cursor: 'pointer', fontFamily: "'Nunito', sans-serif",
+                        }}
+                      >
+                        {mins < 60 ? `+${mins} min` : `+${mins / 60} hs`}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <span style={{ fontSize: 12, color: 'var(--mu)' }}>
+                  {form.extendido
+                    ? `+${form.extendido_mins || 30} min · duración total: ${Math.floor((150 + (form.extendido_mins || 30)) / 60)}:${String((150 + (form.extendido_mins || 30)) % 60).padStart(2, '0')} hs`
+                    : 'Duración estándar: 2:30 hs'}
+                </span>
+              </div>
             </div>
           </div>
           <div className="fgg">
