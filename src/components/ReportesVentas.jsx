@@ -4,6 +4,23 @@ import { downloadCSV } from '../utils'
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 const fmtNum = (n) => Number(n || 0).toFixed(2)
 
+// Parsea "Efectivo $6.000 + Transferencia $10.000" → { Efectivo: 6000, Transferencia: 10000 }
+function parsearMetodos(metodo_pago, totalVenta) {
+  if (!metodo_pago) return { 'Sin especificar': totalVenta }
+  if (metodo_pago.includes(' + ')) {
+    const result = {}
+    metodo_pago.split(' + ').forEach(parte => {
+      const idx = parte.lastIndexOf('$')
+      if (idx === -1) return
+      const nombre = parte.slice(0, idx).trim()
+      const monto = parseFloat(parte.slice(idx + 1).replace(/\./g, '').replace(',', '.')) || 0
+      if (nombre) result[nombre] = (result[nombre] || 0) + monto
+    })
+    return Object.keys(result).length ? result : { [metodo_pago]: totalVenta }
+  }
+  return { [metodo_pago]: totalVenta }
+}
+
 function primerDiaMes() {
   const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10)
 }
@@ -68,17 +85,21 @@ export default function ReportesVentas({ ventas }) {
     return Object.values(map).sort((a, b) => a.fecha.localeCompare(b.fecha))
   }, [ventasFiltradas])
 
-  // Por método de pago
+  // Por método de pago — descompone ventas multi-método
   const porMetodo = useMemo(() => {
     const map = {}
     for (const v of ventasFiltradas) {
-      const m = v.metodo_pago || 'Sin especificar'
-      if (!map[m]) map[m] = { metodo: m, count: 0, total: 0 }
-      map[m].count++
-      map[m].total += v.total || 0
+      const metodos = parsearMetodos(v.metodo_pago, v.total || 0)
+      for (const [nombre, monto] of Object.entries(metodos)) {
+        if (!map[nombre]) map[nombre] = { metodo: nombre, count: 0, total: 0 }
+        map[nombre].count++
+        map[nombre].total += monto
+      }
     }
     return Object.values(map).sort((a, b) => b.total - a.total)
   }, [ventasFiltradas])
+
+  const totalMetodos = porMetodo.reduce((s, m) => s + m.total, 0) || 1
 
   const maxDia = porDia.reduce((m, d) => Math.max(m, d.total), 0) || 1
   const maxProd = porProducto[0]?.total || 1
@@ -176,9 +197,9 @@ export default function ReportesVentas({ ventas }) {
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--nv)', fontFamily: 'Nunito' }}>{fmt(m.total)}</span>
                 </div>
                 <div className="met-bar-track">
-                  <div className="met-bar-fill gn" style={{ width: `${(m.total / kpis.total) * 100}%` }} />
+                  <div className="met-bar-fill gn" style={{ width: `${(m.total / totalMetodos) * 100}%` }} />
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>{m.count} ventas · {kpis.total > 0 ? Math.round((m.total / kpis.total) * 100) : 0}%</div>
+                <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>{Math.round((m.total / totalMetodos) * 100)}%</div>
               </div>
             ))}
         </div>
