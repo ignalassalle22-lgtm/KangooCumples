@@ -23,8 +23,11 @@ function addMinutesToHora(hora, mins) {
 }
 
 function horaToMins(hora) {
-  if (!hora || !/^\d{1,2}:\d{2}$/.test(hora)) return -1
-  const [h, m] = hora.split(':').map(Number)
+  if (!hora) return -1
+  // Acepta "HH:MM" y "HH:MM:SS" (formato Supabase TIME)
+  const clean = String(hora).slice(0, 5)
+  if (!/^\d{1,2}:\d{2}$/.test(clean)) return -1
+  const [h, m] = clean.split(':').map(Number)
   return h * 60 + m
 }
 
@@ -193,10 +196,11 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
       if (ev.fecha !== form.fecha) return false
       if (ev.pago === 'cancelado') return false
       const evStart = horaToMins(ev.hora)
-      const evEnd = horaToMins(ev.hora_hasta)
-      const overlaps = (evStart < 0 || evEnd < 0)
-        ? ev.hora === hora
-        : newStart < evEnd && evStart < newEnd
+      if (evStart < 0) return false
+      // Si hora_hasta no está disponible, estimar duración por defecto
+      let evEnd = horaToMins(ev.hora_hasta)
+      if (evEnd < 0) evEnd = evStart + (ev.extendido ? ((ev.extendido_mins || 30) + 150) : 150)
+      const overlaps = newStart < evEnd && evStart < newEnd
       if (!overlaps) return false
       // Evento nuevo privado → cualquier solapamiento en cualquier salón bloquea
       if (form.privado) return true
