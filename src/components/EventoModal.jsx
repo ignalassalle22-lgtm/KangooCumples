@@ -177,7 +177,9 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
     return { base, mTot, eTot, artTot, dto, total, monto, rest: Math.max(0, total - monto) }
   }, [form.chi, form.adu, form.promoId, form.monto, extraQtys, extraPrices, adHocExtras, articulosEvento, config, mrows])
 
-  // Duplicate / overlap check — detecta solapamiento de horarios en el mismo salón
+  // Duplicate / overlap check
+  // - Evento privado nuevo: bloquea si hay CUALQUIER evento en esa fecha/hora (cualquier salón)
+  // - Evento normal nuevo: bloquea si hay solapamiento en el mismo salón O si existe un evento privado en esa hora
   const dupAlert = useMemo(() => {
     const hora = getHora(form)
     if (!form.fecha || !hora || !form.salon) return false
@@ -186,20 +188,29 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
     const newEnd = horaToMins(addMinutesToHora(hora, 150 + (form.extendido ? (form.extendido_mins || 30) : 0)))
     if (newStart < 0 || newEnd < 0) return false
 
-    return eventos.some(ev => {
+    const conflicto = eventos.find(ev => {
       if (ev.id === evento?.id) return false
-      if (ev.fecha !== form.fecha || ev.salon !== form.salon) return false
+      if (ev.fecha !== form.fecha) return false
       if (ev.pago === 'cancelado') return false
       const evStart = horaToMins(ev.hora)
       const evEnd = horaToMins(ev.hora_hasta)
-      if (evStart < 0 || evEnd < 0) {
-        // fallback: chequeo de hora exacta si no hay hora_hasta
-        return ev.hora === hora
-      }
-      // Solapamiento: A empieza antes de que B termine Y B empieza antes de que A termine
-      return newStart < evEnd && evStart < newEnd
+      const overlaps = (evStart < 0 || evEnd < 0)
+        ? ev.hora === hora
+        : newStart < evEnd && evStart < newEnd
+      if (!overlaps) return false
+      // Evento nuevo privado → cualquier solapamiento en cualquier salón bloquea
+      if (form.privado) return true
+      // Evento existente privado → bloquea todos los salones
+      if (ev.privado) return true
+      // Caso normal: solo mismo salón
+      return ev.salon === form.salon
     })
-  }, [form.fecha, form.horaH, form.horaM, form.horaLibre, form.salon, form.extendido, form.extendido_mins, eventos, evento])
+
+    if (!conflicto) return null
+    if (form.privado) return 'No se puede cargar el evento privado: ya existe un evento en esa fecha y horario.'
+    if (conflicto.privado) return `Ese horario está bloqueado por un evento privado en ${conflicto.salon || 'otro salón'}.`
+    return 'Ya existe un evento en ese salón, fecha y horario.'
+  }, [form.fecha, form.horaH, form.horaM, form.horaLibre, form.salon, form.extendido, form.extendido_mins, form.privado, eventos, evento])
 
   // Menu qty mismatch
   const menuAlert = useMemo(() => {
@@ -221,7 +232,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
       return
     }
     if (dupAlert) {
-      addToast('Duplicado: ya existe un evento con esa fecha, hora y salón.', 'err')
+      addToast(dupAlert, 'err')
       return
     }
     if (form.pago !== 'none' && form.pago !== 'cancelado') {
@@ -322,7 +333,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
         </div>
 
         {dupAlert && (
-          <div className="adp show">Ya existe un evento en ese salón, fecha y horario. Por favor verificá los datos.</div>
+          <div className="adp show">{dupAlert}</div>
         )}
 
         {/* Datos del reservante */}
