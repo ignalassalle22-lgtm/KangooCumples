@@ -57,6 +57,21 @@ ${descuento > 0 ? `<tr><td>Subtotal</td><td class="r">${fmt(subtotal)}</td></tr>
 
 const METODOS_DEFAULT = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
+const CAT_COLORS = [
+  { bg: '#fff0f0', border: '#f87171' },
+  { bg: '#fff7ed', border: '#fb923c' },
+  { bg: '#fefce8', border: '#facc15' },
+  { bg: '#f0fdf4', border: '#4ade80' },
+  { bg: '#eff6ff', border: '#60a5fa' },
+  { bg: '#fdf4ff', border: '#c084fc' },
+  { bg: '#fff1f2', border: '#fb7185' },
+  { bg: '#ecfdf5', border: '#34d399' },
+  { bg: '#f0f9ff', border: '#38bdf8' },
+  { bg: '#faf5ff', border: '#a78bfa' },
+  { bg: '#fefce8', border: '#a3e635' },
+  { bg: '#fff7ed', border: '#f97316' },
+]
+
 // Parsea "Efectivo $5.000 + Transferencia $3.000" → [{id,met,monto}] o null si no es multi
 function parsearMultiMetodo(str) {
   if (!str || !str.includes(' + ')) return null
@@ -70,7 +85,7 @@ function parsearMultiMetodo(str) {
   })
 }
 
-export default function TicketModal({ productos, cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, metodosPago, empleados = [], itemsIniciales = [], clienteInicial = '', onSave, onSaveEdicion, ventaEditar = null, onClose, addToast }) {
+export default function TicketModal({ productos, categorias = [], cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, metodosPago, empleados = [], itemsIniciales = [], clienteInicial = '', onSave, onSaveEdicion, ventaEditar = null, onClose, addToast }) {
   const METODOS = metodosPago?.length ? metodosPago : METODOS_DEFAULT
   // Parsear métodos existentes al editar
   const initMetodos = ventaEditar ? parsearMultiMetodo(ventaEditar.metodo_pago) : null
@@ -91,6 +106,7 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
     return itemsIniciales.length ? itemsIniciales : []
   })
   const [busca, setBusca] = useState('')
+  const [catSeleccionada, setCatSeleccionada] = useState(null)
   const [cliente, setCliente] = useState(ventaEditar?.cliente || clienteInicial)
   const [empleadoId, setEmpleadoId] = useState(ventaEditar?.empleado_id ? String(ventaEditar.empleado_id) : '')
   const [descuento, setDescuento] = useState(ventaEditar?.descuento > 0 ? String(ventaEditar.descuento) : '')
@@ -110,13 +126,27 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
     if (onCajaChange) onCajaChange(parsed)
   }
 
-  const prodsFiltrados = useMemo(() => {
-    if (!busca) return []
-    return productos.filter(p =>
-      p.activo !== false &&
-      (p.nombre.toLowerCase().includes(busca.toLowerCase()) || (p.codigo || '').toLowerCase().includes(busca.toLowerCase()))
-    ).slice(0, 8)
-  }, [busca, productos])
+  // Categorías visibles (excluir "Stock interno")
+  const categoriasVisibles = useMemo(() =>
+    categorias.filter(c => c.nombre.toLowerCase() !== 'stock interno'),
+  [categorias])
+
+  // Productos mostrados: si hay categoría seleccionada → filtrar por ella + busca; si solo busca → búsqueda global
+  const prodsMostrados = useMemo(() => {
+    let lista = productos.filter(p => p.activo !== false)
+    if (catSeleccionada) lista = lista.filter(p => p.categoria_id === catSeleccionada.id)
+    if (busca) lista = lista.filter(p =>
+      p.nombre.toLowerCase().includes(busca.toLowerCase()) ||
+      (p.codigo || '').toLowerCase().includes(busca.toLowerCase())
+    )
+    return catSeleccionada ? lista : (busca ? lista.slice(0, 8) : [])
+  }, [busca, productos, catSeleccionada])
+
+  // Cantidad total de unidades en el ticket para una categoría dada
+  function catUnidades(catId) {
+    const ids = new Set(productos.filter(p => p.categoria_id === catId).map(p => p.id))
+    return items.filter(it => ids.has(it.producto_id)).reduce((s, it) => s + it.cantidad, 0)
+  }
 
   function agregarProducto(prod) {
     const existe = items.find(it => it.producto_id === prod.id)
@@ -291,49 +321,135 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, marginTop: 4 }}>
-          {/* Panel izquierdo: buscador + items */}
+          {/* Panel izquierdo: categorías + items */}
           <div>
-            <div className="sdv">Agregar productos</div>
-            <div style={{ position: 'relative', marginBottom: 14 }}>
-              <input
-                ref={buscaRef}
-                value={busca}
-                onChange={e => setBusca(e.target.value)}
-                placeholder="Buscar por nombre o código..."
-                style={{ width: '100%', border: '1px solid var(--bd2)', borderRadius: 10, padding: '10px 14px', fontSize: 14 }}
-                autoFocus
-              />
-              {prodsFiltrados.length > 0 && (
-                <div style={{
-                  position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
-                  background: 'var(--wh)', border: '1px solid var(--bd2)', borderRadius: 10,
-                  boxShadow: 'var(--sh2)', marginTop: 4, overflow: 'hidden'
-                }}>
-                  {prodsFiltrados.map(p => (
-                    <div key={p.id}
-                      onClick={() => agregarProducto(p)}
-                      style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--bd)' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--nv3)'}
-                      onMouseLeave={e => e.currentTarget.style.background = ''}
-                    >
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 700 }}>{p.nombre}</div>
-                        <div style={{ fontSize: 12, color: 'var(--mu)' }}>
-                          {p.tipo === 'simple' ? `Stock: ${p.stock_actual || 0}` : 'Compuesto'}
-                          {p.codigo ? ` · ${p.codigo}` : ''}
-                        </div>
-                      </div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gn)' }}>{fmt(p.precio_venta)}</div>
-                    </div>
-                  ))}
+            {/* Navegación: categorías o productos de categoría seleccionada */}
+            {!catSeleccionada ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <div className="sdv" style={{ margin: 0, flex: 1 }}>Categorías</div>
+                  <input
+                    ref={buscaRef}
+                    value={busca}
+                    onChange={e => setBusca(e.target.value)}
+                    placeholder="Búsqueda rápida..."
+                    style={{ border: '1px solid var(--bd2)', borderRadius: 8, padding: '7px 12px', fontSize: 13, width: 180 }}
+                    autoFocus
+                  />
                 </div>
-              )}
-            </div>
+
+                {/* Resultados de búsqueda rápida (sin categoría) */}
+                {busca && prodsMostrados.length > 0 && (
+                  <div style={{ background: 'var(--wh)', border: '1px solid var(--bd2)', borderRadius: 10, overflow: 'hidden', marginBottom: 12 }}>
+                    {prodsMostrados.map(p => (
+                      <div key={p.id} onClick={() => agregarProducto(p)}
+                        style={{ padding: '9px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--bd)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--nv3)'}
+                        onMouseLeave={e => e.currentTarget.style.background = ''}
+                      >
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700 }}>{p.nombre}</div>
+                          <div style={{ fontSize: 12, color: 'var(--mu)' }}>
+                            {p.tipo === 'simple' ? `Stock: ${p.stock_actual || 0}` : 'Compuesto'}
+                            {p.codigo ? ` · ${p.codigo}` : ''}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gn)' }}>{fmt(p.precio_venta)}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Grid de tiles de categoría */}
+                {!busca && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+                    {categoriasVisibles.map((cat, i) => {
+                      const color = CAT_COLORS[i % CAT_COLORS.length]
+                      const unidades = catUnidades(cat.id)
+                      return (
+                        <div key={cat.id} onClick={() => { setCatSeleccionada(cat); setBusca('') }}
+                          style={{
+                            background: color.bg, border: `2.5px solid ${color.border}`,
+                            borderRadius: 12, padding: '14px 10px', cursor: 'pointer',
+                            textAlign: 'center', transition: 'transform .1s, box-shadow .1s',
+                            userSelect: 'none',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.12)' }}
+                          onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
+                        >
+                          <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: '#333', lineHeight: 1.2, marginBottom: 6 }}>{cat.nombre}</div>
+                          <div style={{ fontSize: 26, fontWeight: 900, color: unidades > 0 ? color.border : '#aaa' }}>{unidades}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Vista de productos de una categoría */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <button className="bg2 bsm" onClick={() => { setCatSeleccionada(null); setBusca('') }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    ← Categorías
+                  </button>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--nv)' }}>{catSeleccionada.nombre}</span>
+                  <input
+                    ref={buscaRef}
+                    value={busca}
+                    onChange={e => setBusca(e.target.value)}
+                    placeholder="Filtrar..."
+                    style={{ border: '1px solid var(--bd2)', borderRadius: 8, padding: '6px 11px', fontSize: 13, marginLeft: 'auto', width: 150 }}
+                    autoFocus
+                  />
+                </div>
+
+                {prodsMostrados.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--mu2)', fontSize: 14 }}>
+                    No hay productos en esta categoría
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 16, maxHeight: 280, overflowY: 'auto' }}>
+                    {prodsMostrados.map(p => {
+                      const enTicket = items.find(it => it.producto_id === p.id)
+                      return (
+                        <div key={p.id} onClick={() => agregarProducto(p)}
+                          style={{
+                            background: enTicket ? 'var(--nv3)' : 'var(--wh)',
+                            border: `1.5px solid ${enTicket ? 'var(--nv)' : 'var(--bd2)'}`,
+                            borderRadius: 10, padding: '10px 12px', cursor: 'pointer',
+                            display: 'flex', flexDirection: 'column', gap: 3,
+                            transition: 'all .1s',
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--nv3)'}
+                          onMouseLeave={e => e.currentTarget.style.background = enTicket ? 'var(--nv3)' : 'var(--wh)'}
+                        >
+                          <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>{p.nombre}</div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: 12, color: 'var(--mu)' }}>
+                              {p.tipo === 'simple' && p.maneja_stock !== false ? `Stock: ${p.stock_actual || 0}` : ''}
+                            </div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--gn)' }}>{fmt(p.precio_venta)}</div>
+                          </div>
+                          {enTicket && (
+                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nv)', marginTop: 2 }}>
+                              ✓ En ticket: ×{enTicket.cantidad}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+
 
             {/* Items del ticket */}
+            {items.length > 0 && <div className="sdv" style={{ marginBottom: 8 }}>Ticket actual</div>}
             {items.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--mu2)', fontSize: 14 }}>
-                Buscá un producto para agregar al ticket
+              <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--mu2)', fontSize: 14 }}>
+                Seleccioná una categoría para agregar productos
               </div>
             ) : (
               <div>

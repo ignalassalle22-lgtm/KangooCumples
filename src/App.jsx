@@ -768,6 +768,7 @@ function AppInner({ usuario, onLogout }) {
       {(ticketModalOpen || editingVenta) && (
         <TicketModal
           productos={productos}
+          categorias={categorias}
           cajasAbiertas={cajasAbiertas}
           cajaSeleccionadaId={cajaSeleccionadaId}
           onCajaChange={setCajaSeleccionadaId}
