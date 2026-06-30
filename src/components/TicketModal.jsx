@@ -57,8 +57,23 @@ ${descuento > 0 ? `<tr><td>Subtotal</td><td class="r">${fmt(subtotal)}</td></tr>
 
 const METODOS_DEFAULT = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
+// Parsea "Efectivo $5.000 + Transferencia $3.000" → [{id,met,monto}] o null si no es multi
+function parsearMultiMetodo(str) {
+  if (!str || !str.includes(' + ')) return null
+  const partes = str.split(' + ')
+  return partes.map((parte, i) => {
+    const idx = parte.lastIndexOf('$')
+    if (idx === -1) return { id: i + 1, met: parte.trim(), monto: '' }
+    const nombre = parte.slice(0, idx).trim()
+    const monto = parseFloat(parte.slice(idx + 1).replace(/\./g, '').replace(',', '.')) || 0
+    return { id: i + 1, met: nombre, monto: String(monto) }
+  })
+}
+
 export default function TicketModal({ productos, cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, metodosPago, empleados = [], itemsIniciales = [], clienteInicial = '', onSave, onSaveEdicion, ventaEditar = null, onClose, addToast }) {
   const METODOS = metodosPago?.length ? metodosPago : METODOS_DEFAULT
+  // Parsear métodos existentes al editar
+  const initMetodos = ventaEditar ? parsearMultiMetodo(ventaEditar.metodo_pago) : null
   const [items, setItems] = useState(() => {
     if (ventaEditar?.venta_items?.length) {
       return ventaEditar.venta_items.map(it => ({
@@ -80,10 +95,10 @@ export default function TicketModal({ productos, cajasAbiertas = [], cajaSelecci
   const [empleadoId, setEmpleadoId] = useState(ventaEditar?.empleado_id ? String(ventaEditar.empleado_id) : '')
   const [descuento, setDescuento] = useState(ventaEditar?.descuento > 0 ? String(ventaEditar.descuento) : '')
   const [descuentoTipo, setDescuentoTipo] = useState('monto')
-  const [metodo, setMetodo] = useState(ventaEditar?.metodo_pago || 'Efectivo')
+  const [metodo, setMetodo] = useState(initMetodos ? 'Efectivo' : (ventaEditar?.metodo_pago || 'Efectivo'))
   const [pagaCon, setPagaCon] = useState('')
-  const [multiMetodo, setMultiMetodo] = useState(false)
-  const [metodosPagados, setMetodosPagados] = useState([{ id: 1, met: 'Efectivo', monto: '' }])
+  const [multiMetodo, setMultiMetodo] = useState(!!initMetodos)
+  const [metodosPagados, setMetodosPagados] = useState(initMetodos || [{ id: 1, met: 'Efectivo', monto: '' }])
   const [obs, setObs] = useState(ventaEditar?.obs || '')
   const [saving, setSaving] = useState(false)
   const buscaRef = useRef()
