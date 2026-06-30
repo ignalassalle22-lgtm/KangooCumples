@@ -6,6 +6,25 @@ const fmtNum = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency'
 
 const METODOS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
+// Parsea metodo_pago en un mapa {metodo: monto}.
+// Single: "Efectivo" → {Efectivo: totalVenta}
+// Multi:  "Efectivo $5.000 + Transferencia $3.000" → {Efectivo: 5000, Transferencia: 3000}
+function parsearMetodos(metodo_pago, totalVenta) {
+  if (!metodo_pago) return { Otro: totalVenta }
+  if (metodo_pago.includes('$')) {
+    const result = {}
+    metodo_pago.split(' + ').forEach(parte => {
+      const idx = parte.lastIndexOf('$')
+      if (idx === -1) return
+      const nombre = parte.slice(0, idx).trim()
+      const monto = parseFloat(parte.slice(idx + 1).replace(/\./g, '').replace(',', '.')) || 0
+      if (nombre) result[nombre] = (result[nombre] || 0) + monto
+    })
+    return result
+  }
+  return { [metodo_pago]: totalVenta }
+}
+
 function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas, totalEfectivo, desglose, gastos, totalGastos, efectivoEsperado, saldoFinal, diferencia, obs }) {
   fetch('http://localhost:5001/print/cierre_caja', {
     method: 'POST',
@@ -180,18 +199,21 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
   )
 
   const totalVentas = ventasCaja.reduce((s, v) => s + (v.total || 0), 0)
-  const totalEfectivo = ventasCaja.filter(v => v.metodo_pago === 'Efectivo').reduce((s, v) => s + (v.total || 0), 0)
   const totalGastos = gastos.reduce((s, g) => s + (g.monto || 0), 0)
-  const efectivoEsperado = (caja.saldo_inicial || 0) + totalEfectivo - totalGastos
 
   const desglose = useMemo(() => {
     const map = {}
     ventasCaja.forEach(v => {
-      const m = v.metodo_pago || 'Otro'
-      map[m] = (map[m] || 0) + (v.total || 0)
+      const metodos = parsearMetodos(v.metodo_pago, v.total || 0)
+      Object.entries(metodos).forEach(([met, monto]) => {
+        map[met] = (map[met] || 0) + monto
+      })
     })
     return map
   }, [ventasCaja])
+
+  const totalEfectivo = desglose['Efectivo'] || 0
+  const efectivoEsperado = (caja.saldo_inicial || 0) + totalEfectivo - totalGastos
 
   const diferencia = saldoFinal !== '' ? (parseFloat(saldoFinal) || 0) - efectivoEsperado : null
 
@@ -651,8 +673,10 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                       const ventasCerrada = ventas.filter(v => v.caja_id === c.id && v.estado !== 'anulada')
                       const desglose = {}
                       ventasCerrada.forEach(v => {
-                        const m = v.metodo_pago || 'Otro'
-                        desglose[m] = (desglose[m] || 0) + (v.total || 0)
+                        const metodos = parsearMetodos(v.metodo_pago, v.total || 0)
+                        Object.entries(metodos).forEach(([met, monto]) => {
+                          desglose[met] = (desglose[met] || 0) + monto
+                        })
                       })
                       return (
                         <React.Fragment key={c.id}>
