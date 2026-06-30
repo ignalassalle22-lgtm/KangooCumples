@@ -25,7 +25,14 @@ function parsearMetodos(metodo_pago, totalVenta) {
   return { [metodo_pago]: totalVenta }
 }
 
-function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas, totalEfectivo, desglose, gastos, totalGastos, efectivoEsperado, saldoFinal, diferencia, obs }) {
+function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas, totalEfectivo, desglose, gastos, gastosReales, egresosCofre, totalGastosReales, totalEgresosCofre, totalGastos, efectivoEsperado, saldoFinal, diferencia, obs }) {
+  // Compatibilidad: si no vienen separados, separar internamente
+  if (!gastosReales) {
+    gastosReales = (gastos || []).filter(g => !g.detalle?.startsWith('Traspaso al cofre'))
+    egresosCofre = (gastos || []).filter(g => g.detalle?.startsWith('Traspaso al cofre'))
+    totalGastosReales = gastosReales.reduce((s, g) => s + (g.monto || 0), 0)
+    totalEgresosCofre = egresosCofre.reduce((s, g) => s + (g.monto || 0), 0)
+  }
   fetch('http://localhost:5001/print/cierre_caja', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -52,8 +59,11 @@ function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas,
     const difColor = diferencia === 0 ? '#16a34a' : diferencia > 0 ? '#d97706' : '#dc2626'
     const totalOnline = totalVentas - totalEfectivo
     const onlineMetodos = METODOS_PAGO.filter(m => m !== 'Efectivo' && desglose[m] > 0)
-    const gastosRows = gastos.map(g =>
+    const gastosRealesRows = gastosReales.map(g =>
       `<tr><td style="padding:1px 0 1px 12px;color:#555">${g.detalle || '—'}${g.persona ? ` (${g.persona})` : ''}</td><td style="text-align:right;color:#dc2626">−${fmtP(g.monto)}</td></tr>`
+    ).join('')
+    const egresosCofreRows = egresosCofre.map(g =>
+      `<tr><td style="padding:1px 0 1px 12px;color:#555">${g.detalle || '—'}${g.persona ? ` (${g.persona})` : ''}</td><td style="text-align:right;color:#7c3aed">−${fmtP(g.monto)}</td></tr>`
     ).join('')
     const onlineRows = onlineMetodos.map(m =>
       `<tr><td style="padding:1px 0 1px 12px;color:#555">${m}</td><td style="text-align:right">${fmtP(desglose[m])}</td></tr>`
@@ -78,11 +88,13 @@ ${empleado?`<tr><td>Responsable</td><td class="r"><b>${empleado}</b></td></tr>`:
 <tr class="bold"><td>Total ventas</td><td class="r">${fmtP(totalVentas)}</td></tr>
 <tr><td>Efectivo</td><td class="r">${fmtP(totalEfectivo)}</td></tr>
 <tr><td>Online</td><td class="r">${fmtP(totalOnline)}</td></tr>${onlineRows}</table>
-${totalGastos>0?`<pre>${sep}</pre><div class="section">Gastos</div><table><tr class="bold"><td>Total gastos</td><td class="r">−${fmtP(totalGastos)}</td></tr>${gastosRows}</table>`:''}
+${totalGastosReales>0?`<pre>${sep}</pre><div class="section">Gastos</div><table><tr class="bold"><td>Total gastos</td><td class="r">−${fmtP(totalGastosReales)}</td></tr>${gastosRealesRows}</table>`:''}
+${totalEgresosCofre>0?`<pre>${sep}</pre><div class="section">Egresos al cofre</div><table><tr class="bold"><td>Total egresos</td><td class="r" style="color:#7c3aed">−${fmtP(totalEgresosCofre)}</td></tr>${egresosCofreRows}</table>`:''}
 <pre>${sep2}</pre><div class="section">Balance</div>
 <table><tr><td>Saldo inicial</td><td class="r">${fmtP(caja.saldo_inicial)}</td></tr>
 <tr><td>+ Efectivo cobrado</td><td class="r">+${fmtP(totalEfectivo)}</td></tr>
-${totalGastos>0?`<tr><td>− Gastos</td><td class="r">−${fmtP(totalGastos)}</td></tr>`:''}
+${totalGastosReales>0?`<tr><td>− Gastos</td><td class="r">−${fmtP(totalGastosReales)}</td></tr>`:''}
+${totalEgresosCofre>0?`<tr><td>− Egresos cofre</td><td class="r">−${fmtP(totalEgresosCofre)}</td></tr>`:''}
 <tr class="big"><td>Total teorico</td><td class="r">${fmtP(efectivoEsperado)}</td></tr>
 <tr class="big"><td>Total real</td><td class="r">${fmtP(saldoFinal)}</td></tr>
 <tr class="dif"><td>Diferencia</td><td class="r">${signo(diferencia)}${fmtP(diferencia)}</td></tr></table>
@@ -199,7 +211,11 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
   )
 
   const totalVentas = ventasCaja.reduce((s, v) => s + (v.total || 0), 0)
-  const totalGastos = gastos.reduce((s, g) => s + (g.monto || 0), 0)
+  const gastosReales = gastos.filter(g => !g.detalle?.startsWith('Traspaso al cofre'))
+  const egresosCofre = gastos.filter(g => g.detalle?.startsWith('Traspaso al cofre'))
+  const totalGastosReales = gastosReales.reduce((s, g) => s + (g.monto || 0), 0)
+  const totalEgresosCofre = egresosCofre.reduce((s, g) => s + (g.monto || 0), 0)
+  const totalGastos = totalGastosReales + totalEgresosCofre
 
   const desglose = useMemo(() => {
     const map = {}
@@ -228,6 +244,10 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
         await onCerrar({ cajaId: caja.id, saldo_final: sf, obs_cierre: obs, total_ventas: totalVentas, total_efectivo: totalEfectivo, empleado_cierre: empleadoCierre })
         addToast(`✓ Caja "${caja.nombre || ''}" cerrada`)
         imprimirCierre({
+          gastosReales,
+          egresosCofre,
+          totalGastosReales,
+          totalEgresosCofre,
           caja,
           horaCierre,
           empleado: empleadoCierre,
@@ -324,8 +344,11 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
           <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Resumen</div>
           <div className="li"><span className="lin">Tickets registrados</span><span className="lis">{ventasCaja.length}</span></div>
           <div className="li"><span className="lin">Total facturado</span><span className="lip">{fmt(totalVentas)}</span></div>
-          {totalGastos > 0 && (
-            <div className="li"><span className="lin">Gastos / traspasos</span><span style={{ fontWeight: 700, color: 'var(--rd)' }}>−{fmt(totalGastos)}</span></div>
+          {totalGastosReales > 0 && (
+            <div className="li"><span className="lin">Gastos</span><span style={{ fontWeight: 700, color: 'var(--rd)' }}>−{fmt(totalGastosReales)}</span></div>
+          )}
+          {totalEgresosCofre > 0 && (
+            <div className="li"><span className="lin">Egresos al cofre</span><span style={{ fontWeight: 700, color: 'var(--rd)' }}>−{fmt(totalEgresosCofre)}</span></div>
           )}
           <div className="li"><span className="lin">Efectivo esperado en caja</span><span className="lip">{fmt(efectivoEsperado)}</span></div>
         </div>
@@ -666,7 +689,11 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                   <tbody>
                     {historial.map(c => {
                       const gastosCaja = gastos.filter(g => g.caja_id === c.id)
-                      const totalGastosCaja = gastosCaja.reduce((s, g) => s + (g.monto || 0), 0)
+                      const gastosRealesCaja = gastosCaja.filter(g => !g.detalle?.startsWith('Traspaso al cofre'))
+                      const egresosCofrecaja = gastosCaja.filter(g => g.detalle?.startsWith('Traspaso al cofre'))
+                      const totalGastosRealesCaja = gastosRealesCaja.reduce((s, g) => s + (g.monto || 0), 0)
+                      const totalEgresosCofreCaja = egresosCofrecaja.reduce((s, g) => s + (g.monto || 0), 0)
+                      const totalGastosCaja = totalGastosRealesCaja + totalEgresosCofreCaja
                       const esperado = (c.saldo_inicial || 0) + (c.total_efectivo || 0) - totalGastosCaja
                       const diff = (c.saldo_final || 0) - esperado
                       const expanded = histExpanded[c.id]
@@ -718,6 +745,10 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                                   totalEfectivo: c.total_efectivo || 0,
                                   desglose,
                                   gastos: gastosCaja,
+                                  gastosReales: gastosRealesCaja,
+                                  egresosCofre: egresosCofrecaja,
+                                  totalGastosReales: totalGastosRealesCaja,
+                                  totalEgresosCofre: totalEgresosCofreCaja,
                                   totalGastos: totalGastosCaja,
                                   efectivoEsperado: esperado,
                                   saldoFinal: c.saldo_final || 0,
