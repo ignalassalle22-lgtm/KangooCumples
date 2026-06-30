@@ -61,7 +61,13 @@ export default function EventosList({ eventos, loading, onEditar, onEliminar, on
       const matchMes = !filterMes || mesKey === filterMes
       const matchFecha = !filterFecha || ev.fecha === filterFecha
       return matchText && matchPago && matchMes && matchFecha
-    }).sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '') || (a.hora || '').localeCompare(b.hora || ''))
+    }).sort((a, b) => {
+      const hoy = new Date().toISOString().slice(0, 10)
+      const aPast = (a.fecha || '') < hoy ? 1 : 0
+      const bPast = (b.fecha || '') < hoy ? 1 : 0
+      if (aPast !== bPast) return aPast - bPast
+      return (a.fecha || '').localeCompare(b.fecha || '') || (a.hora || '').localeCompare(b.hora || '')
+    })
   }, [eventos, search, filterPago, filterFecha, filterMes])
 
   if (loading) {
