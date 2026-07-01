@@ -13,7 +13,7 @@ function getMonthLabel(key) {
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
-export default function EventosList({ eventos, loading, onEditar, onEliminar, onNuevo, onVerDetalle, onAbrirCaja, onFinalizar, isAdmin = true }) {
+export default function EventosList({ eventos, loading, config, onEditar, onEliminar, onNuevo, onVerDetalle, onAbrirCaja, onFinalizar, isAdmin = true }) {
   const [search, setSearch] = useState('')
   const [filterPago, setFilterPago] = useState('')
   const [filterFecha, setFilterFecha] = useState('')
@@ -63,9 +63,17 @@ export default function EventosList({ eventos, loading, onEditar, onEliminar, on
       return matchText && matchPago && matchMes && matchFecha
     }).sort((a, b) => {
       const hoy = new Date().toISOString().slice(0, 10)
-      const aPast = (a.fecha || '') < hoy ? 1 : 0
-      const bPast = (b.fecha || '') < hoy ? 1 : 0
-      if (aPast !== bPast) return aPast - bPast
+      // Grupo: 0 = hoy, 1 = futuro, 2 = pasado
+      const grupo = (fecha) => {
+        if (!fecha) return 1
+        if (fecha === hoy) return 0
+        if (fecha > hoy) return 1
+        return 2
+      }
+      const ga = grupo(a.fecha), gb = grupo(b.fecha)
+      if (ga !== gb) return ga - gb
+      // Dentro de pasados: más reciente primero
+      if (ga === 2) return (b.fecha || '').localeCompare(a.fecha || '') || (b.hora || '').localeCompare(a.hora || '')
       return (a.fecha || '').localeCompare(b.fecha || '') || (a.hora || '').localeCompare(b.hora || '')
     })
   }, [eventos, search, filterPago, filterFecha, filterMes])
@@ -146,65 +154,86 @@ export default function EventosList({ eventos, loading, onEditar, onEliminar, on
             </div>
           )
         ) : (
-          filtered.map(ev => {
-            const isPast = ev.fecha && new Date(ev.fecha + 'T12:00:00') < now
+          filtered.map((ev, idx) => {
+            const hoy = new Date().toISOString().slice(0, 10)
+            const isPast = ev.fecha && ev.fecha < hoy
+            const isHoy = ev.fecha === hoy
+            const prevEv = filtered[idx - 1]
+            const prevIsPast = prevEv?.fecha && prevEv.fecha < hoy
+            const showPastSep = isPast && (!prevEv || !prevIsPast)
+
             const bc = ev.pago === 'paid' ? 'bpd' : ev.pago === 'sena' ? 'bsn' : ev.pago === 'cancelado' ? 'bcn' : 'bnp'
             const bt = ev.pago === 'paid' ? '✓ Pagado' : ev.pago === 'sena' ? '◑ Seña' : ev.pago === 'cancelado' ? '✕ Cancelado' : '✗ Sin pago'
             const rest = (ev.total || 0) - (ev.monto || 0)
             const cd = cumpleDisplay(ev)
+
+            // Menús del evento
+            const menus = config?.menus || []
+            const menuText = (ev.mrows || []).map(r => {
+              const m = menus.find(x => String(x.id) === String(r.mid))
+              return m ? `${m.n} ×${r.qty}` : null
+            }).filter(Boolean).join(' · ')
+
             return (
-              <div key={ev.id} className={`ec${isPast ? ' past' : ' upcoming'}`}>
-                <div>
-                  <div className="dday">
-                    {ev.fecha
-                      ? new Date(ev.fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
-                      : '—'}
+              <React.Fragment key={ev.id}>
+                {showPastSep && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0 4px', color: 'var(--mu)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                    <div style={{ flex: 1, height: 1, background: 'var(--bd2)' }} />
+                    Eventos pasados
+                    <div style={{ flex: 1, height: 1, background: 'var(--bd2)' }} />
                   </div>
-                  <div className="dtime">
-                    🕐 {ev.hora || '—'}{ev.hora_hasta ? ` — ${ev.hora_hasta}` : ''} hs{cd ? ` · 🎂 ${cd}` : ''}
-                  </div>
-                </div>
-                <div>
-                  <div className="dsalon">🏠 {ev.salon}</div>
-                  <div className="dpers">
-                    👦 {ev.chi || 0} chicos · 👤 {ev.adu || 0} adultos{ev.reservante ? ` · ${ev.reservante}` : ''}
-                  </div>
-                </div>
-                <div>
-                  <div className="dtot">{fmt(ev.total || 0)}</div>
+                )}
+                <div key={ev.id} className={`ec${isPast ? ' past' : ' upcoming'}`} style={isHoy ? { borderLeft: '3px solid var(--nv)', background: 'var(--nv3)' } : {}}>
                   <div>
-                    {ev.pago === 'paid'
-                      ? <span className="drest ok">Sin deuda pendiente</span>
-                      : <span className="drest pend">Resta: {fmt(rest)}</span>
-                    }
+                    <div className="dday">
+                      {isHoy && <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--nv)', background: 'var(--nv3)', padding: '1px 7px', borderRadius: 5, marginRight: 6 }}>HOY</span>}
+                      {ev.fecha
+                        ? new Date(ev.fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
+                        : '—'}
+                    </div>
+                    <div className="dtime">
+                      🕐 {ev.hora || '—'}{ev.hora_hasta ? ` — ${ev.hora_hasta}` : ''} hs{cd ? ` · 🎂 ${cd}` : ''}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="dsalon">🏠 {ev.salon}</div>
+                    <div className="dpers">
+                      👦 {ev.chi || 0} chicos · 👤 {ev.adu || 0} adultos{ev.reservante ? ` · ${ev.reservante}` : ''}
+                    </div>
+                    {menuText && (
+                      <div style={{ fontSize: 12, color: 'var(--mu)', marginTop: 3 }}>
+                        🍔 {menuText}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="dtot">{fmt(ev.total || 0)}</div>
+                    <div>
+                      {ev.pago === 'paid'
+                        ? <span className="drest ok">Sin deuda pendiente</span>
+                        : <span className="drest pend">Resta: {fmt(rest)}</span>
+                      }
+                    </div>
+                  </div>
+                  <div><span className={`badge ${bc}`}>{bt}</span></div>
+                  <div className="eact">
+                    <button className="bg2 bsm" title="Ver detalle" onClick={() => onVerDetalle(ev.id)}>👁</button>
+                    {onAbrirCaja && (
+                      <button className="bn bsm" title="Caja del evento" onClick={() => onAbrirCaja(ev.id)}>
+                        💰{ev.consumos && ev.consumos.length > 0 && !ev.consumos_cobrados ? ' !' : ''}
+                      </button>
+                    )}
+                    <button className="bg2 bsm" onClick={() => onEditar(ev.id)}>✏ Editar</button>
+                    {onFinalizar && ev.pago !== 'paid' && ev.pago !== 'cancelado' && (
+                      <button className="bsm" title="Finalizar evento" onClick={() => onFinalizar(ev.id)}
+                        style={{ background: '#1A7A45', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
+                        ✅ Finalizar
+                      </button>
+                    )}
+                    <button className="bdng" onClick={() => onEliminar(ev.id)}>🗑</button>
                   </div>
                 </div>
-                <div><span className={`badge ${bc}`}>{bt}</span></div>
-                <div className="eact">
-                  <button className="bg2 bsm" title="Ver detalle" onClick={() => onVerDetalle(ev.id)}>👁</button>
-                  {onAbrirCaja && (
-                    <button
-                      className="bn bsm"
-                      title="Caja del evento"
-                      onClick={() => onAbrirCaja(ev.id)}
-                    >
-                      💰{ev.consumos && ev.consumos.length > 0 && !ev.consumos_cobrados ? ' !' : ''}
-                    </button>
-                  )}
-                  <button className="bg2 bsm" onClick={() => onEditar(ev.id)}>✏ Editar</button>
-                  {onFinalizar && ev.pago !== 'paid' && ev.pago !== 'cancelado' && (
-                    <button
-                      className="bsm"
-                      title="Finalizar evento"
-                      onClick={() => onFinalizar(ev.id)}
-                      style={{ background: '#1A7A45', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
-                    >
-                      ✅ Finalizar
-                    </button>
-                  )}
-                  <button className="bdng" onClick={() => onEliminar(ev.id)}>🗑</button>
-                </div>
-              </div>
+              </React.Fragment>
             )
           })
         )}
