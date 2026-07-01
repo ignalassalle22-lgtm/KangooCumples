@@ -72,6 +72,11 @@ export default function DetalleModal({ evento: ev, config, onClose, onEditar, on
         }
       })
 
+      // Adicionales de la caja del evento
+      if (ev.consumos) ev.consumos.forEach(c => {
+        if (c.precioUnitario > 0) items.push({ n: c.nombreProducto, qty: c.qty, total: (c.precioUnitario || 0) * c.qty })
+      })
+
       const subtotal = items.reduce((s, i) => s + i.total, 0)
       const descuento = promo ? Math.round(subtotal * promo.pct / 100) : 0
 
@@ -203,15 +208,36 @@ export default function DetalleModal({ evento: ev, config, onClose, onEditar, on
 
         {ev.met && <Row label="Método de pago" val={ev.met} />}
 
+        {ev.articulos && ev.articulos.filter(a => a.qty > 0).length > 0 && (
+          <div className="dm-row" style={{ alignItems: 'flex-start' }}>
+            <span className="dm-label">📦 Artículos incl.</span>
+            <span className="dm-val" style={{ lineHeight: 1.8 }}>
+              {ev.articulos.filter(a => a.qty > 0).map((a, i) => (
+                <span key={i} style={{ display: 'block' }}>{a.nombre} ×{a.qty}</span>
+              ))}
+            </span>
+          </div>
+        )}
+
         {ev.consumos && ev.consumos.length > 0 && (
-          <div className="dm-row">
+          <div className="dm-row" style={{ alignItems: 'flex-start' }}>
             <span className="dm-label">🛒 Adicionales</span>
             <span className="dm-val">
-              {ev.consumos.length} ítem(s)
-              {ev.consumos_cobrados
-                ? <span style={{ marginLeft: 8, fontSize: 11, background: 'rgba(34,197,94,.15)', color: 'var(--gn)', padding: '2px 7px', borderRadius: 5, fontWeight: 700 }}>✓ Cobrados</span>
-                : <span style={{ marginLeft: 8, fontSize: 11, background: 'var(--amb)', color: 'var(--am)', padding: '2px 7px', borderRadius: 5, fontWeight: 700 }}>Pendiente de cobro</span>
-              }
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                {ev.consumos_cobrados
+                  ? <span style={{ fontSize: 11, background: 'rgba(34,197,94,.15)', color: 'var(--gn)', padding: '2px 7px', borderRadius: 5, fontWeight: 700 }}>✓ Cobrados</span>
+                  : <span style={{ fontSize: 11, background: 'var(--amb)', color: 'var(--am)', padding: '2px 7px', borderRadius: 5, fontWeight: 700 }}>Pendiente de cobro</span>
+                }
+              </span>
+              {ev.consumos.map((c, i) => (
+                <span key={i} style={{ display: 'block', lineHeight: 1.8 }}>
+                  {c.nombreProducto} ×{c.qty}
+                  {c.precioUnitario > 0 && <span style={{ color: 'var(--gn)', fontWeight: 700, marginLeft: 6 }}>{fmt((c.precioUnitario || 0) * c.qty)}</span>}
+                </span>
+              ))}
+              <span style={{ display: 'block', fontWeight: 700, marginTop: 4 }}>
+                Total: {fmt(ev.consumos.reduce((s, c) => s + (c.precioUnitario || 0) * c.qty, 0))}
+              </span>
             </span>
           </div>
         )}
