@@ -235,6 +235,7 @@ export default function TicketModal({ productos, categorias = [], cajasAbiertas 
 
   async function handleGuardar() {
     if (items.length === 0) { addToast('Agregá al menos un producto', 'err'); return }
+    if (!empleadoId) { addToast('Seleccioná el empleado que realiza la venta', 'err'); return }
 
     if (multiMetodo) {
       const vacíos = metodosPagados.some(m => !m.monto || parseFloat(m.monto) <= 0)
@@ -512,10 +513,12 @@ export default function TicketModal({ productos, categorias = [], cajasAbiertas 
 
             {empleadosActivos.length > 0 && (
               <div className="fgg">
-                <label>Empleado</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  Empleado <span style={{ color: 'var(--rd)', fontWeight: 800 }}>*</span>
+                </label>
                 <select value={empleadoId} onChange={e => setEmpleadoId(e.target.value)}
-                  style={{ border: '1px solid var(--bd2)', borderRadius: 10, padding: '9px 13px', fontSize: 13, background: 'var(--bg)', color: 'var(--tx)', width: '100%' }}>
-                  <option value="">Sin asignar</option>
+                  style={{ border: `1.5px solid ${!empleadoId ? 'var(--am)' : 'var(--bd2)'}`, borderRadius: 10, padding: '9px 13px', fontSize: 13, background: 'var(--bg)', color: 'var(--tx)', width: '100%' }}>
+                  <option value="">— Seleccioná un empleado —</option>
                   {empleadosActivos.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
                 </select>
               </div>
