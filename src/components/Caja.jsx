@@ -58,7 +58,7 @@ function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas,
     const signo = (n) => n >= 0 ? '+' : ''
     const difColor = diferencia === 0 ? '#16a34a' : diferencia > 0 ? '#d97706' : '#dc2626'
     const totalOnline = totalVentas - totalEfectivo
-    const onlineMetodos = METODOS_PAGO.filter(m => m !== 'Efectivo' && desglose[m] > 0)
+    const onlineMetodos = Object.keys(desglose).filter(m => m !== 'Efectivo' && desglose[m] > 0)
     const gastosRealesRows = gastosReales.map(g =>
       `<tr><td style="padding:1px 0 1px 12px;color:#555">${g.detalle || '—'}${g.persona ? ` (${g.persona})` : ''}</td><td style="text-align:right;color:#dc2626">−${fmtP(g.monto)}</td></tr>`
     ).join('')
@@ -356,7 +356,7 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
           <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Por método de pago</div>
           {Object.keys(desglose).length === 0
             ? <p style={{ fontSize: 13, color: 'var(--mu2)', padding: '8px 0' }}>Sin ventas aún</p>
-            : METODOS_PAGO.filter(m => desglose[m] > 0).map(m => (
+            : Object.keys(desglose).map(m => (
               <div key={m} className="li">
                 <span className="lin">{m}</span>
                 <span className="lip">{fmt(desglose[m])}</span>
@@ -770,7 +770,7 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                                     </div>
                                     {Object.keys(desglose).length === 0
                                       ? <span style={{ fontSize: 13, color: 'var(--mu2)' }}>Sin datos de ventas en el período actual</span>
-                                      : METODOS_PAGO.filter(m => desglose[m] > 0).map(m => (
+                                      : Object.keys(desglose).map(m => (
                                         <div key={m} style={{ display: 'flex', gap: 20, marginBottom: 5 }}>
                                           <span style={{ fontSize: 13, color: 'var(--mu)', minWidth: 170 }}>{m}</span>
                                           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--nv)' }}>{fmt(desglose[m])}</span>
