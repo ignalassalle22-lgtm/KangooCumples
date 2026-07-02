@@ -284,11 +284,44 @@ function AppInner({ usuario, onLogout }) {
 
   const handleSave = useCallback(async (eventoData) => {
     try {
-      await saveEvento(eventoData)
+      const { _cajaId, ...evToSave } = eventoData
+      // Calcular cuánto pago nuevo hay que acreditar en caja
+      const oldEv = eventoData.id ? eventos.find(e => e.id === eventoData.id) : null
+      const oldMonto = oldEv?.monto || 0
+      const newMonto = eventoData.monto || 0
+      const deltaMonto = newMonto - oldMonto
+
+      await saveEvento(evToSave)
+
+      // Si hay un cobro nuevo (o seña nueva/ampliada) y hay caja seleccionada, crear venta
+      if (deltaMonto > 0 && _cajaId && eventoData.pago !== 'none' && eventoData.pago !== 'cancelado') {
+        const ahora = new Date()
+        const cliente = eventoData.reservante || eventoData.cumple || 'Evento'
+        const label = eventoData.pago === 'sena' ? 'Seña evento' : 'Pago evento'
+        await saveVenta({
+          fecha: ahora.toISOString().slice(0, 10),
+          hora: ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+          cliente,
+          subtotal: deltaMonto,
+          descuento: 0,
+          total: deltaMonto,
+          metodo_pago: eventoData.met,
+          estado: 'completada',
+          caja_id: _cajaId,
+          obs: `${label} — ${cliente}`,
+        }, [{
+          producto_id: null,
+          nombre_producto: `${label} — ${cliente}`,
+          precio_unitario: deltaMonto,
+          cantidad: 1,
+          subtotal: deltaMonto,
+        }], null)
+      }
+
       setModalOpen(false)
       addToast(eventoData.id ? '✓ Evento actualizado' : '✓ Evento creado')
     } catch (e) { addToast('Error: ' + e.message, 'err'); throw e }
-  }, [saveEvento, addToast])
+  }, [saveEvento, saveVenta, eventos, addToast])
 
   const handleDelete = useCallback((id) => {
     const ev = eventos.find(e => e.id === id)
@@ -719,6 +752,7 @@ function AppInner({ usuario, onLogout }) {
       {modalOpen && (
         <EventoModal
           evento={editingEvento} eventos={eventos} config={config} productos={productos}
+          cajasAbiertas={cajasAbiertas}
           onSave={handleSave} onClose={() => setModalOpen(false)} addToast={addToast}
         />
       )}

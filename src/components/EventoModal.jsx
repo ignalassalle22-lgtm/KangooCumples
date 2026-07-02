@@ -39,7 +39,7 @@ function getHora(form) {
   return ''
 }
 
-export default function EventoModal({ evento, eventos, config, productos = [], onSave, onClose, addToast }) {
+export default function EventoModal({ evento, eventos, config, productos = [], cajasAbiertas = [], onSave, onClose, addToast }) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [mrows, setMrows] = useState([]) // [{rid, mid, qty}]
   const [extraQtys, setExtraQtys] = useState({}) // {eid: qty}
@@ -50,6 +50,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
   const [saving, setSaving] = useState(false)
   const [multiMet, setMultiMet] = useState(false)
   const [metsPagados, setMetsPagados] = useState([{ id: 1, met: 'Efectivo', monto: '' }])
+  const [cajaId, setCajaId] = useState(() => cajasAbiertas[0]?.id || null)
 
   // Populate form from evento
   useEffect(() => {
@@ -310,6 +311,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
       monto: montoFinal,
       met: metFinal,
       total: calc.total,
+      _cajaId: (form.pago !== 'none' && form.pago !== 'cancelado') ? cajaId : null,
     }
 
     setSaving(true)
@@ -704,6 +706,24 @@ export default function EventoModal({ evento, eventos, config, productos = [], o
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Selector de caja */}
+            <div className="fgg" style={{ marginTop: 10 }}>
+              <label>Acreditar en caja <span style={{ color: 'var(--rd)', fontWeight: 800 }}>*</span></label>
+              <select value={cajaId || ''} onChange={e => setCajaId(Number(e.target.value) || null)}
+                style={{ border: `1.5px solid ${!cajaId ? 'var(--am)' : 'var(--bd2)'}`, borderRadius: 10, padding: '9px 13px', fontSize: 13, background: 'var(--bg)', color: 'var(--tx)', width: '100%' }}>
+                {cajasAbiertas.length === 0
+                  ? <option value="">⚠ Sin cajas abiertas</option>
+                  : <>
+                      <option value="">— Seleccioná una caja —</option>
+                      {cajasAbiertas.map(c => <option key={c.id} value={c.id}>{c.nombre}{c.turno ? ` — ${c.turno}` : ''}</option>)}
+                    </>
+                }
+              </select>
+              {cajasAbiertas.length === 0 && (
+                <div style={{ fontSize: 12, color: 'var(--am)', marginTop: 4 }}>Abrí una caja primero para registrar el cobro.</div>
+              )}
             </div>
           </div>
         )}
