@@ -71,7 +71,7 @@ function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas,
     const sep = '--------------------------------'; const sep2 = '================================'
     imprimirTicketBrowser(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:8px;color:#000;background:#fff;width:74mm}
-h1{font-size:10px;font-weight:bold;text-align:center;letter-spacing:1px;margin-bottom:2px}.sub{text-align:center;font-size:8px;margin-bottom:3px}
+h1{font-size:10px;font-weight:bold;text-align:center;white-space:nowrap;margin-bottom:2px}.sub{text-align:center;font-size:8px;margin-bottom:3px}
 pre{font-family:inherit;font-size:8px;margin:2px 0;color:#555}table{width:100%;border-collapse:collapse}td{padding:1px 0;vertical-align:top;font-size:8px}
 td.r{text-align:right;white-space:nowrap}.section{font-size:8px;font-weight:bold;text-transform:uppercase;margin:3px 0 1px}
 .bold td{font-weight:bold}.big td{font-size:9px;font-weight:bold;padding-top:2px}.dif td{font-size:9px;font-weight:bold;color:${difColor}}
@@ -111,7 +111,7 @@ function imprimirEgresoCofre({ monto, persona, obs, cajaNombre }) {
   const sep2 = '================================'
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:8px;color:#000;background:#fff;width:74mm}
-h1{font-size:10px;font-weight:bold;text-align:center;letter-spacing:1px;margin-bottom:2px}.sub{text-align:center;font-size:8px;margin-bottom:3px}
+h1{font-size:10px;font-weight:bold;text-align:center;white-space:nowrap;margin-bottom:2px}.sub{text-align:center;font-size:8px;margin-bottom:3px}
 pre{font-family:inherit;font-size:8px;margin:2px 0;color:#555}table{width:100%;border-collapse:collapse}td{padding:1px 0;vertical-align:top;font-size:8px}
 td.r{text-align:right;white-space:nowrap}.section{font-size:8px;font-weight:bold;text-transform:uppercase;margin:3px 0 1px}
 .big td{font-size:10px;font-weight:bold;padding-top:2px}
