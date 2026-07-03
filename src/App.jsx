@@ -1,6 +1,47 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { supabase } from './supabase'
 
+function imprimirTicketEvento(ev, config) {
+  const items = []
+  if (ev.chi > 0) items.push({ n: `Chicos (${ev.chi})`, qty: ev.chi, total: ev.chi * (config.pChico || 0) })
+  if (ev.adu > 0) items.push({ n: `Adultos (${ev.adu})`, qty: ev.adu, total: ev.adu * (config.pAdulto || 0) })
+  if (ev.mrows) ev.mrows.forEach(r => {
+    const m = (config.menus || []).find(x => String(x.id) === String(r.mid))
+    if (m && m.p) items.push({ n: m.n, qty: r.qty, total: m.p * r.qty })
+  })
+  if (ev.extras) ev.extras.forEach(e => {
+    if (e.custom) {
+      if (e.desc) items.push({ n: e.desc, qty: e.qty, total: (e.p || 0) * e.qty })
+    } else {
+      const ex = (config.extras || []).find(x => String(x.id) === String(e.eid))
+      if (ex) {
+        const price = e.p !== undefined ? e.p : ex.p
+        items.push({ n: ex.n, qty: e.qty, total: price * e.qty })
+      }
+    }
+  })
+  if (ev.consumos) ev.consumos.forEach(c => {
+    if (c.precioUnitario > 0) items.push({ n: c.nombreProducto, qty: c.qty, total: (c.precioUnitario || 0) * c.qty })
+  })
+  const promo = ev.promoId ? (config.promos || []).find(p => String(p.id) === String(ev.promoId)) : null
+  const subtotal = items.reduce((s, i) => s + i.total, 0)
+  const descuento = promo ? Math.round(subtotal * promo.pct / 100) : 0
+  fetch('http://localhost:5001/print/venta', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fecha: ev.fecha, hora: ev.hora,
+      reservante: ev.reservante, telefono: ev.telefono,
+      cumple: ev.cumple, edad: ev.edad,
+      salon: ev.salon, chi: ev.chi, adu: ev.adu,
+      items, subtotal, descuento,
+      promo: promo ? promo.d : '',
+      total: ev.total || 0,
+      pago: ev.pago, monto: ev.monto || 0, met: ev.met || '',
+    }),
+  }).catch(() => {})
+}
+
 function PinModal({ claves, msg, onConfirm, onCancel }) {
   const [pin, setPin] = React.useState('')
   const [err, setErr] = React.useState(false)
@@ -318,10 +359,11 @@ function AppInner({ usuario, onLogout }) {
         }], null)
       }
 
+      imprimirTicketEvento(eventoData, config)
       setModalOpen(false)
       addToast(eventoData.id ? '✓ Evento actualizado' : '✓ Evento creado')
     } catch (e) { addToast('Error: ' + e.message, 'err'); throw e }
-  }, [saveEvento, saveVenta, eventos, addToast])
+  }, [saveEvento, saveVenta, eventos, config, addToast])
 
   const handleDelete = useCallback((id) => {
     const ev = eventos.find(e => e.id === id)

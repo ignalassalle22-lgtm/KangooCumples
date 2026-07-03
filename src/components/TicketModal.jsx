@@ -275,6 +275,8 @@ export default function TicketModal({ productos, categorias = [], cajasAbiertas 
           subtotal,
           descuento: descuentoNum,
           total,
+          caja_id: cajaSeleccionadaId || null,
+          empleado_id: empleadoId ? Number(empleadoId) : null,
         }, items)
       } else {
         // MODO NUEVA VENTA

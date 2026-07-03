@@ -81,14 +81,17 @@ export function useVentas() {
       }
     }
     // 2. Actualizar registro principal
-    const { error: updError } = await supabase.from('ventas').update({
+    const updateFields = {
       cliente: venta.cliente,
       metodo_pago: venta.metodo_pago,
       obs: venta.obs,
       subtotal: venta.subtotal,
       descuento: venta.descuento,
       total: venta.total,
-    }).eq('id', id)
+    }
+    if (venta.caja_id !== undefined) updateFields.caja_id = venta.caja_id
+    if (venta.empleado_id !== undefined) updateFields.empleado_id = venta.empleado_id
+    const { error: updError } = await supabase.from('ventas').update(updateFields).eq('id', id)
     if (updError) throw new Error(updError.message)
     // 3. Reemplazar items
     await supabase.from('venta_items').delete().eq('venta_id', id)
