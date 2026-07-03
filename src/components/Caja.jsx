@@ -132,7 +132,15 @@ ${obs ? `<pre class="sep">--------------------------------</pre><p style="font-s
 <p style="font-size:7px;margin-top:6px">Firma: ___________________________</p>
 <div class="foot">Recibo de egreso al cofre</div>
 </body></html>`
-  imprimirTicketBrowser(html)
+  fetch('http://localhost:5001/print/egreso_cofre', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ monto, persona, obs, cajaNombre }),
+  }).then(r => {
+    if (!r.ok) imprimirTicketBrowser(html)
+  }).catch(() => {
+    imprimirTicketBrowser(html)
+  })
 }
 
 function ticketVentaHtml(venta) {
