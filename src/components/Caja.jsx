@@ -106,33 +106,30 @@ function imprimirEgresoCofre({ monto, persona, obs, cajaNombre }) {
   const ahora = new Date()
   const fecha = ahora.toLocaleDateString('es-AR')
   const hora = ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
-  const fmtP = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('es-AR')
-  const sep = '--------------------------------'
-  const sep2 = '================================'
+  const f = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('es-AR')
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:8px;color:#000;background:#fff;width:74mm}
-h1{font-size:10px;font-weight:bold;text-align:center;white-space:nowrap;margin-bottom:2px}.sub{text-align:center;font-size:8px;margin-bottom:3px}
-pre{font-family:inherit;font-size:8px;margin:2px 0;color:#555}table{width:100%;border-collapse:collapse}td{padding:1px 0;vertical-align:top;font-size:8px}
-td.r{text-align:right;white-space:nowrap}.section{font-size:8px;font-weight:bold;text-transform:uppercase;margin:3px 0 1px}
-.big td{font-size:10px;font-weight:bold;padding-top:2px}
-.firma{border-top:1px solid #000;margin-top:24px;padding-top:2px;font-size:7px;color:#555}
-.foot{text-align:center;font-size:7px;color:#666;margin-top:4px}</style></head><body>
-<h1>EGRESO AL COFRE</h1><div class="sub">Kangaroo Fun</div><pre>${sep2}</pre>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:8px;width:74mm}
+h1{font-size:10px;font-weight:bold;text-align:center;margin-bottom:2px}
+.sub{text-align:center;font-size:8px;margin-bottom:3px}
+table{width:100%;border-collapse:collapse}td{padding:1px 0;font-size:8px;vertical-align:top}
+.sep{letter-spacing:0;font-size:8px;margin:2px 0}
+.total td{font-size:10px;font-weight:bold;border-top:1px solid #000;padding-top:2px}
+.foot{text-align:center;font-size:7px;color:#666;margin-top:4px}
+</style></head><body>
+<h1>EGRESO AL COFRE</h1>
+<div class="sub">Kangaroo Fun — ${cajaNombre || 'Caja'}</div>
+<pre class="sep">--------------------------------</pre>
 <table>
-<tr><td>Caja</td><td class="r"><b>${cajaNombre || 'Caja'}</b></td></tr>
-<tr><td>Fecha</td><td class="r">${fecha}</td></tr>
-<tr><td>Hora</td><td class="r">${hora}</td></tr>
+<tr><td>Fecha</td><td style="text-align:right">${fecha} ${hora}</td></tr>
+<tr><td>Responsable</td><td style="text-align:right"><b>${persona || '—'}</b></td></tr>
 </table>
-<pre>${sep}</pre>
-<div class="section">Detalle</div>
+<pre class="sep">--------------------------------</pre>
 <table>
-<tr><td>Responsable</td><td class="r"><b>${persona || '—'}</b></td></tr>
-${obs ? `<tr><td>Observaciones</td><td class="r">${obs}</td></tr>` : ''}
+<tr class="total"><td>MONTO EGRESADO</td><td style="text-align:right">${f(monto)}</td></tr>
 </table>
-<pre>${sep}</pre>
-<table class="big"><tr><td>MONTO EGRESADO</td><td class="r">${fmtP(monto)}</td></tr></table>
-<pre>${sep2}</pre>
-<div class="firma">Firma: ___________________________</div>
+${obs ? `<pre class="sep">--------------------------------</pre><p style="font-size:7px;margin-top:2px">Obs: ${obs}</p>` : ''}
+<pre class="sep">--------------------------------</pre>
+<p style="font-size:7px;margin-top:6px">Firma: ___________________________</p>
 <div class="foot">Recibo de egreso al cofre</div>
 </body></html>`
   imprimirTicketBrowser(html)
