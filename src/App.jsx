@@ -5,21 +5,25 @@ function imprimirTicketEvento(ev, config) {
   const items = []
   if (ev.chi > 0) items.push({ n: `Chicos (${ev.chi})`, qty: ev.chi, total: ev.chi * (config.pChico || 0) })
   if (ev.adu > 0) items.push({ n: `Adultos (${ev.adu})`, qty: ev.adu, total: ev.adu * (config.pAdulto || 0) })
+  // Menús (siempre incluir aunque no tengan precio)
   if (ev.mrows) ev.mrows.forEach(r => {
     const m = (config.menus || []).find(x => String(x.id) === String(r.mid))
-    if (m && m.p) items.push({ n: m.n, qty: r.qty, total: m.p * r.qty })
+    if (m) items.push({ n: m.n, qty: r.qty, total: (m.p || 0) * r.qty })
   })
+  // Extras
   if (ev.extras) ev.extras.forEach(e => {
     if (e.custom) {
       if (e.desc) items.push({ n: e.desc, qty: e.qty, total: (e.p || 0) * e.qty })
     } else {
       const ex = (config.extras || []).find(x => String(x.id) === String(e.eid))
-      if (ex) {
-        const price = e.p !== undefined ? e.p : ex.p
-        items.push({ n: ex.n, qty: e.qty, total: price * e.qty })
-      }
+      if (ex) items.push({ n: ex.n, qty: e.qty, total: (e.p !== undefined ? e.p : ex.p) * e.qty })
     }
   })
+  // Artículos incluidos en el evento (del formulario)
+  if (ev.articulos) ev.articulos.filter(a => a.qty > 0).forEach(a => {
+    items.push({ n: a.nombre, qty: a.qty, total: (a.precio || 0) * a.qty })
+  })
+  // Adicionales de caja del evento
   if (ev.consumos) ev.consumos.forEach(c => {
     if (c.precioUnitario > 0) items.push({ n: c.nombreProducto, qty: c.qty, total: (c.precioUnitario || 0) * c.qty })
   })
@@ -359,7 +363,8 @@ function AppInner({ usuario, onLogout }) {
         }], null)
       }
 
-      imprimirTicketEvento(eventoData, config)
+      const evExistente = eventoData.id ? eventos.find(e => e.id === eventoData.id) : null
+      imprimirTicketEvento({ ...eventoData, consumos: evExistente?.consumos || eventoData.consumos || [] }, config)
       setModalOpen(false)
       addToast(eventoData.id ? '✓ Evento actualizado' : '✓ Evento creado')
     } catch (e) { addToast('Error: ' + e.message, 'err'); throw e }
