@@ -13,13 +13,19 @@ function parsearMetodos(metodo_pago, totalVenta) {
   if (!metodo_pago) return { Otro: totalVenta }
   if (metodo_pago.includes('$')) {
     const result = {}
+    let sumParsed = 0
     metodo_pago.split(' + ').forEach(parte => {
       const idx = parte.lastIndexOf('$')
       if (idx === -1) return
       const nombre = parte.slice(0, idx).trim()
       const monto = parseFloat(parte.slice(idx + 1).replace(/\./g, '').replace(',', '.')) || 0
-      if (nombre) result[nombre] = (result[nombre] || 0) + monto
+      if (nombre) { result[nombre] = (result[nombre] || 0) + monto; sumParsed += monto }
     })
+    // Si la suma del string supera el total real del ticket, escalar proporcionalmente
+    if (sumParsed > 0 && Math.abs(sumParsed - totalVenta) > 1) {
+      const factor = totalVenta / sumParsed
+      Object.keys(result).forEach(k => { result[k] = Math.round(result[k] * factor) })
+    }
     return result
   }
   return { [metodo_pago]: totalVenta }

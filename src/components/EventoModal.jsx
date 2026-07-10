@@ -287,7 +287,13 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
     let montoFinal = parseFloat(form.monto) || 0
     if (multiMet && form.pago !== 'none' && form.pago !== 'cancelado') {
       metFinal = metsPagados.map(m => `${m.met} $${Math.round(parseFloat(m.monto) || 0).toLocaleString('es-AR')}`).join(' + ')
-      montoFinal = metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+      const adicionalMulti = metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+      if (esEdicionPagada && form.pago === 'paid') {
+        // Montos ingresados son incrementales; el acumulado = ya cobrado + adicional
+        montoFinal = yaCobrado + adicionalMulti
+      } else {
+        montoFinal = adicionalMulti
+      }
     } else if (esEdicionPagada && form.pago === 'paid') {
       // Al editar un evento ya pagado, el monto acumulado = nuevo total
       // Así deltaMonto en App.jsx = calc.total - evento.monto = solo la diferencia
@@ -729,11 +735,16 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
                     <button type="button" className="bg2 bsm" onClick={addMetPagado} style={{ alignSelf: 'flex-start', marginTop: 2 }}>
                       + Agregar método
                     </button>
+                    {esEdicionPagada && form.pago === 'paid' && (
+                      <div style={{ fontSize: 12, color: 'var(--am)', fontWeight: 600, padding: '4px 0' }}>
+                        ⚠ Ingresá solo el monto adicional a cobrar ahora por cada método (no el total acumulado).
+                      </div>
+                    )}
                     {(() => {
                       const cubierto = metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
                       return cubierto > 0 && (
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--nv)', padding: '6px 0' }}>
-                          Total abonado: {fmt(cubierto)}
+                          {esEdicionPagada && form.pago === 'paid' ? `Cobro adicional: ${fmt(cubierto)}` : `Total abonado: ${fmt(cubierto)}`}
                         </div>
                       )
                     })()}
