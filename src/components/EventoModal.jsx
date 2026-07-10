@@ -52,6 +52,10 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
   const [metsPagados, setMetsPagados] = useState([{ id: 1, met: 'Efectivo', monto: '' }])
   const [cajaId, setCajaId] = useState(() => cajasAbiertas[0]?.id || null)
 
+  // Para edición de eventos ya pagados: monto ya cobrado previamente
+  const esEdicionPagada = Boolean(evento?.id && evento?.pago === 'paid')
+  const yaCobrado = evento?.monto || 0
+
   // Populate form from evento
   useEffect(() => {
     if (evento) {
@@ -284,6 +288,10 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
     if (multiMet && form.pago !== 'none' && form.pago !== 'cancelado') {
       metFinal = metsPagados.map(m => `${m.met} $${Math.round(parseFloat(m.monto) || 0).toLocaleString('es-AR')}`).join(' + ')
       montoFinal = metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+    } else if (esEdicionPagada && form.pago === 'paid') {
+      // Al editar un evento ya pagado, el monto acumulado = nuevo total
+      // Así deltaMonto en App.jsx = calc.total - evento.monto = solo la diferencia
+      montoFinal = calc.total
     }
 
     const ev = {
@@ -640,12 +648,38 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
         {form.pago !== 'none' && form.pago !== 'cancelado' && (
           <div>
             <div className="fg" style={{ marginBottom: 10 }}>
-              {!multiMet && (
+              {!multiMet && !esEdicionPagada && (
                 <div className="fgg">
                   <label>Monto abonado / seña ($)</label>
                   <input type="number" min={0} value={form.monto} onChange={e => set('monto', e.target.value)} />
                 </div>
               )}
+              {esEdicionPagada && form.pago === 'paid' && (() => {
+                const adicional = Math.max(0, calc.total - yaCobrado)
+                return (
+                  <div className="fgg" style={{ gridColumn: '1/-1' }}>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', background: 'var(--nv3)', border: '1.5px solid var(--nv)', borderRadius: 10, padding: '12px 16px' }}>
+                      <div style={{ flex: 1, minWidth: 140 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nv)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Ya cobrado</div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--nv)' }}>{fmt(yaCobrado)}</div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 140 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: adicional > 0 ? 'var(--gn)' : 'var(--mu)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>
+                          {adicional > 0 ? 'Cobro adicional ahora' : 'Sin cobro adicional'}
+                        </div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: adicional > 0 ? 'var(--gn)' : 'var(--mu)' }}>
+                          {adicional > 0 ? `+${fmt(adicional)}` : fmt(0)}
+                        </div>
+                      </div>
+                    </div>
+                    {adicional < 0 && (
+                      <div style={{ fontSize: 12, color: 'var(--mu)', marginTop: 6 }}>
+                        El nuevo total es menor al cobrado anteriormente. No se genera cobro adicional.
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
               <div className="fgg" style={{ gridColumn: multiMet ? '1/-1' : undefined }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <label style={{ margin: 0 }}>Método de pago</label>
@@ -825,11 +859,25 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
           <div className="tr big"><span className="tl">Total del evento</span><span className="tv">{fmt(calc.total)}</span></div>
           {form.pago !== 'none' && (
             <>
-              <div className="tr"><span className="tl">Abonado / seña</span><span className="tv">{fmt(calc.monto)}</span></div>
-              <div className="tr">
-                <span className="tl" style={{ color: 'rgba(255,255,255,0.75)' }}>Restante a cobrar</span>
-                <span className="tv" style={{ color: '#FFD166', fontSize: 18 }}>{fmt(calc.rest)}</span>
-              </div>
+              {esEdicionPagada && form.pago === 'paid' ? (
+                <>
+                  <div className="tr"><span className="tl">Ya cobrado</span><span className="tv">{fmt(yaCobrado)}</span></div>
+                  {calc.total > yaCobrado && (
+                    <div className="tr">
+                      <span className="tl" style={{ color: 'rgba(255,255,255,0.75)' }}>Cobro adicional</span>
+                      <span className="tv" style={{ color: '#FFD166', fontSize: 18 }}>+{fmt(calc.total - yaCobrado)}</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="tr"><span className="tl">Abonado / seña</span><span className="tv">{fmt(calc.monto)}</span></div>
+                  <div className="tr">
+                    <span className="tl" style={{ color: 'rgba(255,255,255,0.75)' }}>Restante a cobrar</span>
+                    <span className="tv" style={{ color: '#FFD166', fontSize: 18 }}>{fmt(calc.rest)}</span>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
