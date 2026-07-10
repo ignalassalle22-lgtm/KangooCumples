@@ -292,19 +292,21 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
           {/* Selector de productos: categorías o vista dentro de categoría */}
           {!catSeleccionada ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '.06em', flex: 1 }}>Categorías</div>
-                <input
-                  ref={buscaRef}
-                  value={busca}
-                  onChange={e => setBusca(e.target.value)}
-                  placeholder="Búsqueda rápida..."
-                  autoFocus
-                  style={{ border: '1px solid var(--bd2)', borderRadius: 8, padding: '8px 12px', fontSize: 13, width: 200 }}
-                  onFocus={e => e.target.style.borderColor = 'var(--or)'}
-                  onBlur={e => e.target.style.borderColor = 'var(--bd2)'}
-                />
-              </div>
+              {/* Buscador rápido */}
+              <input
+                ref={buscaRef}
+                value={busca}
+                onChange={e => setBusca(e.target.value)}
+                placeholder="Búsqueda rápida de producto..."
+                autoFocus
+                style={{
+                  width: '100%', border: '2px solid var(--bd2)', borderRadius: 10,
+                  padding: '11px 16px', fontSize: 15, marginBottom: 16, outline: 'none',
+                  fontFamily: 'Nunito Sans, sans-serif',
+                }}
+                onFocus={e => e.target.style.borderColor = 'var(--or)'}
+                onBlur={e => e.target.style.borderColor = 'var(--bd2)'}
+              />
 
               {/* Resultados de búsqueda rápida */}
               {busca && prodsMostrados.length > 0 && (
@@ -330,23 +332,24 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
 
               {/* Grid de tiles de categoría */}
               {!busca && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
                   {categoriasVisibles.map((cat, i) => {
                     const color = CAT_COLORS[i % CAT_COLORS.length]
                     const unidades = catUnidades(cat.id)
                     return (
                       <div key={cat.id} onClick={() => { setCatSeleccionada(cat); setBusca('') }}
                         style={{
-                          background: color.bg, border: `2.5px solid ${color.border}`,
-                          borderRadius: 12, padding: '14px 10px', cursor: 'pointer',
+                          background: color.bg, border: `3px solid ${color.border}`,
+                          borderRadius: 10, padding: '18px 8px 16px', cursor: 'pointer',
                           textAlign: 'center', transition: 'transform .1s, box-shadow .1s',
-                          userSelect: 'none',
+                          userSelect: 'none', minHeight: 110,
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.12)' }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.14)' }}
                         onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
                       >
-                        <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: '#333', lineHeight: 1.2, marginBottom: 6 }}>{cat.nombre}</div>
-                        <div style={{ fontSize: 26, fontWeight: 900, color: unidades > 0 ? color.border : '#aaa' }}>{unidades}</div>
+                        <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: '#222', lineHeight: 1.25, marginBottom: 8 }}>{cat.nombre}</div>
+                        <div style={{ fontSize: 42, fontWeight: 900, lineHeight: 1, color: unidades > 0 ? color.border : '#bbb' }}>{unidades}</div>
                       </div>
                     )
                   })}
