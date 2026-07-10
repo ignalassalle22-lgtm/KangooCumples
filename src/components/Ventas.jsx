@@ -44,8 +44,8 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
           <div className="pt">Ventas</div>
           <div className="ps">Tickets de venta · {cajaActual ? `Caja abierta desde ${cajaActual.hora_apertura}` : 'Sin caja abierta'}</div>
         </div>
-        <button className="bp" onClick={onNueva} disabled={!cajaActual} title={!cajaActual ? 'Abrí una caja primero' : ''}>
-          {!cajaActual ? '🔒 Nueva venta' : '＋ Nueva venta'}
+        <button className="bp" onClick={() => window.open('/?mode=pos', '_blank')}>
+          🏪 Sistema de ventas
         </button>
       </div>
 
@@ -88,7 +88,7 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
         <div className="empty">
           <div className="emj">🧾</div>
           <p>No hay ventas en este período.</p>
-          {cajaActual && <button className="bp" onClick={onNueva}>＋ Nueva venta</button>}
+          <button className="bp" onClick={() => window.open('/?mode=pos', '_blank')}>🏪 Sistema de ventas</button>
         </div>
       ) : (
         <div className="vtable-wrap">
