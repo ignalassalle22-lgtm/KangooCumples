@@ -609,11 +609,225 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
   )
 }
 
-export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos = [], empleados = [], onAbrir, onCerrar, onAddGasto, onAddCofreIngreso, addToast, askPin }) {
+function CajaHistorialModal({ caja, ventas, gastos = [], empleados = [], onAnularVenta, onModificarVenta, onClose }) {
+  const [ticketDetalle, setTicketDetalle] = useState(null)
+  const [tab, setTab] = useState('tickets')
+
+  const ventasCaja = useMemo(() =>
+    ventas.filter(v => v.caja_id === caja.id),
+    [ventas, caja.id]
+  )
+  const ventasActivas = ventasCaja.filter(v => v.estado !== 'anulada')
+
+  const gastosReales = gastos.filter(g => !g.detalle?.startsWith('Traspaso al cofre'))
+  const egresosCofre = gastos.filter(g => g.detalle?.startsWith('Traspaso al cofre'))
+  const totalGastosReales = gastosReales.reduce((s, g) => s + (g.monto || 0), 0)
+  const totalEgresosCofre = egresosCofre.reduce((s, g) => s + (g.monto || 0), 0)
+  const totalGastos = totalGastosReales + totalEgresosCofre
+
+  const desglose = useMemo(() => {
+    const map = {}
+    ventasActivas.forEach(v => {
+      const metodos = parsearMetodos(v.metodo_pago, v.total || 0)
+      Object.entries(metodos).forEach(([met, monto]) => {
+        map[met] = (map[met] || 0) + monto
+      })
+    })
+    return map
+  }, [ventasActivas])
+
+  const totalVentas = ventasActivas.reduce((s, v) => s + (v.total || 0), 0)
+
+  const estadoBadge = (estado) => {
+    if (estado === 'anulada') return <span className="badge bnp">Anulada</span>
+    return <span className="badge bpd">Completada</span>
+  }
+
+  const tabStyle = (id) => ({
+    padding: '8px 18px', fontSize: 13, fontWeight: 700,
+    background: 'none', border: 'none', cursor: 'pointer',
+    borderBottom: `3px solid ${tab === id ? 'var(--nv)' : 'transparent'}`,
+    color: tab === id ? 'var(--nv)' : 'var(--mu)',
+    marginBottom: -1, fontFamily: 'Nunito, sans-serif',
+  })
+
+  return (
+    <div className="ov op" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="mo" style={{ maxWidth: 980, width: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="moh">
+          <div className="mot">
+            <div className="mot-icon">🏪</div>
+            <span>{caja.nombre || 'Caja'}</span>
+            {caja.turno && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--mu)', marginLeft: 8 }}>· {caja.turno}</span>}
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--mu)', marginLeft: 8 }}>— {caja.fecha}</span>
+          </div>
+          <button className="xcl" onClick={onClose}>✕</button>
+        </div>
+
+        {/* Resumen */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, margin: '14px 0 18px' }}>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Resumen</div>
+            <div className="li"><span className="lin">Apertura / Cierre</span><span className="lis">{caja.hora_apertura} — {caja.hora_cierre} hs</span></div>
+            {caja.empleado_cierre && <div className="li"><span className="lin">Responsable</span><span className="lis">{caja.empleado_cierre}</span></div>}
+            <div className="li"><span className="lin">Saldo inicial</span><span className="lis">{fmt(caja.saldo_inicial)}</span></div>
+            <div className="li"><span className="lin">Total ventas</span><span className="lip">{fmt(caja.total_ventas)}</span></div>
+            {totalGastosReales > 0 && <div className="li"><span className="lin">Gastos</span><span style={{ fontWeight: 700, color: 'var(--rd)' }}>−{fmt(totalGastosReales)}</span></div>}
+            {totalEgresosCofre > 0 && <div className="li"><span className="lin">Egresos al cofre</span><span style={{ fontWeight: 700, color: 'var(--rd)' }}>−{fmt(totalEgresosCofre)}</span></div>}
+            <div className="li"><span className="lin">Efectivo contado</span><span className="lip">{fmt(caja.saldo_final)}</span></div>
+            {caja.obs_cierre && <div className="li"><span className="lin">Obs. cierre</span><span className="lis" style={{ fontStyle: 'italic' }}>{caja.obs_cierre}</span></div>}
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Por método de pago</div>
+            {Object.keys(desglose).length === 0
+              ? <p style={{ fontSize: 13, color: 'var(--mu2)', padding: '6px 0' }}>Sin ventas activas</p>
+              : Object.keys(desglose).map(m => (
+                <div key={m} className="li">
+                  <span className="lin">{m}</span>
+                  <span className="lip">{fmt(desglose[m])}</span>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--bd)', marginBottom: 16 }}>
+          <button style={tabStyle('tickets')} onClick={() => setTab('tickets')}>
+            Tickets ({ventasCaja.length})
+          </button>
+          <button style={tabStyle('gastos')} onClick={() => setTab('gastos')}>
+            Gastos ({gastos.length})
+          </button>
+        </div>
+
+        {/* Contenido scrolleable */}
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {tab === 'tickets' && (
+            ventasCaja.length === 0 ? (
+              <div className="empty"><div className="emj">🧾</div><p>No hay tickets en esta caja.</p></div>
+            ) : (
+              <div className="vtable-wrap">
+                <table className="vtable">
+                  <thead>
+                    <tr>
+                      <th>N° Ticket</th>
+                      <th>Fecha / Hora</th>
+                      <th>Cliente</th>
+                      <th>Empleado</th>
+                      <th>Método</th>
+                      <th>Items</th>
+                      <th className="num">Total</th>
+                      <th>Estado</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ventasCaja.map(v => (
+                      <tr key={v.id} style={{ opacity: v.estado === 'anulada' ? 0.5 : 1 }}>
+                        <td style={{ fontWeight: 700, fontFamily: 'Nunito', color: 'var(--nv)' }}>{v.numero}</td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{v.fecha}</div>
+                          <div style={{ fontSize: 12, color: 'var(--mu)' }}>{v.hora}</div>
+                        </td>
+                        <td>{v.cliente || <span style={{ color: 'var(--mu2)' }}>—</span>}</td>
+                        <td style={{ fontSize: 13 }}>
+                          {v.empleado_id
+                            ? (empleados.find(e => e.id === v.empleado_id)?.nombre || '—')
+                            : <span style={{ color: 'var(--mu2)' }}>—</span>}
+                        </td>
+                        <td style={{ fontSize: 13 }}>{v.metodo_pago || '—'}</td>
+                        <td style={{ fontSize: 13, color: 'var(--mu)' }}>
+                          {(v.venta_items || []).length} art.
+                        </td>
+                        <td className="num" style={{ fontWeight: 800, fontSize: 15, color: v.estado === 'anulada' ? 'var(--rd)' : 'var(--gn)' }}>
+                          {fmt(v.total)}
+                        </td>
+                        <td>{estadoBadge(v.estado)}</td>
+                        <td>
+                          <div className="eact">
+                            <button className="bg2 bsm" onClick={() => setTicketDetalle(v)}>Ver</button>
+                            {v.estado !== 'anulada' && onModificarVenta && (
+                              <button className="bg2 bsm" onClick={() => onModificarVenta(v)}>Modificar</button>
+                            )}
+                            {v.estado !== 'anulada' && onAnularVenta && (
+                              <button className="bdng" onClick={() => onAnularVenta(v.id)}>Anular</button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={6} className="num" style={{ fontSize: 12, color: 'var(--mu)' }}>
+                        {ventasActivas.length} completada{ventasActivas.length !== 1 ? 's' : ''} · {ventasCaja.length - ventasActivas.length} anulada{ventasCaja.length - ventasActivas.length !== 1 ? 's' : ''}
+                      </td>
+                      <td className="num" style={{ fontWeight: 800 }}>{fmt(totalVentas)}</td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )
+          )}
+
+          {tab === 'gastos' && (
+            gastos.length === 0 ? (
+              <div className="empty"><div className="emj">💸</div><p>No hay gastos registrados en esta caja.</p></div>
+            ) : (
+              <div className="vtable-wrap">
+                <table className="vtable">
+                  <thead>
+                    <tr>
+                      <th>Detalle</th>
+                      <th>Responsable</th>
+                      <th>Fecha / Hora</th>
+                      <th className="num">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gastos.map(g => (
+                      <tr key={g.id}>
+                        <td style={{ fontWeight: 600 }}>{g.detalle || '—'}</td>
+                        <td>{g.persona || '—'}</td>
+                        <td style={{ fontSize: 12, color: 'var(--mu)' }}>
+                          {g.created_at
+                            ? new Date(g.created_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+                            : '—'}
+                        </td>
+                        <td className="num" style={{ fontWeight: 800, color: 'var(--rd)' }}>−{fmt(g.monto)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={3} className="num" style={{ fontSize: 12, color: 'var(--mu)' }}>Total gastos</td>
+                      <td className="num" style={{ fontWeight: 800, color: 'var(--rd)' }}>−{fmt(totalGastos)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )
+          )}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--bd)' }}>
+          <button className="bg2" onClick={onClose}>Cerrar</button>
+        </div>
+      </div>
+
+      {ticketDetalle && <TicketDetalle venta={ticketDetalle} onClose={() => setTicketDetalle(null)} />}
+    </div>
+  )
+}
+
+export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos = [], empleados = [], onAbrir, onCerrar, onAddGasto, onAddCofreIngreso, onAnularVenta, onModificarVenta, addToast, askPin }) {
   const [nombre, setNombre] = useState('')
   const [turno, setTurno] = useState('')
   const [saldoInicial, setSaldoInicial] = useState('')
   const [saving, setSaving] = useState(false)
+  const [cajaHistorialOpen, setCajaHistorialOpen] = useState(null)
   const [histExpanded, setHistExpanded] = useState({})
 
   async function handleAbrir() {
@@ -770,10 +984,16 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                             </td>
                             <td style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
                               <button
+                                className="bp bsm"
+                                onClick={() => setCajaHistorialOpen(c)}
+                              >
+                                Abrir
+                              </button>
+                              <button
                                 className="bg2 bsm"
                                 onClick={() => setHistExpanded(prev => ({ ...prev, [c.id]: !prev[c.id] }))}
                               >
-                                {expanded ? '▲' : '▼ Detalle'}
+                                {expanded ? '▲' : '▼'}
                               </button>
                               <button
                                 className="bg2 bsm"
@@ -846,6 +1066,18 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
             </div>
           )}
         </>
+      )}
+
+      {cajaHistorialOpen && (
+        <CajaHistorialModal
+          caja={cajaHistorialOpen}
+          ventas={ventas}
+          gastos={gastos.filter(g => g.caja_id === cajaHistorialOpen.id)}
+          empleados={empleados}
+          onAnularVenta={onAnularVenta}
+          onModificarVenta={onModificarVenta}
+          onClose={() => setCajaHistorialOpen(null)}
+        />
       )}
     </div>
   )
