@@ -341,12 +341,11 @@ function AppInner({ usuario, onLogout }) {
 
       // Si hay un cobro nuevo (o seña nueva/ampliada) y hay caja seleccionada, crear venta
       if (deltaMonto > 0 && _cajaId && eventoData.pago !== 'none' && eventoData.pago !== 'cancelado') {
-        const ahora = new Date()
         const cliente = eventoData.reservante || eventoData.cumple || 'Evento'
         const label = eventoData.pago === 'sena' ? 'Seña evento' : 'Pago evento'
         await saveVenta({
-          fecha: ahora.toISOString().slice(0, 10),
-          hora: ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+          fecha: fechaHoyAR(),
+          hora: new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hour12: false }),
           cliente,
           subtotal: deltaMonto,
           descuento: 0,
