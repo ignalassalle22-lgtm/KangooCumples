@@ -8,6 +8,46 @@ import { useConfig } from '../hooks/useConfig'
 import { useEmpleados } from '../hooks/useEmpleados'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
+const fmtT = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('es-AR')
+
+function imprimirVenta({ numero, fecha, hora, cliente, items, subtotal, descuento, total, metodoPago, obs }) {
+  fetch('http://localhost:5001/print/venta_caja', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      numero, fecha, hora, cliente,
+      venta_items: items.map(it => ({ nombre_producto: it.nombre_producto, cantidad: it.cantidad, subtotal: it.subtotal })),
+      subtotal, descuento, total, metodo_pago: metodoPago, obs,
+    }),
+  }).catch(() => {
+    const sep = '--------------------------------'
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:9px;width:74mm}
+h1{font-size:11px;font-weight:bold;text-align:center;margin-bottom:2px}
+pre{font-size:8px;margin:2px 0}table{width:100%;border-collapse:collapse}
+td{padding:1px 0;font-size:9px}td.r{text-align:right}
+.big td{font-size:10px;font-weight:bold}.foot{text-align:center;font-size:8px;margin-top:4px}
+</style></head><body>
+<h1>KANGOO CUMPLES</h1>
+<pre>${sep}</pre>
+<table>
+<tr><td>N°</td><td class="r"><b>${numero}</b></td></tr>
+<tr><td>Fecha</td><td class="r">${fecha} ${hora}</td></tr>
+${cliente ? `<tr><td>Cliente</td><td class="r">${cliente}</td></tr>` : ''}
+<tr><td>Pago</td><td class="r">${metodoPago}</td></tr>
+</table>
+<pre>${sep}</pre>
+<table>${items.map(it => `<tr><td>${it.nombre_producto} x${it.cantidad}</td><td class="r">${fmtT(it.subtotal)}</td></tr>`).join('')}</table>
+<pre>${sep}</pre>
+<table>
+${descuento > 0 ? `<tr><td>Subtotal</td><td class="r">${fmtT(subtotal)}</td></tr><tr><td>Descuento</td><td class="r">-${fmtT(descuento)}</td></tr>` : ''}
+<tr class="big"><td>TOTAL</td><td class="r">${fmtT(total)}</td></tr>
+</table>
+<div class="foot">Gracias por tu visita!</div>
+</body></html>`
+    imprimirTicketBrowser(html)
+  })
+}
 
 const CAT_COLORS = [
   { bg: '#fff0f0', border: '#f87171' },
@@ -245,6 +285,18 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
       )
       setUltimaVenta({ ...ventaGuardada, venta_items: items })
       addToast('Venta registrada correctamente')
+      imprimirVenta({
+        numero: ventaGuardada.numero,
+        fecha,
+        hora,
+        cliente,
+        items,
+        subtotal,
+        descuento: descuentoNum,
+        total,
+        metodoPago: metodo,
+        obs,
+      })
       limpiarTicket()
     } catch (e) {
       addToast('Error: ' + e.message, 'err')
