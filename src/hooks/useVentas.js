@@ -7,7 +7,7 @@ export function useVentas() {
 
   const fetchVentas = useCallback(async (desde, hasta) => {
     setLoading(true)
-    let q = supabase.from('ventas').select('*, venta_items(*)').order('created_at', { ascending: false })
+    let q = supabase.from('ventas').select('*, venta_items(*), cajas(id, nombre, turno)').order('created_at', { ascending: false })
     if (desde) q = q.gte('fecha', desde)
     if (hasta) q = q.lte('fecha', hasta)
     const { data, error } = await q

@@ -1,5 +1,11 @@
 export const fmt = n => '$' + Math.round(n).toLocaleString('es-AR')
 
+// Devuelve la fecha actual en Argentina (America/Argentina/Buenos_Aires, UTC-3 fijo)
+// en formato YYYY-MM-DD. Evita el bug de toISOString() que usa UTC y "adelanta" el día
+// a las 21hs en Argentina.
+export const fechaHoyAR = () =>
+  new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date())
+
 // Extrae texto plano de un HTML (sin tags)
 function htmlATexto(html) {
   const div = document.createElement('div')

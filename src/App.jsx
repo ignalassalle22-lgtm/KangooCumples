@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { supabase } from './supabase'
+import { fechaHoyAR } from './utils'
 
 function imprimirTicketEvento(ev, config) {
   const items = []
@@ -441,9 +442,8 @@ function AppInner({ usuario, onLogout }) {
 
   const handleCobrarAdicionales = useCallback(async ({ eventoId, consumosPendientes, todosConsumos, total, metodoPago, cajaId }) => {
     const ev = eventos.find(e => e.id === eventoId)
-    const ahora = new Date()
-    const fecha = ahora.toISOString().split('T')[0]
-    const hora = ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+    const fecha = fechaHoyAR()
+    const hora = new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hour12: false })
     const cliente = ev ? `${ev.cumple || ev.reservante || ''} (evento)`.trim() : 'Evento'
 
     const venta = {
@@ -490,9 +490,8 @@ function AppInner({ usuario, onLogout }) {
     const ev = eventos.find(e => e.id === finalizarEventoId)
     if (!ev) return
 
-    const ahora = new Date()
-    const fecha = ahora.toISOString().split('T')[0]
-    const hora = ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+    const fecha = fechaHoyAR()
+    const hora = new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hour12: false })
     const cliente = ev.reservante || ev.cumple || 'Evento'
 
     if (totalFinal > 0 && cajaId) {

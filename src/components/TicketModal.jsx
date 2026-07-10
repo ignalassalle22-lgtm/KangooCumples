@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useRef } from 'react'
-import { imprimirTicketBrowser } from '../utils'
+import { imprimirTicketBrowser, fechaHoyAR } from '../utils'
 
 const fmt = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('es-AR')
-const hoy = () => new Date().toISOString().slice(0, 10)
-const hora = () => new Date().toTimeString().slice(0, 5)
+const hoy = () => fechaHoyAR()
+const hora = () => new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hour12: false })
 
 function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descuento, total, metodoPago, obs }) {
   fetch('http://localhost:5001/print/venta_caja', {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
+import { fechaHoyAR } from '../utils'
 
 export function useCaja() {
   const [cajasAbiertas, setCajasAbiertas] = useState([])
@@ -28,9 +29,8 @@ export function useCaja() {
   useEffect(() => { fetchCaja() }, [fetchCaja])
 
   const abrirCaja = async ({ saldo_inicial, nombre, turno }) => {
-    const ahora = new Date()
-    const hora_apertura = ahora.toTimeString().slice(0, 5)
-    const fecha = ahora.toISOString().slice(0, 10)
+    const hora_apertura = new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hour12: false })
+    const fecha = fechaHoyAR()
     const { data, error } = await supabase
       .from('cajas')
       .insert({ saldo_inicial, hora_apertura, fecha, estado: 'abierta', nombre: nombre || 'Caja', turno: turno || '' })

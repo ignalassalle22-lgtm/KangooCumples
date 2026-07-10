@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react'
+import { fechaHoyAR } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
-const hoy = () => new Date().toISOString().slice(0, 10)
+const hoy = () => fechaHoyAR()
 
 export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular, onModificar, fetchVentas, empleados = [], isAdmin = true }) {
   const [desde, setDesde] = useState(hoy())
@@ -98,6 +99,7 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
                 <th>Fecha / Hora</th>
                 <th>Cliente</th>
                 <th>Empleado</th>
+                <th>Caja</th>
                 <th>Items</th>
                 <th>Método</th>
                 <th className="num">Total</th>
@@ -116,6 +118,11 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
                   <td>{v.cliente || <span style={{ color: 'var(--mu2)' }}>—</span>}</td>
                   <td style={{ fontSize: 13 }}>
                     {v.empleado_id ? (empleados.find(e => e.id === v.empleado_id)?.nombre || '—') : <span style={{ color: 'var(--mu2)' }}>—</span>}
+                  </td>
+                  <td style={{ fontSize: 13 }}>
+                    {v.cajas
+                      ? <span>{v.cajas.nombre || 'Caja'}{v.cajas.turno ? <span style={{ color: 'var(--mu)', fontSize: 12 }}> · {v.cajas.turno}</span> : ''}</span>
+                      : <span style={{ color: 'var(--mu2)' }}>—</span>}
                   </td>
                   <td style={{ fontSize: 13, color: 'var(--mu)' }}>
                     {(v.venta_items || []).length} {(v.venta_items || []).length === 1 ? 'artículo' : 'artículos'}
@@ -158,6 +165,12 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
                 <div className="dm-row"><span className="dm-label">Empleado</span><span className="dm-val">{empleados.find(e => e.id === showDetalle.empleado_id)?.nombre || '—'}</span></div>
               )}
               <div className="dm-row"><span className="dm-label">Método de pago</span><span className="dm-val">{showDetalle.metodo_pago}</span></div>
+              {showDetalle.cajas && (
+                <div className="dm-row">
+                  <span className="dm-label">Caja</span>
+                  <span className="dm-val">{showDetalle.cajas.nombre || 'Caja'}{showDetalle.cajas.turno ? ` · ${showDetalle.cajas.turno}` : ''}</span>
+                </div>
+              )}
               <div className="dm-row"><span className="dm-label">Estado</span><span className="dm-val">{estadoBadge(showDetalle.estado)}</span></div>
               <div className="sdv" style={{ marginTop: 14 }}>Artículos</div>
               {(showDetalle.venta_items || []).map((it, i) => (
