@@ -295,9 +295,9 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
         montoFinal = adicionalMulti
       }
     } else if (esEdicionPagada && form.pago === 'paid') {
-      // Al editar un evento ya pagado, el monto acumulado = nuevo total
-      // Así deltaMonto en App.jsx = calc.total - evento.monto = solo la diferencia
-      montoFinal = calc.total
+      // El monto acumulado nunca puede bajar del ya cobrado (solo sube)
+      // Así deltaMonto en App.jsx = adicional - solo lo nuevo
+      montoFinal = Math.max(calc.total, yaCobrado)
     }
 
     const ev = {
