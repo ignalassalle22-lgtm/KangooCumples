@@ -9,6 +9,21 @@ import { useEmpleados } from '../hooks/useEmpleados'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 
+const CAT_COLORS = [
+  { bg: '#fff0f0', border: '#f87171' },
+  { bg: '#fff7ed', border: '#fb923c' },
+  { bg: '#fefce8', border: '#facc15' },
+  { bg: '#f0fdf4', border: '#4ade80' },
+  { bg: '#eff6ff', border: '#60a5fa' },
+  { bg: '#fdf4ff', border: '#c084fc' },
+  { bg: '#fff1f2', border: '#fb7185' },
+  { bg: '#ecfdf5', border: '#34d399' },
+  { bg: '#f0f9ff', border: '#38bdf8' },
+  { bg: '#faf5ff', border: '#a78bfa' },
+  { bg: '#fefce8', border: '#a3e635' },
+  { bg: '#fff7ed', border: '#f97316' },
+]
+
 function parsearMetodos(metodo_pago, totalVenta) {
   if (!metodo_pago) return { Otro: totalVenta }
   if (metodo_pago.includes('$')) {
@@ -99,6 +114,7 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
   const [descuento, setDescuento] = useState('')
   const [descuentoTipo, setDescuentoTipo] = useState('monto')
   const [obs, setObs] = useState('')
+  const [catSeleccionada, setCatSeleccionada] = useState(null)
   const [saving, setSaving] = useState(false)
   const [ultimaVenta, setUltimaVenta] = useState(null)
   const buscaRef = useRef()
@@ -126,14 +142,26 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
   const totalEfectivo = desglose['Efectivo'] || 0
   const efectivoEsperado = (caja.saldo_inicial || 0) + totalEfectivo
 
-  // Productos filtrados
-  const prodsFiltrados = useMemo(() => {
-    if (!busca) return []
-    return productos.filter(p =>
-      p.activo !== false &&
-      (p.nombre.toLowerCase().includes(busca.toLowerCase()) || (p.codigo || '').toLowerCase().includes(busca.toLowerCase()))
-    ).slice(0, 8)
-  }, [busca, productos])
+  // Categorías visibles (excluir "Stock interno")
+  const categoriasVisibles = useMemo(() =>
+    categorias.filter(c => c.nombre.toLowerCase() !== 'stock interno'),
+  [categorias])
+
+  // Productos mostrados: con categoría → todos de esa cat + filtro busca; sin cat + busca → búsqueda global
+  const prodsMostrados = useMemo(() => {
+    let lista = productos.filter(p => p.activo !== false)
+    if (catSeleccionada) lista = lista.filter(p => p.categoria_id === catSeleccionada.id)
+    if (busca) lista = lista.filter(p =>
+      p.nombre.toLowerCase().includes(busca.toLowerCase()) ||
+      (p.codigo || '').toLowerCase().includes(busca.toLowerCase())
+    )
+    return catSeleccionada ? lista : (busca ? lista.slice(0, 8) : [])
+  }, [busca, productos, catSeleccionada])
+
+  function catUnidades(catId) {
+    const ids = new Set(productos.filter(p => p.categoria_id === catId).map(p => p.id))
+    return items.filter(it => ids.has(it.producto_id)).reduce((s, it) => s + it.cantidad, 0)
+  }
 
   function agregarProducto(prod) {
     const existe = items.find(it => it.producto_id === prod.id)
@@ -155,7 +183,7 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
         _tipo: prod.tipo,
       }])
     }
-    setBusca('')
+    if (!catSeleccionada) setBusca('')
     buscaRef.current?.focus()
   }
 
@@ -261,50 +289,128 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
         <div style={{ padding: 24, overflowY: 'auto', borderRight: '1px solid var(--bd)' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 14 }}>Nuevo ticket</div>
 
-          {/* Buscador */}
-          <div style={{ position: 'relative', marginBottom: 16 }}>
-            <input
-              ref={buscaRef}
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar producto por nombre o código..."
-              autoFocus
-              style={{
-                width: '100%', border: '2px solid var(--bd2)', borderRadius: 12,
-                padding: '12px 16px', fontSize: 15, outline: 'none',
-                fontFamily: 'Nunito Sans, sans-serif',
-              }}
-              onFocus={e => e.target.style.borderColor = 'var(--or)'}
-              onBlur={e => e.target.style.borderColor = 'var(--bd2)'}
-            />
-            {prodsFiltrados.length > 0 && (
-              <div style={{
-                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
-                background: 'var(--wh)', border: '1px solid var(--bd2)', borderRadius: 12,
-                boxShadow: 'var(--sh2)', marginTop: 4, overflow: 'hidden',
-              }}>
-                {prodsFiltrados.map(p => (
-                  <div key={p.id} onClick={() => agregarProducto(p)} style={{
-                    padding: '12px 16px', cursor: 'pointer',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    borderBottom: '1px solid var(--bd)',
-                  }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--nv3)'}
-                    onMouseLeave={e => e.currentTarget.style.background = ''}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14 }}>{p.nombre}</div>
-                      <div style={{ fontSize: 12, color: 'var(--mu)' }}>
-                        {p.tipo === 'simple' ? `Stock: ${p.stock_actual || 0}` : 'Compuesto'}
-                        {p.codigo ? ` · ${p.codigo}` : ''}
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gn)' }}>{fmt(p.precio_venta)}</div>
-                  </div>
-                ))}
+          {/* Selector de productos: categorías o vista dentro de categoría */}
+          {!catSeleccionada ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '.06em', flex: 1 }}>Categorías</div>
+                <input
+                  ref={buscaRef}
+                  value={busca}
+                  onChange={e => setBusca(e.target.value)}
+                  placeholder="Búsqueda rápida..."
+                  autoFocus
+                  style={{ border: '1px solid var(--bd2)', borderRadius: 8, padding: '8px 12px', fontSize: 13, width: 200 }}
+                  onFocus={e => e.target.style.borderColor = 'var(--or)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--bd2)'}
+                />
               </div>
-            )}
-          </div>
+
+              {/* Resultados de búsqueda rápida */}
+              {busca && prodsMostrados.length > 0 && (
+                <div style={{ background: 'var(--wh)', border: '1px solid var(--bd2)', borderRadius: 10, overflow: 'hidden', marginBottom: 14 }}>
+                  {prodsMostrados.map(p => (
+                    <div key={p.id} onClick={() => agregarProducto(p)}
+                      style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--bd)' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--nv3)'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>{p.nombre}</div>
+                        <div style={{ fontSize: 12, color: 'var(--mu)' }}>
+                          {p.tipo === 'simple' ? `Stock: ${p.stock_actual || 0}` : 'Compuesto'}
+                          {p.codigo ? ` · ${p.codigo}` : ''}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gn)' }}>{fmt(p.precio_venta)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Grid de tiles de categoría */}
+              {!busca && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+                  {categoriasVisibles.map((cat, i) => {
+                    const color = CAT_COLORS[i % CAT_COLORS.length]
+                    const unidades = catUnidades(cat.id)
+                    return (
+                      <div key={cat.id} onClick={() => { setCatSeleccionada(cat); setBusca('') }}
+                        style={{
+                          background: color.bg, border: `2.5px solid ${color.border}`,
+                          borderRadius: 12, padding: '14px 10px', cursor: 'pointer',
+                          textAlign: 'center', transition: 'transform .1s, box-shadow .1s',
+                          userSelect: 'none',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.12)' }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
+                      >
+                        <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: '#333', lineHeight: 1.2, marginBottom: 6 }}>{cat.nombre}</div>
+                        <div style={{ fontSize: 26, fontWeight: 900, color: unidades > 0 ? color.border : '#aaa' }}>{unidades}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Vista de productos de una categoría */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <button className="bg2 bsm" onClick={() => { setCatSeleccionada(null); setBusca('') }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  ← Categorías
+                </button>
+                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--nv)' }}>{catSeleccionada.nombre}</span>
+                <input
+                  ref={buscaRef}
+                  value={busca}
+                  onChange={e => setBusca(e.target.value)}
+                  placeholder="Filtrar..."
+                  autoFocus
+                  style={{ border: '1px solid var(--bd2)', borderRadius: 8, padding: '6px 11px', fontSize: 13, marginLeft: 'auto', width: 160 }}
+                />
+              </div>
+
+              {prodsMostrados.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--mu2)', fontSize: 14 }}>
+                  No hay productos en esta categoría
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 16 }}>
+                  {prodsMostrados.map(p => {
+                    const enTicket = items.find(it => it.producto_id === p.id)
+                    return (
+                      <div key={p.id} onClick={() => agregarProducto(p)}
+                        style={{
+                          background: enTicket ? 'var(--nv3)' : 'var(--wh)',
+                          border: `1.5px solid ${enTicket ? 'var(--nv)' : 'var(--bd2)'}`,
+                          borderRadius: 10, padding: '10px 12px', cursor: 'pointer',
+                          display: 'flex', flexDirection: 'column', gap: 3,
+                          transition: 'all .1s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--nv3)'}
+                        onMouseLeave={e => e.currentTarget.style.background = enTicket ? 'var(--nv3)' : 'var(--wh)'}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>{p.nombre}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ fontSize: 12, color: 'var(--mu)' }}>
+                            {p.tipo === 'simple' && p.maneja_stock !== false ? `Stock: ${p.stock_actual || 0}` : ''}
+                          </div>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--gn)' }}>{fmt(p.precio_venta)}</div>
+                        </div>
+                        {enTicket && (
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nv)', marginTop: 2 }}>
+                            ✓ En ticket: ×{enTicket.cantidad}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          )}
 
           {/* Items del ticket */}
           {items.length === 0 ? (
