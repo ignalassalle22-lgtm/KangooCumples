@@ -780,7 +780,7 @@ function AppInner({ usuario, onLogout }) {
         )}
 
         {activeSection === 'reportes' && (
-          <ReportesVentas ventas={ventas} />
+          <ReportesVentas ventas={ventas} productos={productos} categorias={categorias} />
         )}
 
         {activeSection === 'cofre' && (
