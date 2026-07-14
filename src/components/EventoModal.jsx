@@ -299,6 +299,9 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
       } else if (esEdicionSena && form.pago === 'sena') {
         // Seña acumulada = ya cobrado + adicional ingresado ahora
         montoFinal = yaCobrado + adicionalMulti
+      } else if (esEdicionSena && form.pago === 'paid') {
+        // Cambio de seña a pago completo: multi-método cubre el saldo restante
+        montoFinal = yaCobrado + adicionalMulti
       } else {
         montoFinal = adicionalMulti
       }
@@ -309,6 +312,9 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
     } else if (esEdicionSena && form.pago === 'sena') {
       // Seña acumulada = ya cobrado + adicional ingresado ahora
       montoFinal = yaCobrado + adicionalSena
+    } else if (esEdicionSena && form.pago === 'paid') {
+      // Cambio de seña a pago completo: cobrar el saldo restante (total - seña ya pagada)
+      montoFinal = Math.max(calc.total, yaCobrado)
     }
 
     const ev = {
@@ -671,6 +677,27 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
                   <input type="number" min={0} value={form.monto} onChange={e => set('monto', e.target.value)} />
                 </div>
               )}
+              {esEdicionSena && form.pago === 'paid' && (() => {
+                const saldo = Math.max(0, calc.total - yaCobrado)
+                return (
+                  <div className="fgg" style={{ gridColumn: '1/-1' }}>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', background: 'var(--nv3)', border: '1.5px solid var(--nv)', borderRadius: 10, padding: '12px 16px' }}>
+                      <div style={{ flex: 1, minWidth: 140 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nv)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Ya cobrado como seña</div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--nv)' }}>{fmt(yaCobrado)}</div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 140 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: saldo > 0 ? 'var(--gn)' : 'var(--mu)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>
+                          {saldo > 0 ? 'Saldo a cobrar ahora' : 'Sin cobro adicional'}
+                        </div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: saldo > 0 ? 'var(--gn)' : 'var(--mu)' }}>
+                          {saldo > 0 ? `+${fmt(saldo)}` : fmt(0)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
               {esEdicionSena && form.pago === 'sena' && (
                 <div className="fgg" style={{ gridColumn: '1/-1' }}>
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', background: 'var(--nv3)', border: '1.5px solid var(--nv)', borderRadius: 10, padding: '12px 16px', marginBottom: 8 }}>
@@ -778,11 +805,17 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
                         ⚠ Ingresá solo el monto adicional de seña a cobrar ahora por cada método (ya cobrado: {fmt(yaCobrado)}).
                       </div>
                     )}
+                    {esEdicionSena && form.pago === 'paid' && (
+                      <div style={{ fontSize: 12, color: 'var(--am)', fontWeight: 600, padding: '4px 0' }}>
+                        ⚠ Ingresá el saldo restante a cobrar ahora por cada método (ya cobrado como seña: {fmt(yaCobrado)}).
+                      </div>
+                    )}
                     {(() => {
                       const cubierto = metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+                      const esAdicional = (esEdicionPagada && form.pago === 'paid') || (esEdicionSena && (form.pago === 'sena' || form.pago === 'paid'))
                       return cubierto > 0 && (
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--nv)', padding: '6px 0' }}>
-                          {(esEdicionPagada && form.pago === 'paid') || (esEdicionSena && form.pago === 'sena') ? `Cobro adicional: ${fmt(cubierto)}` : `Total abonado: ${fmt(cubierto)}`}
+                          {esAdicional ? `Cobro adicional: ${fmt(cubierto)}` : `Total abonado: ${fmt(cubierto)}`}
                         </div>
                       )
                     })()}
@@ -908,12 +941,12 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
           <div className="tr big"><span className="tl">Total del evento</span><span className="tv">{fmt(calc.total)}</span></div>
           {form.pago !== 'none' && (
             <>
-              {esEdicionPagada && form.pago === 'paid' ? (
+              {(esEdicionPagada || esEdicionSena) && form.pago === 'paid' ? (
                 <>
-                  <div className="tr"><span className="tl">Ya cobrado</span><span className="tv">{fmt(yaCobrado)}</span></div>
+                  <div className="tr"><span className="tl">Ya cobrado{esEdicionSena ? ' como seña' : ''}</span><span className="tv">{fmt(yaCobrado)}</span></div>
                   {calc.total > yaCobrado && (
                     <div className="tr">
-                      <span className="tl" style={{ color: 'rgba(255,255,255,0.75)' }}>Cobro adicional</span>
+                      <span className="tl" style={{ color: 'rgba(255,255,255,0.75)' }}>Saldo a cobrar ahora</span>
                       <span className="tv" style={{ color: '#FFD166', fontSize: 18 }}>+{fmt(calc.total - yaCobrado)}</span>
                     </div>
                   )}
