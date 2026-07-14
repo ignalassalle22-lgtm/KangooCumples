@@ -762,6 +762,7 @@ function AppInner({ usuario, onLogout }) {
             onAddCofreIngreso={handleAddCofreIngreso}
             onAnularVenta={handleAnularVenta}
             onModificarVenta={handleModificarVenta}
+            onRefreshVentas={fetchVentas}
             addToast={addToast}
             askPin={askPin}
           />
