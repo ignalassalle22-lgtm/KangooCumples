@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { imprimirTicket, imprimirTicketBrowser } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
@@ -232,7 +232,7 @@ function TicketDetalle({ venta, onClose }) {
   )
 }
 
-function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGasto, onAddCofreIngreso, addToast, askPin }) {
+function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGasto, onAddCofreIngreso, onRefresh, addToast, askPin }) {
   const [cerrando, setCerrando] = useState(false)
   const [saldoFinal, setSaldoFinal] = useState('')
   const [obs, setObs] = useState('')
@@ -251,6 +251,13 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
   const [cofreMonto, setCofreMonto] = useState('')
   const [cofrePersona, setCofrePersona] = useState('')
   const [cofreObs, setCofreObs] = useState('')
+
+  // Actualizar ventas al abrir el módulo y cada 30 segundos (para capturar ventas del POS en otra pestaña)
+  useEffect(() => {
+    if (onRefresh) onRefresh()
+    const interval = setInterval(() => { if (onRefresh) onRefresh() }, 30000)
+    return () => clearInterval(interval)
+  }, [onRefresh])
 
   const ventasCaja = useMemo(() =>
     ventas.filter(v => v.caja_id === caja.id && v.estado !== 'anulada'),
@@ -380,6 +387,9 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
           </button>
           <button className="bg2 bsm" onClick={() => { setShowCofre(f => !f); setShowGastos(false) }}>
             {showCofre ? '✕ Cancelar traspaso' : '🔒 Traspasar al cofre'}
+          </button>
+          <button className="bg2 bsm" onClick={() => { if (onRefresh) onRefresh() }} title="Actualizar ventas (incluye ventas del POS)">
+            🔄 Actualizar
           </button>
           <button className="bg2 bsm" onClick={() => setCerrando(!cerrando)}>
             {cerrando ? '✕ Cancelar' : '🔐 Cerrar caja'}
@@ -828,7 +838,7 @@ function CajaHistorialModal({ caja, ventas, gastos = [], empleados = [], onAnula
   )
 }
 
-export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos = [], empleados = [], onAbrir, onCerrar, onAddGasto, onAddCofreIngreso, onAnularVenta, onModificarVenta, addToast, askPin }) {
+export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos = [], empleados = [], onAbrir, onCerrar, onAddGasto, onAddCofreIngreso, onAnularVenta, onModificarVenta, onRefreshVentas, addToast, askPin }) {
   const [nombre, setNombre] = useState('')
   const [turno, setTurno] = useState('')
   const [saldoInicial, setSaldoInicial] = useState('')
@@ -919,6 +929,7 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                     gastos={gastos.filter(g => g.caja_id === c.id)}
                     empleados={empleados}
                     onCerrar={onCerrar} onAddGasto={onAddGasto} onAddCofreIngreso={onAddCofreIngreso}
+                    onRefresh={onRefreshVentas}
                     addToast={addToast} askPin={askPin}
                   />
                 ))}
