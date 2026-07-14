@@ -87,6 +87,94 @@ function _imprimirConBrowser(html) {
   }, 500)
 }
 
+// Descarga un Excel (.xlsx) con formato para el reporte de artículos por categoría
+export function downloadXLSXArticulos(porCategoria, totalUnidades, totalArticulos, desde, hasta) {
+  import('xlsx').then(XLSX => {
+    const wb = XLSX.utils.book_new()
+    const rows = []
+
+    // Encabezado del reporte
+    rows.push([`Ventas por artículo — ${desde} al ${hasta}`, '', '', ''])
+    rows.push([''])
+
+    // Columnas
+    rows.push(['Categoría / Producto', 'Unidades', 'Total ($)', '% del total'])
+
+    const merges = []       // rangos a combinar
+    const boldRows = []     // índices de filas en negrita
+    const catRows = []      // índices de filas de categoría (fondo de color)
+
+    const totalGen = totalArticulos || 1
+
+    for (const cat of porCategoria) {
+      const rowIdx = rows.length  // 0-based
+      rows.push([cat.nombre.toUpperCase(), cat.cantidad, cat.total, Math.round((cat.total / totalGen) * 100) + '%'])
+      boldRows.push(rowIdx)
+      catRows.push(rowIdx)
+
+      for (const p of cat.productos.sort((a, b) => b.total - a.total)) {
+        rows.push([p.nombre, p.cantidad, p.total, Math.round((p.total / totalGen) * 100) + '%'])
+      }
+
+      // Fila vacía entre categorías
+      rows.push(['', '', '', ''])
+    }
+
+    // Total general
+    const totalRowIdx = rows.length
+    rows.push(['TOTAL GENERAL', totalUnidades, totalArticulos, '100%'])
+    boldRows.push(totalRowIdx)
+
+    const ws = XLSX.utils.aoa_to_sheet(rows)
+
+    // Ancho de columnas
+    ws['!cols'] = [{ wch: 40 }, { wch: 14 }, { wch: 16 }, { wch: 12 }]
+
+    // Aplicar estilos celda por celda
+    const catFill = { patternType: 'solid', fgColor: { rgb: 'E8EEF7' } }
+    const totalFill = { patternType: 'solid', fgColor: { rgb: 'C6D9F1' } }
+    const boldFont = { bold: true }
+    const headerFont = { bold: true, sz: 14 }
+
+    // Estilo título
+    const titleCell = ws['A1']
+    if (titleCell) titleCell.s = { font: headerFont }
+
+    // Estilos columnas header (fila 3 = index 2)
+    ;['A3','B3','C3','D3'].forEach(addr => {
+      if (ws[addr]) ws[addr].s = { font: boldFont, fill: { patternType: 'solid', fgColor: { rgb: 'D9D9D9' } }, alignment: { horizontal: 'center' } }
+    })
+
+    // Estilos filas de categoría
+    catRows.forEach(ri => {
+      const excelRow = ri + 1  // xlsx es 1-based
+      ;['A','B','C','D'].forEach(col => {
+        const addr = col + excelRow
+        if (ws[addr]) ws[addr].s = { font: boldFont, fill: catFill }
+      })
+    })
+
+    // Estilo fila total
+    ;['A','B','C','D'].forEach(col => {
+      const addr = col + (totalRowIdx + 1)
+      if (ws[addr]) ws[addr].s = { font: boldFont, fill: totalFill }
+    })
+
+    // Formato numérico para columna C (Total $)
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:D1')
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      const addr = XLSX.utils.encode_cell({ r, c: 2 })  // columna C
+      const cell = ws[addr]
+      if (cell && typeof cell.v === 'number') {
+        cell.z = '#,##0'
+      }
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Artículos por categoría')
+    XLSX.writeFile(wb, `ventas-por-articulo_${desde}_${hasta}.xlsx`)
+  })
+}
+
 // Descarga rows como CSV compatible con Excel (BOM UTF-8)
 export function downloadCSV(rows, filename) {
   const escape = (v) => {
