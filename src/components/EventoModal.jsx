@@ -52,9 +52,12 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
   const [metsPagados, setMetsPagados] = useState([{ id: 1, met: 'Efectivo', monto: '' }])
   const [cajaId, setCajaId] = useState(() => cajasAbiertas[0]?.id || null)
 
-  // Para edición de eventos ya pagados: monto ya cobrado previamente
+  // Para edición de eventos ya pagados o con seña: monto ya cobrado previamente
   const esEdicionPagada = Boolean(evento?.id && evento?.pago === 'paid')
+  const esEdicionSena = Boolean(evento?.id && evento?.pago === 'sena')
   const yaCobrado = evento?.monto || 0
+
+  const [adicionalSena, setAdicionalSena] = useState(0)
 
   // Populate form from evento
   useEffect(() => {
@@ -112,6 +115,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
       setArticulosEvento(arts)
       setMultiMet(false)
       setMetsPagados([{ id: 1, met: 'Efectivo', monto: '' }])
+      setAdicionalSena(0)
     } else {
       setForm(EMPTY_FORM)
       setMrows([{ rid: Date.now(), mid: '', qty: 1 }])
@@ -122,6 +126,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
       setArtBusca('')
       setMultiMet(false)
       setMetsPagados([{ id: 1, met: 'Efectivo', monto: '' }])
+      setAdicionalSena(0)
     }
   }, [evento])
 
@@ -291,6 +296,9 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
       if (esEdicionPagada && form.pago === 'paid') {
         // Montos ingresados son incrementales; el acumulado = ya cobrado + adicional
         montoFinal = yaCobrado + adicionalMulti
+      } else if (esEdicionSena && form.pago === 'sena') {
+        // Seña acumulada = ya cobrado + adicional ingresado ahora
+        montoFinal = yaCobrado + adicionalMulti
       } else {
         montoFinal = adicionalMulti
       }
@@ -298,6 +306,9 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
       // El monto acumulado nunca puede bajar del ya cobrado (solo sube)
       // Así deltaMonto en App.jsx = adicional - solo lo nuevo
       montoFinal = Math.max(calc.total, yaCobrado)
+    } else if (esEdicionSena && form.pago === 'sena') {
+      // Seña acumulada = ya cobrado + adicional ingresado ahora
+      montoFinal = yaCobrado + adicionalSena
     }
 
     const ev = {
@@ -654,10 +665,32 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
         {form.pago !== 'none' && form.pago !== 'cancelado' && (
           <div>
             <div className="fg" style={{ marginBottom: 10 }}>
-              {!multiMet && !esEdicionPagada && (
+              {!multiMet && !esEdicionPagada && !esEdicionSena && (
                 <div className="fgg">
                   <label>Monto abonado / seña ($)</label>
                   <input type="number" min={0} value={form.monto} onChange={e => set('monto', e.target.value)} />
+                </div>
+              )}
+              {esEdicionSena && form.pago === 'sena' && (
+                <div className="fgg" style={{ gridColumn: '1/-1' }}>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', background: 'var(--nv3)', border: '1.5px solid var(--nv)', borderRadius: 10, padding: '12px 16px', marginBottom: 8 }}>
+                    <div style={{ flex: 1, minWidth: 140 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nv)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Ya cobrado como seña</div>
+                      <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--nv)' }}>{fmt(yaCobrado)}</div>
+                    </div>
+                    {!multiMet && (
+                      <div style={{ flex: 1, minWidth: 160 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gn)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Seña adicional a cobrar ahora</div>
+                        <input
+                          type="number" min={0}
+                          value={adicionalSena || ''}
+                          onChange={e => setAdicionalSena(parseFloat(e.target.value) || 0)}
+                          placeholder="0"
+                          style={{ width: '100%', fontSize: 15, fontWeight: 700 }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               {esEdicionPagada && form.pago === 'paid' && (() => {
@@ -740,11 +773,16 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
                         ⚠ Ingresá solo el monto adicional a cobrar ahora por cada método (no el total acumulado).
                       </div>
                     )}
+                    {esEdicionSena && form.pago === 'sena' && (
+                      <div style={{ fontSize: 12, color: 'var(--am)', fontWeight: 600, padding: '4px 0' }}>
+                        ⚠ Ingresá solo el monto adicional de seña a cobrar ahora por cada método (ya cobrado: {fmt(yaCobrado)}).
+                      </div>
+                    )}
                     {(() => {
                       const cubierto = metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
                       return cubierto > 0 && (
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--nv)', padding: '6px 0' }}>
-                          {esEdicionPagada && form.pago === 'paid' ? `Cobro adicional: ${fmt(cubierto)}` : `Total abonado: ${fmt(cubierto)}`}
+                          {(esEdicionPagada && form.pago === 'paid') || (esEdicionSena && form.pago === 'sena') ? `Cobro adicional: ${fmt(cubierto)}` : `Total abonado: ${fmt(cubierto)}`}
                         </div>
                       )
                     })()}
@@ -879,6 +917,25 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
                       <span className="tv" style={{ color: '#FFD166', fontSize: 18 }}>+{fmt(calc.total - yaCobrado)}</span>
                     </div>
                   )}
+                </>
+              ) : esEdicionSena && form.pago === 'sena' ? (
+                <>
+                  <div className="tr"><span className="tl">Ya cobrado como seña</span><span className="tv">{fmt(yaCobrado)}</span></div>
+                  {(() => {
+                    const extra = multiMet
+                      ? metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+                      : adicionalSena
+                    return extra > 0 && (
+                      <div className="tr">
+                        <span className="tl" style={{ color: 'rgba(255,255,255,0.75)' }}>Seña adicional ahora</span>
+                        <span className="tv" style={{ color: '#FFD166', fontSize: 18 }}>+{fmt(extra)}</span>
+                      </div>
+                    )
+                  })()}
+                  <div className="tr">
+                    <span className="tl" style={{ color: 'rgba(255,255,255,0.75)' }}>Restante a cobrar</span>
+                    <span className="tv" style={{ color: '#FFD166', fontSize: 18 }}>{fmt(Math.max(0, calc.total - yaCobrado - (multiMet ? metsPagados.reduce((s,m)=>s+(parseFloat(m.monto)||0),0) : adicionalSena)))}</span>
+                  </div>
                 </>
               ) : (
                 <>
