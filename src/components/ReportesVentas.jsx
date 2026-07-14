@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { downloadCSV } from '../utils'
+import { downloadCSV, downloadXLSXArticulos } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 const fmtNum = (n) => Math.round(Number(n || 0))
@@ -130,16 +130,7 @@ export default function ReportesVentas({ ventas, productos = [], categorias = []
   const totalArticulos = porProducto.reduce((s, p) => s + p.total, 0)
 
   function descargarExcelArticulos() {
-    const rows = [['Categoría', 'Producto', 'Unidades vendidas', 'Total ($)']]
-    for (const cat of porCategoria) {
-      rows.push([cat.nombre.toUpperCase(), '', cat.cantidad, fmtNum(cat.total)])
-      for (const p of cat.productos.sort((a, b) => b.total - a.total)) {
-        rows.push(['', p.nombre, p.cantidad, fmtNum(p.total)])
-      }
-      rows.push(['', '', '', ''])
-    }
-    rows.push(['TOTAL GENERAL', '', totalUnidades, fmtNum(totalArticulos)])
-    downloadCSV(rows, `ventas-por-articulo_${desde}_${hasta}.csv`)
+    downloadXLSXArticulos(porCategoria, totalUnidades, totalArticulos, desde, hasta)
   }
 
   return (
