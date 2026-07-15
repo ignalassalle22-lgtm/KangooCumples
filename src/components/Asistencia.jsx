@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import * as XLSX from 'xlsx'
 import { useAsistencia } from '../hooks/useAsistencia'
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -161,14 +162,42 @@ export default function Asistencia({ empleados = [] }) {
   }, [obsLocal, año, mes, saveObs])
 
   // ── Exportar a Excel ──
-  async function exportarExcel() {
-    const XLSX = await import('xlsx')
+  function exportarExcel() {
     const wb = XLSX.utils.book_new()
     const mesNombre = MESES[mes - 1]
 
-    // Hoja de detalle
+    // ── Hoja 1: Resumen (se abre por defecto) ──
+    const resumen = []
+    resumen.push([`RESUMEN DE ASISTENCIA — ${mesNombre.toUpperCase()} ${año}`])
+    resumen.push([])
+    resumen.push(['Empleado', 'Días trabajados', 'Horas totales', 'Prom. hs/día', 'Días vacaciones', 'Observaciones'])
+    empleadosActivos.forEach(emp => {
+      const hs = Math.round(totalHorasEmpleado(emp.id) * 100) / 100
+      const dias2 = diasTrabajadosEmpleado(emp.id)
+      resumen.push([
+        emp.nombre,
+        dias2,
+        hs,
+        dias2 > 0 ? Math.round((hs / dias2) * 100) / 100 : 0,
+        diasVacEmpleado(emp.id),
+        getObs(emp.id) || '',
+      ])
+    })
+    resumen.push([])
+    resumen.push([
+      'TOTAL GENERAL',
+      empleadosActivos.reduce((s, e) => s + diasTrabajadosEmpleado(e.id), 0),
+      Math.round(totalHorasMes * 100) / 100,
+      '', '', '',
+    ])
+
+    const wsResumen = XLSX.utils.aoa_to_sheet(resumen)
+    wsResumen['!cols'] = [{ wch: 22 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 45 }]
+    XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen')
+
+    // ── Hoja 2: Detalle día a día ──
     const detalle = []
-    detalle.push([`PLANILLA DE ASISTENCIA — ${mesNombre.toUpperCase()} ${año}`])
+    detalle.push([`DETALLE DE ASISTENCIA — ${mesNombre.toUpperCase()} ${año}`])
     detalle.push([])
     detalle.push(['Empleado', 'Fecha', 'Día', 'Entrada', 'Salida', 'Horas', 'Estado', 'Observaciones'])
 
@@ -193,36 +222,14 @@ export default function Asistencia({ empleados = [] }) {
         ])
         primeraFila = false
       })
-      // Fila de total por empleado
-      const total = totalHorasEmpleado(emp.id)
-      detalle.push(['', '', '', '', 'TOTAL HORAS:', Math.round(total * 100) / 100, '', ''])
-      detalle.push([]) // separador
+      const total = Math.round(totalHorasEmpleado(emp.id) * 100) / 100
+      detalle.push(['', '', '', '', 'TOTAL HORAS:', total, '', ''])
+      detalle.push([])
     })
 
     const wsDetalle = XLSX.utils.aoa_to_sheet(detalle)
-    wsDetalle['!cols'] = [{ wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 40 }]
+    wsDetalle['!cols'] = [{ wch: 22 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 45 }]
     XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle')
-
-    // Hoja de resumen
-    const resumen = []
-    resumen.push([`RESUMEN — ${mesNombre.toUpperCase()} ${año}`])
-    resumen.push([])
-    resumen.push(['Empleado', 'Días Trabajados', 'Horas Totales', 'Días Vacaciones', 'Observaciones'])
-    empleadosActivos.forEach(emp => {
-      resumen.push([
-        emp.nombre,
-        diasTrabajadosEmpleado(emp.id),
-        Math.round(totalHorasEmpleado(emp.id) * 100) / 100,
-        diasVacEmpleado(emp.id),
-        getObs(emp.id) || '',
-      ])
-    })
-    resumen.push([])
-    resumen.push(['TOTAL GENERAL', '', Math.round(totalHorasMes * 100) / 100, '', ''])
-
-    const wsResumen = XLSX.utils.aoa_to_sheet(resumen)
-    wsResumen['!cols'] = [{ wch: 20 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 40 }]
-    XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen')
 
     XLSX.writeFile(wb, `Asistencia_${mesNombre}_${año}.xlsx`)
   }

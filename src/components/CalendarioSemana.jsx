@@ -1,16 +1,18 @@
 import React from 'react'
-import { fmt, cumpleDisplay } from '../utils'
+import { fmt, cumpleDisplay, fechaHoyAR } from '../utils'
+
+const intlAR = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' })
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T12:00:00')
+  d.setDate(d.getDate() + n)
+  return intlAR.format(d)
+}
 
 export default function CalendarioSemana({ eventos, onEditar, onVerDetalle }) {
-  const now = new Date()
-  const todayStr = now.toISOString().slice(0, 10)
+  const todayStr = fechaHoyAR()
   const pad = n => String(n).padStart(2, '0')
 
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(now)
-    d.setDate(now.getDate() + i)
-    return d.toISOString().slice(0, 10)
-  })
+  const days = Array.from({ length: 7 }, (_, i) => addDays(todayStr, i))
 
   const weekEvs = eventos.filter(ev => ev.fecha && days.includes(ev.fecha))
   const wEvents = weekEvs.length

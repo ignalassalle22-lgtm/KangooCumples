@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { cumpleDisplay } from '../utils'
+import { cumpleDisplay, fechaHoyAR } from '../utils'
 
 const DOWS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const pad = n => String(n).padStart(2, '0')
@@ -93,7 +93,7 @@ function NotaModal({ nota, onSave, onDelete, onClose }) {
 
 export default function CalendarioMes({ eventos, onEditar, onVerDetalle, notas = [], onSaveNota, onDeleteNota, isAdmin = true }) {
   const now = new Date()
-  const todayStr = now.toISOString().slice(0, 10)
+  const todayStr = fechaHoyAR()
   const [calYear, setCalYear] = useState(now.getFullYear())
   const [calMonth, setCalMonth] = useState(now.getMonth())
   const [notaEdit, setNotaEdit] = useState(null) // { fecha, id?, texto, tipo }

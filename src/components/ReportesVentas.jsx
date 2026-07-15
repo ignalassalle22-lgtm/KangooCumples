@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { downloadCSV, downloadXLSXArticulos } from '../utils'
+import { downloadCSV, downloadXLSXArticulos, fechaHoyAR } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 const fmtNum = (n) => Math.round(Number(n || 0))
@@ -22,9 +22,10 @@ function parsearMetodos(metodo_pago, totalVenta) {
 }
 
 function primerDiaMes() {
-  const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10)
+  const hoy = fechaHoyAR()
+  return hoy.slice(0, 8) + '01'
 }
-function hoy() { return new Date().toISOString().slice(0, 10) }
+function hoy() { return fechaHoyAR() }
 
 export default function ReportesVentas({ ventas, productos = [], categorias = [] }) {
   const [desde, setDesde] = useState(primerDiaMes())

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
+import { fechaHoyAR } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
-const hoy = () => new Date().toISOString().slice(0, 10)
+const hoy = () => fechaHoyAR()
 
 export default function CompraModal({ compra, productos, proveedores = [], metodosPago = [], onSave, onClose, addToast }) {
   const esEdicion = !!compra?.id
