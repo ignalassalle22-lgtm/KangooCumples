@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { fmt, cumpleDisplay } from '../utils'
+import { fmt, cumpleDisplay, fechaHoyAR } from '../utils'
 
 function getMonthKey(fecha) {
   if (!fecha) return ''
@@ -62,7 +62,7 @@ export default function EventosList({ eventos, loading, config, onEditar, onElim
       const matchFecha = !filterFecha || ev.fecha === filterFecha
       return matchText && matchPago && matchMes && matchFecha
     }).sort((a, b) => {
-      const hoy = new Date().toISOString().slice(0, 10)
+      const hoy = fechaHoyAR()
       // Grupo: 0 = hoy, 1 = futuro, 2 = pasado
       const grupo = (fecha) => {
         if (!fecha) return 1
@@ -155,7 +155,7 @@ export default function EventosList({ eventos, loading, config, onEditar, onElim
           )
         ) : (
           filtered.map((ev, idx) => {
-            const hoy = new Date().toISOString().slice(0, 10)
+            const hoy = fechaHoyAR()
             const isPast = ev.fecha && ev.fecha < hoy
             const isHoy = ev.fecha === hoy
             const prevEv = filtered[idx - 1]
