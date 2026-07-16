@@ -157,6 +157,8 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
   const [catSeleccionada, setCatSeleccionada] = useState(null)
   const [saving, setSaving] = useState(false)
   const [ultimaVenta, setUltimaVenta] = useState(null)
+  const [multiMet, setMultiMet] = useState(false)
+  const [metsPagados, setMetsPagados] = useState([{ id: 1, met: 'Efectivo', monto: '' }])
   const buscaRef = useRef()
 
   const empleadosActivos = empleados.filter(e => e.activo !== false)
@@ -249,8 +251,34 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
 
   function limpiarTicket() {
     setItems([]); setCliente(''); setPagaCon(''); setDescuento(''); setObs('')
+    setMultiMet(false); setMetsPagados([{ id: 1, met: 'Efectivo', monto: '' }])
     setTimeout(() => buscaRef.current?.focus(), 100)
   }
+
+  function toggleMultiMet() {
+    if (!multiMet) {
+      setMetsPagados([{ id: 1, met: metodo, monto: '' }])
+      setMultiMet(true)
+    } else {
+      setMultiMet(false)
+      setMetsPagados([{ id: 1, met: 'Efectivo', monto: '' }])
+      setPagaCon('')
+    }
+  }
+
+  function addMetPagado() {
+    setMetsPagados(prev => [...prev, { id: Date.now(), met: METODOS[0], monto: '' }])
+  }
+
+  function removeMetPagado(id) {
+    setMetsPagados(prev => prev.filter(m => m.id !== id))
+  }
+
+  function updateMetPagado(id, field, val) {
+    setMetsPagados(prev => prev.map(m => m.id === id ? { ...m, [field]: val } : m))
+  }
+
+  const totalCubierto = multiMet ? metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0) : 0
 
   const subtotal = items.reduce((s, it) => s + it.subtotal, 0)
   const descuentoNum = descuentoTipo === 'pct'
@@ -262,11 +290,22 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
 
   async function handleCobrar() {
     if (items.length === 0) { addToast('Agregá al menos un producto', 'err'); return }
+    if (multiMet) {
+      if (metsPagados.some(m => !m.monto || parseFloat(m.monto) <= 0)) {
+        addToast('Completá el monto de cada método de pago', 'err'); return
+      }
+      if (Math.abs(totalCubierto - total) > 1) {
+        addToast(`El total cubierto (${fmt(totalCubierto)}) no coincide con el total (${fmt(total)})`, 'err'); return
+      }
+    }
     const sinStock = items.filter(it => it._tipo === 'simple' && it.maneja_stock !== false && (it._stockActual || 0) < it.cantidad)
     if (sinStock.length > 0) {
       addToast('Stock insuficiente: ' + sinStock.map(it => it.nombre_producto).join(', '), 'err')
       return
     }
+    const metodoPagoFinal = multiMet
+      ? metsPagados.map(m => `${m.met} $${Math.round(parseFloat(m.monto) || 0).toLocaleString('es-AR')}`).join(' + ')
+      : metodo
     setSaving(true)
     try {
       const fecha = fechaHoyAR()
@@ -275,7 +314,7 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
         {
           fecha, hora, cliente,
           subtotal, descuento: descuentoNum, total,
-          metodo_pago: metodo,
+          metodo_pago: metodoPagoFinal,
           caja_id: caja.id,
           empleado_id: empleadoId ? Number(empleadoId) : null,
           obs,
@@ -294,7 +333,7 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
         subtotal,
         descuento: descuentoNum,
         total,
-        metodoPago: metodo,
+        metodoPago: metodoPagoFinal,
         obs,
       })
       limpiarTicket()
@@ -574,32 +613,85 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
             </div>
 
             {/* Métodos de pago */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-              {METODOS.map(m => (
-                <button key={m} type="button"
-                  className={`rp ${metodo === m ? 'spaid' : ''}`}
-                  onClick={() => { setMetodo(m); setPagaCon('') }}
-                  style={{ textAlign: 'left', padding: '8px 12px', fontSize: 13 }}
-                >{m}</button>
-              ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--mu)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Método de pago</span>
+              <button type="button" onClick={toggleMultiMet}
+                style={{
+                  fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+                  border: `1.5px solid ${multiMet ? 'var(--nv)' : 'var(--bd2)'}`,
+                  background: multiMet ? 'var(--nv3)' : 'transparent',
+                  color: multiMet ? 'var(--nv)' : 'var(--mu)',
+                  cursor: 'pointer', fontFamily: "'Nunito', sans-serif",
+                }}
+              >{multiMet ? '✓ Múltiple' : '+ Múltiple'}</button>
             </div>
 
-            {/* Paga con / vuelto */}
-            {metodo === 'Efectivo' && (
+            {!multiMet ? (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                  {METODOS.map(m => (
+                    <button key={m} type="button"
+                      className={`rp ${metodo === m ? 'spaid' : ''}`}
+                      onClick={() => { setMetodo(m); setPagaCon('') }}
+                      style={{ textAlign: 'left', padding: '8px 12px', fontSize: 13 }}
+                    >{m}</button>
+                  ))}
+                </div>
+                {metodo === 'Efectivo' && (
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--mu)', display: 'block', marginBottom: 4 }}>¿Con cuánto paga?</label>
+                    <input type="number" min="0" value={pagaCon} onChange={e => setPagaCon(e.target.value)}
+                      placeholder={fmt(total)}
+                      style={{ width: '100%', border: '1px solid var(--bd2)', borderRadius: 8, padding: '8px 12px', fontSize: 14 }} />
+                    {pagaConNum > 0 && (
+                      <div style={{
+                        marginTop: 8, padding: '8px 12px', borderRadius: 8, textAlign: 'center',
+                        background: vuelto >= 0 ? 'rgba(34,197,94,.12)' : 'rgba(239,68,68,.12)',
+                        border: `1.5px solid ${vuelto >= 0 ? 'var(--gn)' : 'var(--rd)'}`,
+                        fontWeight: 800, fontSize: 16,
+                        color: vuelto >= 0 ? 'var(--gn)' : 'var(--rd)',
+                      }}>
+                        {vuelto >= 0 ? `Vuelto: ${fmt(vuelto)}` : `Falta: ${fmt(Math.abs(vuelto))}`}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--mu)', display: 'block', marginBottom: 4 }}>¿Con cuánto paga?</label>
-                <input type="number" min="0" value={pagaCon} onChange={e => setPagaCon(e.target.value)}
-                  placeholder={fmt(total)}
-                  style={{ width: '100%', border: '1px solid var(--bd2)', borderRadius: 8, padding: '8px 12px', fontSize: 14 }} />
-                {pagaConNum > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+                  {metsPagados.map(mp => (
+                    <div key={mp.id} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <select value={mp.met} onChange={e => updateMetPagado(mp.id, 'met', e.target.value)}
+                        style={{ flex: 1, border: '1px solid var(--bd2)', borderRadius: 8, padding: '7px 8px', fontSize: 12, background: 'var(--bg)', color: 'var(--tx)' }}>
+                        {METODOS.map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                      <input type="number" min="0" value={mp.monto}
+                        onChange={e => updateMetPagado(mp.id, 'monto', e.target.value)}
+                        placeholder="Monto $"
+                        style={{ width: 100, border: '1px solid var(--bd2)', borderRadius: 8, padding: '7px 8px', fontSize: 13, textAlign: 'right' }} />
+                      {metsPagados.length > 1 && (
+                        <button className="bdng" style={{ padding: '5px 8px', flexShrink: 0 }} onClick={() => removeMetPagado(mp.id)}>✕</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button type="button" className="bg2 bsm" onClick={addMetPagado} style={{ marginBottom: 8 }}>
+                  + Agregar método
+                </button>
+                {totalCubierto > 0 && (
                   <div style={{
-                    marginTop: 8, padding: '8px 12px', borderRadius: 8, textAlign: 'center',
-                    background: vuelto >= 0 ? 'rgba(34,197,94,.12)' : 'rgba(239,68,68,.12)',
-                    border: `1.5px solid ${vuelto >= 0 ? 'var(--gn)' : 'var(--rd)'}`,
-                    fontWeight: 800, fontSize: 16,
-                    color: vuelto >= 0 ? 'var(--gn)' : 'var(--rd)',
+                    padding: '8px 12px', borderRadius: 8, textAlign: 'center',
+                    background: Math.abs(totalCubierto - total) <= 1 ? 'rgba(34,197,94,.12)' : 'rgba(239,68,68,.12)',
+                    border: `1.5px solid ${Math.abs(totalCubierto - total) <= 1 ? 'var(--gn)' : 'var(--rd)'}`,
+                    fontWeight: 800, fontSize: 14,
+                    color: Math.abs(totalCubierto - total) <= 1 ? 'var(--gn)' : 'var(--rd)',
                   }}>
-                    {vuelto >= 0 ? `Vuelto: ${fmt(vuelto)}` : `Falta: ${fmt(Math.abs(vuelto))}`}
+                    {Math.abs(totalCubierto - total) <= 1
+                      ? `✓ Total cubierto: ${fmt(totalCubierto)}`
+                      : totalCubierto < total
+                        ? `Falta: ${fmt(total - totalCubierto)}`
+                        : `Excede: ${fmt(totalCubierto - total)}`}
                   </div>
                 )}
               </div>
