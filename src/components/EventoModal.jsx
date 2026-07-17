@@ -55,7 +55,14 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
   // Para edición de eventos ya pagados o con seña: monto ya cobrado previamente
   const esEdicionPagada = Boolean(evento?.id && evento?.pago === 'paid')
   const esEdicionSena = Boolean(evento?.id && evento?.pago === 'sena')
-  const yaCobrado = evento?.monto || 0
+  // Backward compat: eventos paid guardados con monto=0 (bug previo) → usar total como base
+  const yaCobrado = (() => {
+    if (!evento?.id) return 0
+    if (evento.pago === 'paid' && (evento.monto || 0) === 0 && (evento.total || 0) > 0) {
+      return evento.total
+    }
+    return evento.monto || 0
+  })()
 
   const [adicionalSena, setAdicionalSena] = useState(0)
 
@@ -315,6 +322,11 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
     } else if (esEdicionSena && form.pago === 'paid') {
       // Cambio de seña a pago completo: cobrar el saldo restante (total - seña ya pagada)
       montoFinal = Math.max(calc.total, yaCobrado)
+    }
+
+    // Fallback: nuevo evento (o edición sin monto) marcado como paid pero monto no completado
+    if (!multiMet && !esEdicionPagada && !esEdicionSena && form.pago === 'paid' && montoFinal === 0) {
+      montoFinal = calc.total
     }
 
     const ev = {
@@ -660,7 +672,13 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
               <div
                 key={v}
                 className={`rp${isActive ? ` s${v}` : ''}`}
-                onClick={() => set('pago', v)}
+                onClick={() => {
+                  set('pago', v)
+                  // Al seleccionar 'paid' por primera vez, auto-completar monto con el total
+                  if (v === 'paid' && !esEdicionPagada && !esEdicionSena && (parseFloat(form.monto) || 0) === 0) {
+                    set('monto', calc.total)
+                  }
+                }}
               >
                 {labels[v]}
               </div>

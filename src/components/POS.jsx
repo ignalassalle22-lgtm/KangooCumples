@@ -80,6 +80,144 @@ function parsearMetodos(metodo_pago, totalVenta) {
   return { [metodo_pago]: totalVenta }
 }
 
+// ── Modal opciones producto variable ─────────────────────────────────────────
+function ModalVariableOpciones({ producto, productos, onConfirmar, onClose }) {
+  const componentes = producto.componentes || []
+  // grupos con elección: los que tienen categoria_id y tipo !== 'fijo'
+  const grupos = componentes.filter(g => g.tipo !== 'fijo' && g.categoria_id)
+  // items fijos: siempre incluidos
+  const fijos = componentes.filter(g => g.tipo === 'fijo' && g.nombre)
+
+  const [selecciones, setSelecciones] = useState({}) // { grupoNombre: productoId }
+
+  const todosSeleccionados = grupos.every(g => selecciones[g.nombre])
+  const puedeConfirmar = todosSeleccionados // fijos son automáticos, no requieren acción
+
+  function seleccionar(grupoNombre, prodId) {
+    setSelecciones(prev => ({ ...prev, [grupoNombre]: prodId }))
+  }
+
+  function confirmar() {
+    const partesOpciones = grupos.map(g => {
+      const p = productos.find(x => x.id === selecciones[g.nombre])
+      return `${g.nombre}: ${p ? p.nombre : '?'}`
+    })
+    const partesFijos = fijos.map(f => f.nombre)
+    const texto = [...partesOpciones, ...partesFijos].join(' · ')
+
+    // Armar la lista de componentes reales para descontar stock
+    const componentesVar = [
+      // Productos elegidos por el empleado (uno por grupo)
+      ...grupos.map(g => {
+        const p = productos.find(x => x.id === selecciones[g.nombre])
+        return p ? { tipo: 'opcion', producto_id: p.id, nombre: p.nombre, cantidad: 1 } : null
+      }).filter(Boolean),
+      // Productos fijos (siempre incluidos, con su cantidad)
+      ...fijos.filter(f => f.producto_id).map(f => ({
+        tipo: 'fijo', producto_id: f.producto_id, nombre: f.nombre, cantidad: f.cantidad || 1,
+      })),
+    ]
+
+    onConfirmar(producto, texto, selecciones, componentesVar)
+  }
+
+  return (
+    <div className="ov op" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="mo" style={{ maxWidth: 480 }}>
+        <div className="moh">
+          <div className="mot">
+            <div className="mot-icon">🎛️</div>
+            {producto.nombre}
+          </div>
+          <button className="xcl" onClick={onClose}>✕</button>
+        </div>
+
+        {grupos.length > 0 && (
+          <p style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 20 }}>
+            Elegí una opción por grupo para agregar al ticket.
+          </p>
+        )}
+
+        {/* Grupos con elección */}
+        {grupos.map(g => {
+          const opcs = productos.filter(p => p.categoria_id === g.categoria_id && p.activo !== false)
+          return (
+            <div key={g.nombre} style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--mu)', marginBottom: 8 }}>
+                {g.nombre}
+              </div>
+              {opcs.length === 0 ? (
+                <div style={{ fontSize: 13, color: 'var(--rd)', fontStyle: 'italic' }}>
+                  No hay productos activos en esta categoría
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {opcs.map(p => {
+                    const selected = selecciones[g.nombre] === p.id
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => seleccionar(g.nombre, p.id)}
+                        style={{
+                          padding: '10px 18px', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                          cursor: 'pointer', border: `2px solid ${selected ? 'var(--or)' : 'var(--bd2)'}`,
+                          background: selected ? 'var(--orb, #fff3e0)' : 'var(--wh)',
+                          color: selected ? 'var(--or)' : 'var(--tx)',
+                          transition: 'all .1s',
+                          fontFamily: 'Nunito, sans-serif',
+                        }}
+                      >
+                        {selected ? '✓ ' : ''}{p.nombre}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })}
+
+        {/* Items fijos */}
+        {fijos.length > 0 && (
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--bd)', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--mu)', marginBottom: 8 }}>
+              Incluido siempre
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {fijos.map(f => (
+                <span key={f.nombre} style={{
+                  padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                  background: 'var(--gnb, #f0fdf4)', color: 'var(--gn)', border: '1.5px solid var(--gn)',
+                }}>
+                  ✓ {f.nombre}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 16, borderTop: '1px solid var(--bd)' }}>
+          <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--gn)' }}>
+            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(producto.precio_venta || 0)}
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="bg2" onClick={onClose}>Cancelar</button>
+            <button
+              className="bp"
+              onClick={confirmar}
+              disabled={!puedeConfirmar}
+              style={{ opacity: puedeConfirmar ? 1 : 0.4 }}
+            >
+              Agregar al ticket →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Selector de caja ──────────────────────────────────────────────────────────
 function SelectorCaja({ cajasAbiertas, onSelect }) {
   return (
@@ -160,6 +298,7 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
   const [multiMet, setMultiMet] = useState(false)
   const [metsPagados, setMetsPagados] = useState([{ id: 1, met: 'Efectivo', monto: '' }])
   const buscaRef = useRef()
+  const [varModal, setVarModal] = useState(null) // producto variable pendiente de opciones
 
   const empleadosActivos = empleados.filter(e => e.activo !== false)
 
@@ -206,14 +345,20 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
   }
 
   function agregarProducto(prod) {
-    const existe = items.find(it => it.producto_id === prod.id)
+    if (prod.tipo === 'variable') {
+      setVarModal(prod)
+      return
+    }
+    const key = String(prod.id)
+    const existe = items.find(it => it._key === key)
     if (existe) {
-      setItems(prev => prev.map(it => it.producto_id === prod.id
+      setItems(prev => prev.map(it => it._key === key
         ? { ...it, cantidad: it.cantidad + 1, subtotal: (it.cantidad + 1) * it.precio_unitario }
         : it
       ))
     } else {
       setItems(prev => [...prev, {
+        _key: key,
         producto_id: prod.id,
         nombre_producto: prod.nombre,
         precio_unitario: prod.precio_venta || 0,
@@ -229,24 +374,45 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
     buscaRef.current?.focus()
   }
 
-  function cambiarCantidad(pid, valor) {
+  function confirmarVariable(prod, opcionesTexto, opcionesDetalle, componentesVar) {
+    const key = 'v_' + Date.now()
+    setItems(prev => [...prev, {
+      _key: key,
+      producto_id: prod.id,
+      nombre_producto: prod.nombre,
+      precio_unitario: prod.precio_venta || 0,
+      cantidad: 1,
+      subtotal: prod.precio_venta || 0,
+      componentes: [],
+      maneja_stock: false,
+      _stockActual: null,
+      _tipo: 'variable',
+      _opciones: opcionesTexto,
+      _componentesVar: componentesVar || [],
+    }])
+    setVarModal(null)
+    if (!catSeleccionada) setBusca('')
+    buscaRef.current?.focus()
+  }
+
+  function cambiarCantidad(key, valor) {
     const qty = Math.max(1, Math.round(parseFloat(valor) || 1))
-    setItems(prev => prev.map(it => it.producto_id === pid
+    setItems(prev => prev.map(it => it._key === key
       ? { ...it, cantidad: qty, subtotal: qty * it.precio_unitario }
       : it
     ))
   }
 
-  function cambiarPrecio(pid, valor) {
+  function cambiarPrecio(key, valor) {
     const p = parseFloat(valor) || 0
-    setItems(prev => prev.map(it => it.producto_id === pid
+    setItems(prev => prev.map(it => it._key === key
       ? { ...it, precio_unitario: p, subtotal: it.cantidad * p }
       : it
     ))
   }
 
-  function quitarItem(pid) {
-    setItems(prev => prev.filter(it => it.producto_id !== pid))
+  function quitarItem(key) {
+    setItems(prev => prev.filter(it => it._key !== key))
   }
 
   function limpiarTicket() {
@@ -310,6 +476,11 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
     try {
       const fecha = fechaHoyAR()
       const hora = new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hour12: false })
+      // Para items variables: incluir opciones en el nombre al persistir e imprimir
+      const itemsConOpciones = items.map(it => it._opciones
+        ? { ...it, nombre_producto: `${it.nombre_producto} (${it._opciones})` }
+        : it
+      )
       const ventaGuardada = await saveVenta(
         {
           fecha, hora, cliente,
@@ -320,16 +491,36 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
           obs,
           estado: 'completada',
         },
-        items
+        itemsConOpciones
       )
-      setUltimaVenta({ ...ventaGuardada, venta_items: items })
+      // Descontar stock de componentes de productos variables
+      for (const it of items) {
+        if (it._tipo === 'variable' && it._componentesVar?.length > 0) {
+          for (const comp of it._componentesVar) {
+            if (!comp.producto_id) continue
+            // Descontar el producto seleccionado/fijo
+            await updateStock(comp.producto_id, -(comp.cantidad * it.cantidad))
+            // Si ese producto es compuesto, cascadear a sus sub-componentes
+            const prodComp = productos.find(p => p.id === comp.producto_id)
+            if (prodComp?.tipo === 'compuesto' && prodComp.componentes?.length > 0) {
+              for (const sub of prodComp.componentes) {
+                if (sub.producto_id) {
+                  await updateStock(sub.producto_id, -(sub.cantidad * comp.cantidad * it.cantidad))
+                }
+              }
+            }
+          }
+        }
+      }
+
+      setUltimaVenta({ ...ventaGuardada, venta_items: itemsConOpciones })
       addToast('Venta registrada correctamente')
       imprimirVenta({
         numero: ventaGuardada.numero,
         fecha,
         hora,
         cliente,
-        items,
+        items: itemsConOpciones,
         subtotal,
         descuento: descuentoNum,
         total,
@@ -411,7 +602,7 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
                       <div>
                         <div style={{ fontWeight: 700, fontSize: 14 }}>{p.nombre}</div>
                         <div style={{ fontSize: 12, color: 'var(--mu)' }}>
-                          {p.tipo === 'simple' ? `Stock: ${p.stock_actual || 0}` : 'Compuesto'}
+                          {p.tipo === 'simple' ? `Stock: ${p.stock_actual || 0}` : p.tipo === 'variable' ? '🎛️ Variable' : 'Compuesto'}
                           {p.codigo ? ` · ${p.codigo}` : ''}
                         </div>
                       </div>
@@ -473,29 +664,36 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 16 }}>
                   {prodsMostrados.map(p => {
-                    const enTicket = items.find(it => it.producto_id === p.id)
+                    const enTicket = p.tipo !== 'variable' ? items.find(it => it.producto_id === p.id) : null
+                    const instanciasVar = p.tipo === 'variable' ? items.filter(it => it.producto_id === p.id) : []
+                    const enTicketVar = instanciasVar.length > 0
                     return (
                       <div key={p.id} onClick={() => agregarProducto(p)}
                         style={{
-                          background: enTicket ? 'var(--nv3)' : 'var(--wh)',
-                          border: `1.5px solid ${enTicket ? 'var(--nv)' : 'var(--bd2)'}`,
+                          background: (enTicket || enTicketVar) ? 'var(--nv3)' : 'var(--wh)',
+                          border: `1.5px solid ${(enTicket || enTicketVar) ? 'var(--nv)' : 'var(--bd2)'}`,
                           borderRadius: 10, padding: '10px 12px', cursor: 'pointer',
                           display: 'flex', flexDirection: 'column', gap: 3,
                           transition: 'all .1s',
                         }}
                         onMouseEnter={e => e.currentTarget.style.background = 'var(--nv3)'}
-                        onMouseLeave={e => e.currentTarget.style.background = enTicket ? 'var(--nv3)' : 'var(--wh)'}
+                        onMouseLeave={e => e.currentTarget.style.background = (enTicket || enTicketVar) ? 'var(--nv3)' : 'var(--wh)'}
                       >
                         <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>{p.nombre}</div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div style={{ fontSize: 12, color: 'var(--mu)' }}>
-                            {p.tipo === 'simple' && p.maneja_stock !== false ? `Stock: ${p.stock_actual || 0}` : ''}
+                            {p.tipo === 'simple' && p.maneja_stock !== false ? `Stock: ${p.stock_actual || 0}` : p.tipo === 'variable' ? '🎛️ Variable' : ''}
                           </div>
                           <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--gn)' }}>{fmt(p.precio_venta)}</div>
                         </div>
                         {enTicket && (
                           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--nv)', marginTop: 2 }}>
                             ✓ En ticket: ×{enTicket.cantidad}
+                          </div>
+                        )}
+                        {enTicketVar && (
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--or)', marginTop: 2 }}>
+                            + {instanciasVar.length} en ticket · click para agregar otro
                           </div>
                         )}
                       </div>
@@ -525,9 +723,12 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
                 </thead>
                 <tbody>
                   {items.map(it => (
-                    <tr key={it.producto_id}>
+                    <tr key={it._key}>
                       <td>
                         <div style={{ fontWeight: 700, fontSize: 14 }}>{it.nombre_producto}</div>
+                        {it._opciones && (
+                          <div style={{ fontSize: 11, color: 'var(--or)', marginTop: 2, fontWeight: 600 }}>↳ {it._opciones}</div>
+                        )}
                         {it._tipo === 'simple' && it.maneja_stock !== false && (
                           <div style={{ fontSize: 11, color: (it._stockActual || 0) < it.cantidad ? 'var(--am)' : 'var(--mu)' }}>
                             Stock: {it._stockActual || 0}{(it._stockActual || 0) < it.cantidad ? ' ⚠' : ''}
@@ -536,19 +737,19 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
                       </td>
                       <td className="num">
                         <input type="number" min="1" step="1" value={it.cantidad}
-                          onChange={e => cambiarCantidad(it.producto_id, e.target.value)}
+                          onChange={e => cambiarCantidad(it._key, e.target.value)}
                           style={{ width: 70, textAlign: 'right', border: '1px solid var(--bd2)', borderRadius: 7, padding: '4px 8px', fontSize: 13 }}
                         />
                       </td>
                       <td className="num">
                         <input type="number" min="0" step="0.01" value={it.precio_unitario}
-                          onChange={e => cambiarPrecio(it.producto_id, e.target.value)}
+                          onChange={e => cambiarPrecio(it._key, e.target.value)}
                           style={{ width: 110, textAlign: 'right', border: '1px solid var(--nv2)', borderRadius: 7, padding: '4px 8px', fontSize: 13, background: 'var(--nv3)' }}
                         />
                       </td>
                       <td className="num" style={{ fontWeight: 700 }}>{fmt(it.subtotal)}</td>
                       <td>
-                        <button className="bdng" style={{ padding: '3px 8px' }} onClick={() => quitarItem(it.producto_id)}>✕</button>
+                        <button className="bdng" style={{ padding: '3px 8px' }} onClick={() => quitarItem(it._key)}>✕</button>
                       </td>
                     </tr>
                   ))}
@@ -768,6 +969,16 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
           </div>
         </div>
       </div>
+
+      {/* Modal opciones variable */}
+      {varModal && (
+        <ModalVariableOpciones
+          producto={varModal}
+          productos={productos}
+          onConfirmar={confirmarVariable}
+          onClose={() => setVarModal(null)}
+        />
+      )}
 
       {/* Toasts */}
       <POSToasts />

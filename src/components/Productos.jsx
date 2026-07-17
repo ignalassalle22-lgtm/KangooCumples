@@ -163,6 +163,7 @@ export default function Productos({ productos, categorias, loading, onNuevo, onE
           <option value="">Todos los tipos</option>
           <option value="simple">Simple</option>
           <option value="compuesto">Compuesto</option>
+          <option value="variable">Variable</option>
         </select>
       </div>
 
@@ -197,8 +198,8 @@ export default function Productos({ productos, categorias, loading, onNuevo, onE
                   <td style={{ fontWeight: 700 }}>{p.nombre}</td>
                   <td>{catMap[p.categoria_id] || '—'}</td>
                   <td>
-                    <span className={`badge ${p.tipo === 'compuesto' ? 'bsn' : 'bpd'}`}>
-                      {p.tipo === 'compuesto' ? '🔗 Compuesto' : '📦 Simple'}
+                    <span className={`badge ${p.tipo === 'compuesto' ? 'bsn' : p.tipo === 'variable' ? 'bpu' : 'bpd'}`}>
+                      {p.tipo === 'compuesto' ? '🔗 Compuesto' : p.tipo === 'variable' ? '🎛️ Variable' : '📦 Simple'}
                     </span>
                   </td>
                   <td className="num" style={{ fontWeight: 700 }}>{fmt(p.precio_venta)}</td>

@@ -333,7 +333,14 @@ function AppInner({ usuario, onLogout }) {
       const { _cajaId, ...evToSave } = eventoData
       // Calcular cuánto pago nuevo hay que acreditar en caja
       const oldEv = eventoData.id ? eventos.find(e => e.id === eventoData.id) : null
-      const oldMonto = oldEv?.monto || 0
+      // Backward compat: eventos paid que quedaron guardados con monto=0 (bug previo)
+      const oldMonto = (() => {
+        if (!oldEv) return 0
+        if (oldEv.pago === 'paid' && (oldEv.monto || 0) === 0 && (oldEv.total || 0) > 0) {
+          return oldEv.total
+        }
+        return oldEv.monto || 0
+      })()
       const newMonto = eventoData.monto || 0
       const deltaMonto = newMonto - oldMonto
 
