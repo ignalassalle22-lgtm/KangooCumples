@@ -65,14 +65,20 @@ export default function ProductoModal({ producto, productos, categorias, onSave,
     e.preventDefault()
     if (!form.nombre.trim()) { addToast('El nombre es obligatorio', 'err'); return }
     if (form.tipo === 'compuesto' && form.componentes.length === 0) { addToast('Agregá al menos un componente', 'err'); return }
+    if (form.tipo === 'variable' && form.componentes.length === 0) { addToast('Agregá al menos un grupo de opciones', 'err'); return }
+    if (form.tipo === 'variable' && form.componentes.some(g => !g.nombre.trim() || !g.categoria_id)) {
+      addToast('Cada grupo necesita nombre y categoría', 'err'); return
+    }
     setSaving(true)
     try {
+      const esSimple = form.tipo === 'simple'
       const payload = {
         ...form,
         precio_venta: parseFloat(form.precio_venta) || 0,
         precio_costo: parseFloat(form.precio_costo) || 0,
-        stock_actual: form.tipo === 'simple' ? (parseFloat(form.stock_actual) || 0) : 0,
-        stock_minimo: form.tipo === 'simple' ? (parseFloat(form.stock_minimo) || 0) : 0,
+        stock_actual: esSimple ? (parseFloat(form.stock_actual) || 0) : 0,
+        stock_minimo: esSimple ? (parseFloat(form.stock_minimo) || 0) : 0,
+        maneja_stock: esSimple ? form.maneja_stock : false,
         categoria_id: form.categoria_id ? Number(form.categoria_id) : null,
       }
       await onSave(payload)
@@ -98,14 +104,14 @@ export default function ProductoModal({ producto, productos, categorias, onSave,
           {/* Tipo */}
           <div className="sdv">Tipo de producto</div>
           <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-            {['simple', 'compuesto'].map(t => (
+            {['simple', 'compuesto', 'variable'].map(t => (
               <button
                 key={t} type="button"
                 className={`rp ${form.tipo === t ? 'spaid' : ''}`}
                 onClick={() => set('tipo', t)}
-                style={{ flex: 1, textAlign: 'center', textTransform: 'capitalize' }}
+                style={{ flex: 1, textAlign: 'center' }}
               >
-                {t === 'simple' ? '📦 Simple' : '🔗 Compuesto'}
+                {t === 'simple' ? '📦 Simple' : t === 'compuesto' ? '🔗 Compuesto' : '🎛️ Variable'}
               </button>
             ))}
           </div>
@@ -239,6 +245,43 @@ export default function ProductoModal({ producto, productos, categorias, onSave,
               ) : (
                 <p style={{ fontSize: 13, color: 'var(--mu2)', fontStyle: 'italic' }}>Sin componentes aún.</p>
               )}
+            </>
+          )}
+
+          {/* Grupos de opciones (solo variable) */}
+          {form.tipo === 'variable' && (
+            <>
+              <div className="sdv">Grupos de opciones</div>
+              <p style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 12 }}>
+                Al vender este producto, el empleado elige una opción por grupo. Las opciones son los productos activos de cada categoría.
+              </p>
+              {form.componentes.map((g, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                  <input
+                    value={g.nombre}
+                    onChange={e => set('componentes', form.componentes.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x))}
+                    placeholder="Nombre del grupo (ej: Bebida)"
+                    style={{ flex: 1 }}
+                  />
+                  <select
+                    value={g.categoria_id || ''}
+                    onChange={e => set('componentes', form.componentes.map((x, j) => j === i ? { ...x, categoria_id: Number(e.target.value) } : x))}
+                    style={{ flex: 1 }}
+                  >
+                    <option value="">Elegir categoría…</option>
+                    {(categorias || []).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
+                  <button
+                    type="button" className="bdng"
+                    onClick={() => set('componentes', form.componentes.filter((_, j) => j !== i))}
+                  >✕</button>
+                </div>
+              ))}
+              <button
+                type="button" className="bg2 bsm"
+                onClick={() => set('componentes', [...form.componentes, { nombre: '', categoria_id: '' }])}
+                style={{ marginTop: 4 }}
+              >+ Agregar grupo</button>
             </>
           )}
 
