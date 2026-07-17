@@ -65,9 +65,12 @@ export default function ProductoModal({ producto, productos, categorias, onSave,
     e.preventDefault()
     if (!form.nombre.trim()) { addToast('El nombre es obligatorio', 'err'); return }
     if (form.tipo === 'compuesto' && form.componentes.length === 0) { addToast('Agregá al menos un componente', 'err'); return }
-    if (form.tipo === 'variable' && form.componentes.length === 0) { addToast('Agregá al menos un grupo de opciones', 'err'); return }
-    if (form.tipo === 'variable' && form.componentes.some(g => !g.nombre.trim() || !g.categoria_id)) {
-      addToast('Cada grupo necesita nombre y categoría', 'err'); return
+    if (form.tipo === 'variable') {
+      const grupos = form.componentes.filter(g => g.tipo !== 'fijo')
+      const fijos = form.componentes.filter(g => g.tipo === 'fijo')
+      if (grupos.length === 0 && fijos.length === 0) { addToast('Agregá al menos un grupo de opciones o un item fijo', 'err'); return }
+      if (grupos.some(g => !g.nombre.trim() || !g.categoria_id)) { addToast('Cada grupo de opciones necesita nombre y categoría', 'err'); return }
+      if (fijos.some(f => !f.nombre.trim())) { addToast('Los items fijos necesitan nombre', 'err'); return }
     }
     setSaving(true)
     try {
@@ -249,41 +252,70 @@ export default function ProductoModal({ producto, productos, categorias, onSave,
           )}
 
           {/* Grupos de opciones (solo variable) */}
-          {form.tipo === 'variable' && (
-            <>
-              <div className="sdv">Grupos de opciones</div>
-              <p style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 12 }}>
-                Al vender este producto, el empleado elige una opción por grupo. Las opciones son los productos activos de cada categoría.
-              </p>
-              {form.componentes.map((g, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                  <input
-                    value={g.nombre}
-                    onChange={e => set('componentes', form.componentes.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x))}
-                    placeholder="Nombre del grupo (ej: Bebida)"
-                    style={{ flex: 1 }}
-                  />
-                  <select
-                    value={g.categoria_id || ''}
-                    onChange={e => set('componentes', form.componentes.map((x, j) => j === i ? { ...x, categoria_id: Number(e.target.value) } : x))}
-                    style={{ flex: 1 }}
-                  >
-                    <option value="">Elegir categoría…</option>
-                    {(categorias || []).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                  </select>
-                  <button
-                    type="button" className="bdng"
-                    onClick={() => set('componentes', form.componentes.filter((_, j) => j !== i))}
-                  >✕</button>
-                </div>
-              ))}
-              <button
-                type="button" className="bg2 bsm"
-                onClick={() => set('componentes', [...form.componentes, { nombre: '', categoria_id: '' }])}
-                style={{ marginTop: 4 }}
-              >+ Agregar grupo</button>
-            </>
-          )}
+          {form.tipo === 'variable' && (() => {
+            const grupos = form.componentes.filter(g => g.tipo !== 'fijo')
+            const fijos = form.componentes.filter(g => g.tipo === 'fijo')
+            const updateComp = (newList) => set('componentes', newList)
+            return (
+              <>
+                {/* Grupos con elección */}
+                <div className="sdv">Grupos de opciones</div>
+                <p style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 12 }}>
+                  El empleado elige una opción por grupo. Las opciones son los productos activos de esa categoría.
+                </p>
+                {grupos.map((g, gi) => {
+                  const idx = form.componentes.indexOf(g)
+                  return (
+                    <div key={gi} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                      <input
+                        value={g.nombre}
+                        onChange={e => updateComp(form.componentes.map((x, j) => j === idx ? { ...x, nombre: e.target.value } : x))}
+                        placeholder="Nombre del grupo (ej: Bebida)"
+                        style={{ flex: 1 }}
+                      />
+                      <select
+                        value={g.categoria_id || ''}
+                        onChange={e => updateComp(form.componentes.map((x, j) => j === idx ? { ...x, categoria_id: Number(e.target.value) } : x))}
+                        style={{ flex: 1 }}
+                      >
+                        <option value="">Elegir categoría…</option>
+                        {(categorias || []).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                      </select>
+                      <button type="button" className="bdng"
+                        onClick={() => updateComp(form.componentes.filter((_, j) => j !== idx))}>✕</button>
+                    </div>
+                  )
+                })}
+                <button type="button" className="bg2 bsm"
+                  onClick={() => updateComp([...form.componentes, { tipo: 'opcion', nombre: '', categoria_id: '' }])}
+                  style={{ marginBottom: 20 }}>+ Agregar grupo de opciones</button>
+
+                {/* Items fijos */}
+                <div className="sdv">Incluidos siempre</div>
+                <p style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 12 }}>
+                  Estos ítems se agregan automáticamente al ticket sin que el empleado tenga que elegir.
+                </p>
+                {fijos.map((f, fi) => {
+                  const idx = form.componentes.indexOf(f)
+                  return (
+                    <div key={fi} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                      <input
+                        value={f.nombre}
+                        onChange={e => updateComp(form.componentes.map((x, j) => j === idx ? { ...x, nombre: e.target.value } : x))}
+                        placeholder="Ej: Papas fritas"
+                        style={{ flex: 1 }}
+                      />
+                      <button type="button" className="bdng"
+                        onClick={() => updateComp(form.componentes.filter((_, j) => j !== idx))}>✕</button>
+                    </div>
+                  )
+                })}
+                <button type="button" className="bg2 bsm"
+                  onClick={() => updateComp([...form.componentes, { tipo: 'fijo', nombre: '' }])}
+                  style={{ marginTop: 4 }}>+ Agregar item fijo</button>
+              </>
+            )
+          })()}
 
           {/* Estado */}
           <div className="sdv">Estado</div>

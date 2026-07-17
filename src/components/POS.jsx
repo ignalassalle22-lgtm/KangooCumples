@@ -82,20 +82,28 @@ function parsearMetodos(metodo_pago, totalVenta) {
 
 // ── Modal opciones producto variable ─────────────────────────────────────────
 function ModalVariableOpciones({ producto, productos, onConfirmar, onClose }) {
-  const grupos = (producto.componentes || []).filter(g => g.categoria_id)
+  const componentes = producto.componentes || []
+  // grupos con elección: los que tienen categoria_id y tipo !== 'fijo'
+  const grupos = componentes.filter(g => g.tipo !== 'fijo' && g.categoria_id)
+  // items fijos: siempre incluidos
+  const fijos = componentes.filter(g => g.tipo === 'fijo' && g.nombre)
+
   const [selecciones, setSelecciones] = useState({}) // { grupoNombre: productoId }
 
-  const todosSeleccionados = grupos.length > 0 && grupos.every(g => selecciones[g.nombre])
+  const todosSeleccionados = grupos.every(g => selecciones[g.nombre])
+  const puedeConfirmar = todosSeleccionados // fijos son automáticos, no requieren acción
 
   function seleccionar(grupoNombre, prodId) {
     setSelecciones(prev => ({ ...prev, [grupoNombre]: prodId }))
   }
 
   function confirmar() {
-    const texto = grupos.map(g => {
+    const partesOpciones = grupos.map(g => {
       const p = productos.find(x => x.id === selecciones[g.nombre])
       return `${g.nombre}: ${p ? p.nombre : '?'}`
-    }).join(' · ')
+    })
+    const partesFijos = fijos.map(f => f.nombre)
+    const texto = [...partesOpciones, ...partesFijos].join(' · ')
     onConfirmar(producto, texto, selecciones)
   }
 
@@ -110,10 +118,13 @@ function ModalVariableOpciones({ producto, productos, onConfirmar, onClose }) {
           <button className="xcl" onClick={onClose}>✕</button>
         </div>
 
-        <p style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 20 }}>
-          Elegí una opción por grupo para agregar al ticket.
-        </p>
+        {grupos.length > 0 && (
+          <p style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 20 }}>
+            Elegí una opción por grupo para agregar al ticket.
+          </p>
+        )}
 
+        {/* Grupos con elección */}
         {grupos.map(g => {
           const opcs = productos.filter(p => p.categoria_id === g.categoria_id && p.activo !== false)
           return (
@@ -153,6 +164,25 @@ function ModalVariableOpciones({ producto, productos, onConfirmar, onClose }) {
           )
         })}
 
+        {/* Items fijos */}
+        {fijos.length > 0 && (
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--bd)', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--mu)', marginBottom: 8 }}>
+              Incluido siempre
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {fijos.map(f => (
+                <span key={f.nombre} style={{
+                  padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                  background: 'var(--gnb, #f0fdf4)', color: 'var(--gn)', border: '1.5px solid var(--gn)',
+                }}>
+                  ✓ {f.nombre}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 16, borderTop: '1px solid var(--bd)' }}>
           <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--gn)' }}>
             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(producto.precio_venta || 0)}
@@ -162,8 +192,8 @@ function ModalVariableOpciones({ producto, productos, onConfirmar, onClose }) {
             <button
               className="bp"
               onClick={confirmar}
-              disabled={!todosSeleccionados}
-              style={{ opacity: todosSeleccionados ? 1 : 0.4 }}
+              disabled={!puedeConfirmar}
+              style={{ opacity: puedeConfirmar ? 1 : 0.4 }}
             >
               Agregar al ticket →
             </button>
