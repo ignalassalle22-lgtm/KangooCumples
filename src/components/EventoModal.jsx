@@ -55,7 +55,14 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
   // Para edición de eventos ya pagados o con seña: monto ya cobrado previamente
   const esEdicionPagada = Boolean(evento?.id && evento?.pago === 'paid')
   const esEdicionSena = Boolean(evento?.id && evento?.pago === 'sena')
-  const yaCobrado = evento?.monto || 0
+  // Backward compat: eventos paid guardados con monto=0 (bug previo) → usar total como base
+  const yaCobrado = (() => {
+    if (!evento?.id) return 0
+    if (evento.pago === 'paid' && (evento.monto || 0) === 0 && (evento.total || 0) > 0) {
+      return evento.total
+    }
+    return evento.monto || 0
+  })()
 
   const [adicionalSena, setAdicionalSena] = useState(0)
 
