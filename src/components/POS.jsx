@@ -104,7 +104,21 @@ function ModalVariableOpciones({ producto, productos, onConfirmar, onClose }) {
     })
     const partesFijos = fijos.map(f => f.nombre)
     const texto = [...partesOpciones, ...partesFijos].join(' · ')
-    onConfirmar(producto, texto, selecciones)
+
+    // Armar la lista de componentes reales para descontar stock
+    const componentesVar = [
+      // Productos elegidos por el empleado (uno por grupo)
+      ...grupos.map(g => {
+        const p = productos.find(x => x.id === selecciones[g.nombre])
+        return p ? { tipo: 'opcion', producto_id: p.id, nombre: p.nombre, cantidad: 1 } : null
+      }).filter(Boolean),
+      // Productos fijos (siempre incluidos, con su cantidad)
+      ...fijos.filter(f => f.producto_id).map(f => ({
+        tipo: 'fijo', producto_id: f.producto_id, nombre: f.nombre, cantidad: f.cantidad || 1,
+      })),
+    ]
+
+    onConfirmar(producto, texto, selecciones, componentesVar)
   }
 
   return (
@@ -360,7 +374,7 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
     buscaRef.current?.focus()
   }
 
-  function confirmarVariable(prod, opcionesTexto, opcionesDetalle) {
+  function confirmarVariable(prod, opcionesTexto, opcionesDetalle, componentesVar) {
     const key = 'v_' + Date.now()
     setItems(prev => [...prev, {
       _key: key,
@@ -374,6 +388,7 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
       _stockActual: null,
       _tipo: 'variable',
       _opciones: opcionesTexto,
+      _componentesVar: componentesVar || [],
     }])
     setVarModal(null)
     if (!catSeleccionada) setBusca('')
@@ -478,6 +493,26 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
         },
         itemsConOpciones
       )
+      // Descontar stock de componentes de productos variables
+      for (const it of items) {
+        if (it._tipo === 'variable' && it._componentesVar?.length > 0) {
+          for (const comp of it._componentesVar) {
+            if (!comp.producto_id) continue
+            // Descontar el producto seleccionado/fijo
+            await updateStock(comp.producto_id, -(comp.cantidad * it.cantidad))
+            // Si ese producto es compuesto, cascadear a sus sub-componentes
+            const prodComp = productos.find(p => p.id === comp.producto_id)
+            if (prodComp?.tipo === 'compuesto' && prodComp.componentes?.length > 0) {
+              for (const sub of prodComp.componentes) {
+                if (sub.producto_id) {
+                  await updateStock(sub.producto_id, -(sub.cantidad * comp.cantidad * it.cantidad))
+                }
+              }
+            }
+          }
+        }
+      }
+
       setUltimaVenta({ ...ventaGuardada, venta_items: itemsConOpciones })
       addToast('Venta registrada correctamente')
       imprimirVenta({

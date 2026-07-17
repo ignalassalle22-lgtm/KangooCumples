@@ -14,6 +14,9 @@ export default function ProductoModal({ producto, productos, categorias, onSave,
   const [compSearch, setCompSearch] = useState('')
   const [compSelectedId, setCompSelectedId] = useState('')
   const [compQty, setCompQty] = useState(1)
+  const [fijoSearch, setFijoSearch] = useState('')
+  const [fijoSelectedId, setFijoSelectedId] = useState('')
+  const [fijoCantidad, setFijoCantidad] = useState(1)
 
   useEffect(() => {
     if (producto) {
@@ -293,26 +296,73 @@ export default function ProductoModal({ producto, productos, categorias, onSave,
                 {/* Items fijos */}
                 <div className="sdv">Incluidos siempre</div>
                 <p style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 12 }}>
-                  Estos ítems se agregan automáticamente al ticket sin que el empleado tenga que elegir.
+                  Estos ítems se agregan al ticket automáticamente y se descuenta su stock al vender.
                 </p>
-                {fijos.map((f, fi) => {
-                  const idx = form.componentes.indexOf(f)
-                  return (
-                    <div key={fi} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                      <input
-                        value={f.nombre}
-                        onChange={e => updateComp(form.componentes.map((x, j) => j === idx ? { ...x, nombre: e.target.value } : x))}
-                        placeholder="Ej: Papas fritas"
-                        style={{ flex: 1 }}
-                      />
-                      <button type="button" className="bdng"
-                        onClick={() => updateComp(form.componentes.filter((_, j) => j !== idx))}>✕</button>
-                    </div>
-                  )
-                })}
-                <button type="button" className="bg2 bsm"
-                  onClick={() => updateComp([...form.componentes, { tipo: 'fijo', nombre: '' }])}
-                  style={{ marginTop: 4 }}>+ Agregar item fijo</button>
+                {fijos.length > 0 && (
+                  <div className="mrc" style={{ marginBottom: 10 }}>
+                    {fijos.map((f, fi) => {
+                      const idx = form.componentes.indexOf(f)
+                      return (
+                        <div key={fi} className="mr" style={{ gridTemplateColumns: '1fr 80px auto' }}>
+                          <span style={{ fontSize: 14, fontWeight: 600 }}>{f.nombre}</span>
+                          <input
+                            type="number" min="0.01" step="0.01" value={f.cantidad || 1}
+                            onChange={e => updateComp(form.componentes.map((x, j) => j === idx ? { ...x, cantidad: Number(e.target.value) } : x))}
+                            style={{ textAlign: 'center' }}
+                          />
+                          <button type="button" className="bdng"
+                            onClick={() => updateComp(form.componentes.filter((_, j) => j !== idx))}>✕</button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 4, alignItems: 'flex-end', position: 'relative' }}>
+                  <div className="fgg" style={{ flex: 2 }}>
+                    <label>Buscar producto fijo</label>
+                    <input
+                      value={fijoSearch}
+                      onChange={e => { setFijoSearch(e.target.value); setFijoSelectedId('') }}
+                      placeholder="Nombre del producto…"
+                    />
+                    {fijoSearch && (() => {
+                      const opts = productos.filter(p =>
+                        p.tipo !== 'variable' &&
+                        (!producto || p.id !== producto.id) &&
+                        p.nombre.toLowerCase().includes(fijoSearch.toLowerCase())
+                      ).slice(0, 8)
+                      return opts.length > 0 ? (
+                        <div style={{ border: '1px solid var(--bd2)', borderRadius: 8, background: 'var(--wh)', position: 'absolute', zIndex: 10, maxHeight: 160, overflowY: 'auto', marginTop: 2, minWidth: 260 }}>
+                          {opts.map(p => (
+                            <div key={p.id}
+                              onClick={() => { setFijoSelectedId(String(p.id)); setFijoSearch(p.nombre) }}
+                              style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13 }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'var(--nv3)'}
+                              onMouseLeave={e => e.currentTarget.style.background = ''}
+                            >
+                              {p.nombre}
+                              <span style={{ color: 'var(--mu)', fontSize: 12 }}>
+                                {p.tipo === 'simple' ? ` · stock: ${p.stock_actual || 0}` : ' · compuesto'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null
+                    })()}
+                  </div>
+                  <div className="fgg" style={{ flex: 1 }}>
+                    <label>Cantidad</label>
+                    <input type="number" min="0.01" step="0.01" value={fijoCantidad} onChange={e => setFijoCantidad(e.target.value)} />
+                  </div>
+                  <button type="button" className="bn bsm" style={{ flexShrink: 0 }} onClick={() => {
+                    if (!fijoSelectedId) return
+                    const prod = productos.find(p => p.id === Number(fijoSelectedId))
+                    if (!prod) return
+                    if (fijos.some(f => f.producto_id === prod.id)) { addToast('Ya está en los fijos', 'err'); return }
+                    updateComp([...form.componentes, { tipo: 'fijo', producto_id: prod.id, nombre: prod.nombre, cantidad: Number(fijoCantidad) || 1 }])
+                    setFijoSearch(''); setFijoSelectedId(''); setFijoCantidad(1)
+                  }}>Agregar</button>
+                </div>
               </>
             )
           })()}
