@@ -317,6 +317,11 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
       montoFinal = Math.max(calc.total, yaCobrado)
     }
 
+    // Fallback: nuevo evento (o edición sin monto) marcado como paid pero monto no completado
+    if (!multiMet && !esEdicionPagada && !esEdicionSena && form.pago === 'paid' && montoFinal === 0) {
+      montoFinal = calc.total
+    }
+
     const ev = {
       id: evento?.id,
       fecha: form.fecha,
@@ -660,7 +665,13 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
               <div
                 key={v}
                 className={`rp${isActive ? ` s${v}` : ''}`}
-                onClick={() => set('pago', v)}
+                onClick={() => {
+                  set('pago', v)
+                  // Al seleccionar 'paid' por primera vez, auto-completar monto con el total
+                  if (v === 'paid' && !esEdicionPagada && !esEdicionSena && (parseFloat(form.monto) || 0) === 0) {
+                    set('monto', calc.total)
+                  }
+                }}
               >
                 {labels[v]}
               </div>
