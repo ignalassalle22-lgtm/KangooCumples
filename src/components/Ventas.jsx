@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { fechaHoyAR } from '../utils'
+import { fechaHoyAR, imprimirTicketBrowser } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 const hoy = () => fechaHoyAR()
@@ -190,11 +190,40 @@ export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular,
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
               <button className="bg2" onClick={() => setShowDetalle(null)}>Cerrar</button>
               <button className="bp" onClick={() => {
+                const v = showDetalle
+                const f = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('es-AR')
+                const items = (v.venta_items || []).map(it =>
+                  `<tr><td>${it.nombre_producto} x${it.cantidad}</td><td style="text-align:right">${f(it.subtotal)}</td></tr>`
+                ).join('')
+                const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:9px;width:74mm}
+h1{font-size:11px;font-weight:bold;text-align:center;margin-bottom:2px}
+pre{font-size:8px;margin:2px 0}table{width:100%;border-collapse:collapse}
+td{padding:1px 0;font-size:9px}td.r{text-align:right}
+.big td{font-size:10px;font-weight:bold}.foot{text-align:center;font-size:8px;margin-top:4px}
+</style></head><body>
+<h1>KANGOO CUMPLES</h1>
+<pre>--------------------------------</pre>
+<table>
+<tr><td>N°</td><td class="r"><b>${v.numero || ''}</b></td></tr>
+<tr><td>Fecha</td><td class="r">${v.fecha || ''} ${v.hora || ''}</td></tr>
+${v.cliente ? `<tr><td>Cliente</td><td class="r">${v.cliente}</td></tr>` : ''}
+<tr><td>Pago</td><td class="r">${v.metodo_pago || '—'}</td></tr>
+</table>
+<pre>--------------------------------</pre>
+<table>${items}</table>
+<pre>--------------------------------</pre>
+<table>
+${v.descuento > 0 ? `<tr><td>Subtotal</td><td class="r">${f(v.subtotal)}</td></tr><tr><td>Descuento</td><td class="r">-${f(v.descuento)}</td></tr>` : ''}
+<tr class="big"><td>TOTAL</td><td class="r">${f(v.total)}</td></tr>
+</table>
+<div class="foot">Gracias por tu visita!</div>
+</body></html>`
                 fetch('http://localhost:5001/print/venta_caja', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(showDetalle),
-                }).catch(() => window.print())
+                  body: JSON.stringify(v),
+                }).then(r => { if (!r.ok) throw new Error() }).catch(() => imprimirTicketBrowser(html))
               }}>🖨 Imprimir ticket</button>
             </div>
           </div>
