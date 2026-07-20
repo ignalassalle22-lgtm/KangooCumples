@@ -222,6 +222,7 @@ ${v.descuento > 0 ? `<tr><td>Subtotal</td><td class="r">${f(v.subtotal)}</td></t
                 fetch('http://127.0.0.1:5001/print/venta_caja', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
+                  targetAddressSpace: 'local',
                   body: JSON.stringify(v),
                 }).then(r => { if (!r.ok) throw new Error() }).catch(() => imprimirTicketBrowser(html))
               }}>🖨 Imprimir ticket</button>

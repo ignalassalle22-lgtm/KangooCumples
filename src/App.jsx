@@ -34,6 +34,7 @@ function imprimirTicketEvento(ev, config) {
   fetch('http://127.0.0.1:5001/print/venta', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    targetAddressSpace: 'local',
     body: JSON.stringify({
       fecha: ev.fecha, hora: ev.hora,
       reservante: ev.reservante, telefono: ev.telefono,

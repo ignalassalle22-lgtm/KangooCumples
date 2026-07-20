@@ -42,6 +42,7 @@ function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas,
   fetch('http://127.0.0.1:5001/print/cierre_caja', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    targetAddressSpace: 'local',
     body: JSON.stringify({
       caja,
       horaCierre,
@@ -141,6 +142,7 @@ ${obs ? `<pre class="sep">--------------------------------</pre><p style="font-s
   fetch('http://127.0.0.1:5001/print/egreso_cofre', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    targetAddressSpace: 'local',
     body: JSON.stringify({ monto, persona, obs, cajaNombre }),
   }).then(r => {
     if (!r.ok) imprimirTicketBrowser(html)
@@ -187,6 +189,7 @@ function imprimirVentaCaja(venta) {
   fetch('http://127.0.0.1:5001/print/venta_caja', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    targetAddressSpace: 'local',
     body: JSON.stringify(venta),
   }).then(r => {
     if (!r.ok) imprimirTicketBrowser(ticketVentaHtml(venta))

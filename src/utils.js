@@ -36,6 +36,7 @@ export function imprimirTicket(html) {
   fetch('http://127.0.0.1:5001/print/texto', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    targetAddressSpace: 'local',
     body: JSON.stringify({ texto }),
   }).then(r => {
     if (!r.ok) throw new Error('servidor respondió error')
