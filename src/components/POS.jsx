@@ -19,7 +19,7 @@ function imprimirVenta({ numero, fecha, hora, cliente, items, subtotal, descuent
       venta_items: items.map(it => ({ nombre_producto: it.nombre_producto, cantidad: it.cantidad, subtotal: it.subtotal })),
       subtotal, descuento, total, metodo_pago: metodoPago, obs,
     }),
-  }).catch(() => {
+  }).then(r => { if (!r.ok) throw new Error('servidor respondió error') }).catch(() => {
     const sep = '--------------------------------'
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:9px;width:74mm}
