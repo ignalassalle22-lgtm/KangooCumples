@@ -11,7 +11,7 @@ const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', c
 const fmtT = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('es-AR')
 
 function imprimirVenta({ numero, fecha, hora, cliente, items, subtotal, descuento, total, metodoPago, obs }) {
-  fetch('http://localhost:5001/print/venta_caja', {
+  fetch('http://127.0.0.1:5001/print/venta_caja', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

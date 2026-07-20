@@ -39,7 +39,7 @@ function imprimirCierre({ caja, horaCierre, empleado, ticketsCount, totalVentas,
     totalGastosReales = gastosReales.reduce((s, g) => s + (g.monto || 0), 0)
     totalEgresosCofre = egresosCofre.reduce((s, g) => s + (g.monto || 0), 0)
   }
-  fetch('http://localhost:5001/print/cierre_caja', {
+  fetch('http://127.0.0.1:5001/print/cierre_caja', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -138,7 +138,7 @@ ${obs ? `<pre class="sep">--------------------------------</pre><p style="font-s
 <p style="font-size:7px;margin-top:6px">Firma: ___________________________</p>
 <div class="foot">Recibo de egreso al cofre</div>
 </body></html>`
-  fetch('http://localhost:5001/print/egreso_cofre', {
+  fetch('http://127.0.0.1:5001/print/egreso_cofre', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ monto, persona, obs, cajaNombre }),
@@ -184,7 +184,7 @@ ${venta.obs ? `<p style="font-size:7px;margin-top:4px">${venta.obs}</p>` : ''}
 }
 
 function imprimirVentaCaja(venta) {
-  fetch('http://localhost:5001/print/venta_caja', {
+  fetch('http://127.0.0.1:5001/print/venta_caja', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(venta),

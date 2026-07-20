@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { fmt, cumpleDisplay, fmtFechaHora } from '../utils'
 
 const TIPO_LABEL = { saltos: 'Saltos', parque: 'Parque aéreo', 'saltos+parque': 'Saltos + Parque aéreo' }
-const PRINT_URL = 'http://localhost:5001/print/venta'
+const PRINT_URL = 'http://127.0.0.1:5001/print/venta'
 
 function Row({ label, val, valStyle }) {
   if (!val && val !== 0) return null

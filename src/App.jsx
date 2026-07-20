@@ -31,7 +31,7 @@ function imprimirTicketEvento(ev, config) {
   const promo = ev.promoId ? (config.promos || []).find(p => String(p.id) === String(ev.promoId)) : null
   const subtotal = items.reduce((s, i) => s + i.total, 0)
   const descuento = promo ? Math.round(subtotal * promo.pct / 100) : 0
-  fetch('http://localhost:5001/print/venta', {
+  fetch('http://127.0.0.1:5001/print/venta', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

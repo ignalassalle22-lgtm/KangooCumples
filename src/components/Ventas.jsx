@@ -219,7 +219,7 @@ ${v.descuento > 0 ? `<tr><td>Subtotal</td><td class="r">${f(v.subtotal)}</td></t
 </table>
 <div class="foot">Gracias por tu visita!</div>
 </body></html>`
-                fetch('http://localhost:5001/print/venta_caja', {
+                fetch('http://127.0.0.1:5001/print/venta_caja', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(v),

@@ -33,7 +33,7 @@ function htmlATexto(html) {
 export function imprimirTicket(html) {
   // Intentar servidor ESC/POS local primero
   const texto = htmlATexto(html)
-  fetch('http://localhost:5001/print/texto', {
+  fetch('http://127.0.0.1:5001/print/texto', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ texto }),

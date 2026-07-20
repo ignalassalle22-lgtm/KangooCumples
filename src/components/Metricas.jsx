@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { Chart, registerables } from 'chart.js'
 import { fmt, downloadCSV } from '../utils'
 
-const PRINT_URL = 'http://localhost:5001/print/cierre'
+const PRINT_URL = 'http://127.0.0.1:5001/print/cierre'
 
 Chart.register(...registerables)
 

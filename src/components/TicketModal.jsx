@@ -6,7 +6,7 @@ const hoy = () => fechaHoyAR()
 const hora = () => new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hour12: false })
 
 function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descuento, total, metodoPago, obs }) {
-  fetch('http://localhost:5001/print/venta_caja', {
+  fetch('http://127.0.0.1:5001/print/venta_caja', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
