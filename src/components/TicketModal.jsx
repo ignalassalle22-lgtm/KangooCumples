@@ -307,6 +307,7 @@ export default function TicketModal({ productos, categorias = [], cajasAbiertas 
             obs,
           })
         }
+        onClose()
       }
     } catch (e) {
       addToast('Error: ' + e.message, 'err')

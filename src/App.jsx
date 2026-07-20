@@ -319,8 +319,8 @@ function AppInner({ usuario, onLogout }) {
       await marcarCobrado(pedidoParaCobrar.id, ventaGuardada?.id || null)
       setPedidoParaCobrar(null)
     }
-    setTicketModalOpen(false)
     addToast('✓ Pedido cobrado correctamente')
+    return ventaGuardada
   }, [saveVenta, updateStock, marcarCobrado, pedidoParaCobrar, addToast])
 
   // ── Handlers cumpleaños ──
@@ -561,7 +561,6 @@ function AppInner({ usuario, onLogout }) {
   // ── Handlers ventas ──
   const handleSaveVenta = useCallback(async (venta, items) => {
     const ventaGuardada = await saveVenta(venta, items, updateStock)
-    setTicketModalOpen(false)
     addToast('✓ Venta registrada correctamente')
     return ventaGuardada
   }, [saveVenta, updateStock, addToast])
