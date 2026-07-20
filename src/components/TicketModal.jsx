@@ -25,7 +25,8 @@ function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descu
       metodo_pago: metodoPago,
       obs,
     }),
-  }).then(r => { if (!r.ok) throw new Error('servidor respondió error') }).catch(() => {
+  }).then(r => { if (!r.ok) throw new Error('servidor respondió error') }).catch((err) => {
+    console.error('[PRINT] Error conectando al servidor de impresión:', err.message || err)
     const sep = '--------------------------------'
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:9px;width:74mm}
