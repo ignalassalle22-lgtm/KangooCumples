@@ -60,12 +60,26 @@ export default function ReportesVentas({ ventas, productos = [], categorias = []
     return { total, count, ticket, descuentos }
   }, [ventasFiltradas])
 
-  // Por producto — SOLO items con producto_id válido (excluye señas y adicionales de eventos)
+  // Por producto (incluye señas/cobros de eventos agrupados)
   const porProducto = useMemo(() => {
     const map = {}
+    const SENAS_KEY = '_senas_eventos'
     for (const v of ventasFiltradas) {
       for (const it of (v.venta_items || [])) {
-        if (!it.producto_id) continue   // ← excluye señas/extras de eventos (no tienen producto real)
+        if (!it.producto_id) {
+          // Agrupar señas, pagos y saldos de eventos bajo una sola línea
+          if (!map[SENAS_KEY]) map[SENAS_KEY] = {
+            id: null,
+            nombre: 'Señas / Cobros eventos',
+            categoria: 'Eventos',
+            catId: null,
+            cantidad: 0,
+            total: 0,
+          }
+          map[SENAS_KEY].cantidad += it.cantidad
+          map[SENAS_KEY].total += it.subtotal
+          continue
+        }
         const prod = prodMap[it.producto_id]
         const catId = prod?.categoria_id || null
         const catNombre = catId ? (catMap[catId] || 'Sin categoría') : 'Sin categoría'
