@@ -72,12 +72,20 @@ export function useVentas() {
     setVentas(prev => prev.map(v => v.id === id ? { ...v, ...changes } : v))
   }
 
-  const editarVenta = async (id, venta, newItems, updateStockFn) => {
-    // 1. Revertir stock viejo
+  const editarVenta = async (id, venta, newItems, updateStockFn, allProductos = []) => {
+    // 1. Revertir stock viejo (producto + componentes)
     const { data: oldItems } = await supabase.from('venta_items').select('*').eq('venta_id', id)
     if (updateStockFn && oldItems) {
       for (const it of oldItems) {
-        if (it.producto_id) await updateStockFn(it.producto_id, it.cantidad)
+        if (!it.producto_id) continue
+        const prod = allProductos.find(p => p.id === it.producto_id)
+        if (prod?.maneja_stock === false) continue
+        await updateStockFn(it.producto_id, it.cantidad)
+        if (prod?.componentes?.length > 0) {
+          for (const comp of prod.componentes) {
+            if (comp.producto_id) await updateStockFn(comp.producto_id, comp.cantidad * it.cantidad)
+          }
+        }
       }
     }
     // 2. Actualizar registro principal
@@ -125,15 +133,23 @@ export function useVentas() {
     return ventaActualizada
   }
 
-  const anularVenta = async (id, updateStockFn) => {
+  const anularVenta = async (id, updateStockFn, allProductos = []) => {
     const venta = ventas.find(v => v.id === id)
     if (!venta) return
     const { error } = await supabase.from('ventas').update({ estado: 'anulada' }).eq('id', id)
     if (error) throw new Error(error.message)
-    // Revertir stock
+    // Revertir stock (producto + componentes)
     if (venta.venta_items && updateStockFn) {
       for (const it of venta.venta_items) {
-        if (it.producto_id) await updateStockFn(it.producto_id, it.cantidad)
+        if (!it.producto_id) continue
+        const prod = allProductos.find(p => p.id === it.producto_id)
+        if (prod?.maneja_stock === false) continue
+        await updateStockFn(it.producto_id, it.cantidad)
+        if (prod?.componentes?.length > 0) {
+          for (const comp of prod.componentes) {
+            if (comp.producto_id) await updateStockFn(comp.producto_id, comp.cantidad * it.cantidad)
+          }
+        }
       }
     }
     setVentas(prev => prev.map(v => v.id === id ? { ...v, estado: 'anulada' } : v))

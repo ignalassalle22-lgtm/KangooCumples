@@ -14,6 +14,7 @@ function imprimirVenta({ numero, fecha, hora, cliente, items, subtotal, descuent
   fetch('http://127.0.0.1:5001/print/venta_caja', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    targetAddressSpace: 'local',
     body: JSON.stringify({
       numero, fecha, hora, cliente,
       venta_items: items.map(it => ({ nombre_producto: it.nombre_producto, cantidad: it.cantidad, subtotal: it.subtotal })),
@@ -492,16 +493,16 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
           obs,
           estado: 'completada',
         },
-        itemsConOpciones
+        itemsConOpciones,
+        updateStock
       )
-      // Descontar stock de componentes de productos variables
+      // Descontar stock de componentes de productos variables (se manejan aparte
+      // porque sus componentes vienen de _componentesVar, no de item.componentes)
       for (const it of items) {
         if (it._tipo === 'variable' && it._componentesVar?.length > 0) {
           for (const comp of it._componentesVar) {
             if (!comp.producto_id) continue
-            // Descontar el producto seleccionado/fijo
             await updateStock(comp.producto_id, -(comp.cantidad * it.cantidad))
-            // Si ese producto es compuesto, cascadear a sus sub-componentes
             const prodComp = productos.find(p => p.id === comp.producto_id)
             if (prodComp?.tipo === 'compuesto' && prodComp.componentes?.length > 0) {
               for (const sub of prodComp.componentes) {

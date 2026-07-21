@@ -571,10 +571,10 @@ function AppInner({ usuario, onLogout }) {
     const info = v ? `ticket #${v.numero || id} — ${v.cliente || 'sin cliente'} — $${v.total}` : `#${id}`
     askPin(`Anular venta: ${info}. Se revertirá el stock.`, async () => {
       setPinModal({ show: false, onConfirm: null, msg: '' })
-      try { await anularVenta(id, updateStock); addToast('Venta anulada') }
+      try { await anularVenta(id, updateStock, productos); addToast('Venta anulada') }
       catch (e) { addToast('Error: ' + e.message, 'err') }
     })
-  }, [anularVenta, updateStock, addToast, askPin])
+  }, [anularVenta, updateStock, addToast, askPin, productos])
 
   const handleModificarVenta = useCallback((venta) => {
     askPin(`Modificar ticket ${venta.numero}`, () => {
@@ -585,13 +585,13 @@ function AppInner({ usuario, onLogout }) {
 
   const handleSaveEdicionVenta = useCallback(async (id, venta, items) => {
     try {
-      await editarVenta(id, venta, items, updateStock)
+      await editarVenta(id, venta, items, updateStock, productos)
       setEditingVenta(null)
       addToast('✓ Venta modificada')
     } catch (e) {
       addToast('Error: ' + e.message, 'err')
     }
-  }, [editarVenta, updateStock, addToast])
+  }, [editarVenta, updateStock, addToast, productos])
 
   // ── Handlers compras ──
   const handleSaveCompra = useCallback(async (compra, items, oldItems) => {

@@ -93,17 +93,20 @@ export default function TicketModal({ productos, categorias = [], cajasAbiertas 
   const initMetodos = ventaEditar ? parsearMultiMetodo(ventaEditar.metodo_pago) : null
   const [items, setItems] = useState(() => {
     if (ventaEditar?.venta_items?.length) {
-      return ventaEditar.venta_items.map(it => ({
-        producto_id: it.producto_id,
-        nombre_producto: it.nombre_producto,
-        precio_unitario: it.precio_unitario,
-        cantidad: it.cantidad,
-        subtotal: it.subtotal,
-        componentes: [],
-        maneja_stock: true,
-        _stockActual: undefined,
-        _tipo: undefined,
-      }))
+      return ventaEditar.venta_items.map(it => {
+        const prod = productos.find(p => p.id === it.producto_id)
+        return {
+          producto_id: it.producto_id,
+          nombre_producto: it.nombre_producto,
+          precio_unitario: it.precio_unitario,
+          cantidad: it.cantidad,
+          subtotal: it.subtotal,
+          componentes: prod?.componentes || [],
+          maneja_stock: prod?.maneja_stock ?? true,
+          _stockActual: prod?.stock_actual,
+          _tipo: prod?.tipo,
+        }
+      })
     }
     return itemsIniciales.length ? itemsIniciales : []
   })
