@@ -9,7 +9,7 @@ function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descu
   fetch('http://127.0.0.1:5001/print/venta_caja', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    targetAddressSpace: 'local',
+    targetAddressSpace: 'loopback',
     body: JSON.stringify({
       numero,
       fecha,
