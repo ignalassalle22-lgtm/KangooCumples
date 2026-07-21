@@ -417,12 +417,28 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
           <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Por método de pago</div>
           {Object.keys(desglose).length === 0
             ? <p style={{ fontSize: 13, color: 'var(--mu2)', padding: '8px 0' }}>Sin ventas aún</p>
-            : Object.keys(desglose).map(m => (
-              <div key={m} className="li">
-                <span className="lin">{m}</span>
-                <span className="lip">{fmt(desglose[m])}</span>
-              </div>
-            ))
+            : (() => {
+              const totalOnline = totalVentas - totalEfectivo
+              const onlineKeys = Object.keys(desglose).filter(m => m !== 'Efectivo' && desglose[m] > 0)
+              return <>
+                <div className="li">
+                  <span className="lin" style={{ fontWeight: 700 }}>Efectivo</span>
+                  <span className="lip" style={{ fontWeight: 700 }}>{fmt(totalEfectivo)}</span>
+                </div>
+                {totalOnline > 0 && (
+                  <div className="li" style={{ marginTop: 4 }}>
+                    <span className="lin" style={{ fontWeight: 700 }}>Online</span>
+                    <span className="lip" style={{ fontWeight: 700 }}>{fmt(totalOnline)}</span>
+                  </div>
+                )}
+                {onlineKeys.map(m => (
+                  <div key={m} className="li" style={{ paddingLeft: 12 }}>
+                    <span className="lin" style={{ fontSize: 13, color: 'var(--mu)' }}>{m}</span>
+                    <span className="lip" style={{ fontSize: 13, color: 'var(--mu)' }}>{fmt(desglose[m])}</span>
+                  </div>
+                ))}
+              </>
+            })()
           }
         </div>
       </div>
