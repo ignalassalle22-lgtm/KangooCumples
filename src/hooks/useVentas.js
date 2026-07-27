@@ -7,13 +7,21 @@ export function useVentas() {
 
   const fetchVentas = useCallback(async (desde, hasta) => {
     setLoading(true)
-    let q = supabase.from('ventas').select('*, venta_items(*), cajas(id, nombre, turno)').order('created_at', { ascending: false })
-    if (desde) q = q.gte('fecha', desde)
-    if (hasta) q = q.lte('fecha', hasta)
-    q = q.range(0, 9999)
-    const { data, error } = await q
-    if (error) console.warn('ventas:', error.message)
-    setVentas(data || [])
+    const PAGE = 1000
+    let all = []
+    let page = 0
+    while (true) {
+      let q = supabase.from('ventas').select('*, venta_items(*), cajas(id, nombre, turno)').order('created_at', { ascending: false })
+      if (desde) q = q.gte('fecha', desde)
+      if (hasta) q = q.lte('fecha', hasta)
+      q = q.range(page * PAGE, (page + 1) * PAGE - 1)
+      const { data, error } = await q
+      if (error) { console.warn('ventas:', error.message); break }
+      all = all.concat(data || [])
+      if (!data || data.length < PAGE) break
+      page++
+    }
+    setVentas(all)
     setLoading(false)
   }, [])
 
