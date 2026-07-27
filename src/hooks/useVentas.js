@@ -10,6 +10,7 @@ export function useVentas() {
     let q = supabase.from('ventas').select('*, venta_items(*), cajas(id, nombre, turno)').order('created_at', { ascending: false })
     if (desde) q = q.gte('fecha', desde)
     if (hasta) q = q.lte('fecha', hasta)
+    q = q.range(0, 9999)
     const { data, error } = await q
     if (error) console.warn('ventas:', error.message)
     setVentas(data || [])
