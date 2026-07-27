@@ -11,6 +11,9 @@ const C = {
 
 const fmt = n => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 
+// Poner en true para rehabilitar pedidos desde la web
+const PEDIDOS_HABILITADOS = false
+
 export default function MenuPublico() {
   const [cfg, setCfg] = useState(null)
   const [grupos, setGrupos] = useState([])
@@ -185,7 +188,7 @@ export default function MenuPublico() {
                     <div style={{ fontWeight: 900, fontSize: 14, color: C.nv, fontFamily: 'Nunito, sans-serif', whiteSpace: 'nowrap', marginRight: 8 }}>
                       {fmt(prod.precio_venta)}
                     </div>
-                    {enCarrito ? (
+                    {PEDIDOS_HABILITADOS && (enCarrito ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <button onClick={() => setQty(prod.id, enCarrito.qty - 1)} style={{ width: 30, height: 30, borderRadius: '50%', border: `2px solid ${C.or}`, background: C.wh, color: C.or, fontWeight: 900, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>−</button>
                         <span style={{ fontWeight: 800, fontSize: 15, color: C.tx, minWidth: 20, textAlign: 'center' }}>{enCarrito.qty}</span>
@@ -195,7 +198,7 @@ export default function MenuPublico() {
                       <button onClick={() => addToCart(prod)} style={{ background: C.or, color: C.wh, border: 'none', borderRadius: 10, padding: '8px 14px', fontWeight: 800, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'Nunito, sans-serif', boxShadow: '0 2px 8px rgba(232,98,26,0.3)' }}>
                         + Agregar
                       </button>
-                    )}
+                    ))}
                   </div>
                 )
               })}
@@ -212,7 +215,7 @@ export default function MenuPublico() {
       </div>
 
       {/* Burbuja pedido activo */}
-      {pedidoActivo && !cartOpen && (
+      {PEDIDOS_HABILITADOS && pedidoActivo && !cartOpen && (
         <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
           <a
             href={`/pedido?id=${pedidoActivo.id}`}
@@ -231,7 +234,7 @@ export default function MenuPublico() {
       )}
 
       {/* Botón flotante del carrito */}
-      {cartCount > 0 && !cartOpen && (
+      {PEDIDOS_HABILITADOS && cartCount > 0 && !cartOpen && (
         <button onClick={() => setCartOpen(true)} style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: C.or, color: C.wh, border: 'none', borderRadius: 50, padding: '14px 28px', fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: 15, cursor: 'pointer', boxShadow: '0 6px 24px rgba(232,98,26,0.5)', display: 'flex', alignItems: 'center', gap: 10, zIndex: 50, whiteSpace: 'nowrap' }}>
           <span style={{ background: C.wh, color: C.or, borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900 }}>{cartCount}</span>
           Tu pedido · {fmt(cartTotal)}
@@ -239,7 +242,7 @@ export default function MenuPublico() {
       )}
 
       {/* Panel del carrito */}
-      {cartOpen && (
+      {PEDIDOS_HABILITADOS && cartOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-end' }} onClick={e => e.target === e.currentTarget && setCartOpen(false)}>
           <div style={{ width: '100%', maxWidth: 560, margin: '0 auto', background: C.wh, borderRadius: '24px 24px 0 0', padding: '20px 20px 40px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
