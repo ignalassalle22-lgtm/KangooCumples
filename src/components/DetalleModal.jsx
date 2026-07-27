@@ -83,7 +83,7 @@ export default function DetalleModal({ evento: ev, config, onClose, onEditar, on
       await fetch(PRINT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        targetAddressSpace: 'local',
+        targetAddressSpace: 'loopback',
         body: JSON.stringify({
           fecha: ev.fecha,
           hora: ev.hora,

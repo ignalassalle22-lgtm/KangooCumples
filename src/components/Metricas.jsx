@@ -208,7 +208,7 @@ export default function Metricas({ eventos }) {
       await fetch(PRINT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        targetAddressSpace: 'local',
+        targetAddressSpace: 'loopback',
         body: JSON.stringify({
           desde,
           hasta,

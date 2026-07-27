@@ -14,7 +14,7 @@ function imprimirVenta({ numero, fecha, hora, cliente, items, subtotal, descuent
   fetch('http://127.0.0.1:5001/print/venta_caja', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    targetAddressSpace: 'local',
+    targetAddressSpace: 'loopback',
     body: JSON.stringify({
       numero, fecha, hora, cliente,
       venta_items: items.map(it => ({ nombre_producto: it.nombre_producto, cantidad: it.cantidad, subtotal: it.subtotal })),

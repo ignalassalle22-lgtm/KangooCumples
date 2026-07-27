@@ -34,7 +34,7 @@ function imprimirTicketEvento(ev, config) {
   fetch('http://127.0.0.1:5001/print/venta', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    targetAddressSpace: 'local',
+    targetAddressSpace: 'loopback',
     body: JSON.stringify({
       fecha: ev.fecha, hora: ev.hora,
       reservante: ev.reservante, telefono: ev.telefono,
@@ -209,8 +209,9 @@ function AppInner({ usuario, onLogout }) {
 
   const handleNav = useCallback((sec) => {
     if (!isAdmin && !SECCIONES_POS.includes(sec)) return
+    if (sec === 'reportes') fetchVentas()
     setActiveSection(sec)
-  }, [isAdmin])
+  }, [isAdmin, fetchVentas])
   const [pinModal, setPinModal] = useState({ show: false, onConfirm: null, msg: '' })
   const [toasts, setToasts] = useState([])
 
