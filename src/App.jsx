@@ -209,9 +209,8 @@ function AppInner({ usuario, onLogout }) {
 
   const handleNav = useCallback((sec) => {
     if (!isAdmin && !SECCIONES_POS.includes(sec)) return
-    if (sec === 'reportes') fetchVentas()
     setActiveSection(sec)
-  }, [isAdmin, fetchVentas])
+  }, [isAdmin])
   const [pinModal, setPinModal] = useState({ show: false, onConfirm: null, msg: '' })
   const [toasts, setToasts] = useState([])
 
@@ -788,7 +787,7 @@ function AppInner({ usuario, onLogout }) {
         )}
 
         {activeSection === 'reportes' && (
-          <ReportesVentas ventas={ventas} productos={productos} categorias={categorias} />
+          <ReportesVentas ventas={ventas} productos={productos} categorias={categorias} fetchVentas={fetchVentas} />
         )}
 
         {activeSection === 'cofre' && (

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { downloadCSV, downloadXLSXArticulos, fechaHoyAR } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
@@ -27,9 +27,14 @@ function primerDiaMes() {
 }
 function hoy() { return fechaHoyAR() }
 
-export default function ReportesVentas({ ventas, productos = [], categorias = [] }) {
+export default function ReportesVentas({ ventas, productos = [], categorias = [], fetchVentas }) {
   const [desde, setDesde] = useState(primerDiaMes())
   const [hasta, setHasta] = useState(hoy())
+
+  // Pedir a Supabase solo el rango de fechas visible (evita límite de 1000 filas)
+  useEffect(() => {
+    if (fetchVentas) fetchVentas(desde, hasta)
+  }, [desde, hasta, fetchVentas])
 
   // Mapa producto_id → categoria
   const prodMap = useMemo(() => {
