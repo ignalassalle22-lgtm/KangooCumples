@@ -16,13 +16,22 @@ export function useCaja() {
       .order('created_at', { ascending: false })
     setCajasAbiertas(abiertas || [])
 
-    const { data: hist } = await supabase
-      .from('cajas')
-      .select('*')
-      .eq('estado', 'cerrada')
-      .order('created_at', { ascending: false })
-      .limit(50)
-    setHistorial(hist || [])
+    const PAGE = 1000
+    let allHist = []
+    let page = 0
+    while (true) {
+      const { data, error } = await supabase
+        .from('cajas')
+        .select('*')
+        .eq('estado', 'cerrada')
+        .order('created_at', { ascending: false })
+        .range(page * PAGE, (page + 1) * PAGE - 1)
+      if (error) { console.warn('cajas hist:', error.message); break }
+      allHist = allHist.concat(data || [])
+      if (!data || data.length < PAGE) break
+      page++
+    }
+    setHistorial(allHist)
     setLoading(false)
   }, [])
 
