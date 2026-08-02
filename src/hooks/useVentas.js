@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
+import { fechaHoyAR } from '../utils'
 
 export function useVentas() {
   const [ventas, setVentas] = useState([])
@@ -25,9 +26,14 @@ export function useVentas() {
 
   const fetchVentas = useCallback(async () => {
     setLoading(true)
+    // Carga rápida: ventas de hoy (para que Caja muestre tickets inmediatamente)
+    const hoy = fechaHoyAR()
+    const hoyData = await fetchPaginated(hoy, hoy)
+    setVentas(hoyData)
+    setLoading(false)
+    // Carga completa en segundo plano (para historial de cajas pasadas)
     const all = await fetchPaginated()
     setVentas(all)
-    setLoading(false)
   }, [fetchPaginated])
 
   // Consulta independiente para filtros de fecha (no pisa el estado global)
