@@ -5,8 +5,7 @@ export function useVentas() {
   const [ventas, setVentas] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const fetchVentas = useCallback(async (desde, hasta) => {
-    setLoading(true)
+  const fetchPaginated = useCallback(async (desde, hasta) => {
     const PAGE = 1000
     let all = []
     let page = 0
@@ -21,9 +20,20 @@ export function useVentas() {
       if (!data || data.length < PAGE) break
       page++
     }
+    return all
+  }, [])
+
+  const fetchVentas = useCallback(async () => {
+    setLoading(true)
+    const all = await fetchPaginated()
     setVentas(all)
     setLoading(false)
-  }, [])
+  }, [fetchPaginated])
+
+  // Consulta independiente para filtros de fecha (no pisa el estado global)
+  const fetchVentasRango = useCallback(async (desde, hasta) => {
+    return await fetchPaginated(desde, hasta)
+  }, [fetchPaginated])
 
   useEffect(() => { fetchVentas() }, [fetchVentas])
 
@@ -164,5 +174,5 @@ export function useVentas() {
     setVentas(prev => prev.map(v => v.id === id ? { ...v, estado: 'anulada' } : v))
   }
 
-  return { ventas, loading, fetchVentas, saveVenta, anularVenta, updateVenta, editarVenta }
+  return { ventas, loading, fetchVentas, fetchVentasRango, saveVenta, anularVenta, updateVenta, editarVenta }
 }

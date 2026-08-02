@@ -1,19 +1,32 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { fechaHoyAR, imprimirTicketBrowser } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 const hoy = () => fechaHoyAR()
 
-export default function Ventas({ ventas, loading, cajaActual, onNueva, onAnular, onModificar, fetchVentas, empleados = [], isAdmin = true }) {
+export default function Ventas({ ventas: ventasGlobal, loading: loadingGlobal, cajaActual, onNueva, onAnular, onModificar, fetchVentasRango, empleados = [], isAdmin = true }) {
   const [desde, setDesde] = useState(hoy())
   const [hasta, setHasta] = useState(hoy())
   const [filtroEstado, setFiltroEstado] = useState('')
   const [busca, setBusca] = useState('')
   const [showDetalle, setShowDetalle] = useState(null)
+  const [ventasLocales, setVentasLocales] = useState(null)
+  const [loadingLocal, setLoadingLocal] = useState(false)
 
-  function aplicarFiltro() {
-    fetchVentas(desde, hasta)
+  const ventas = ventasLocales !== null ? ventasLocales : ventasGlobal
+  const loading = ventasLocales !== null ? loadingLocal : loadingGlobal
+
+  async function aplicarFiltro() {
+    setLoadingLocal(true)
+    const data = await fetchVentasRango(desde, hasta)
+    setVentasLocales(data)
+    setLoadingLocal(false)
   }
+
+  // Cargar ventas de hoy al montar
+  useEffect(() => {
+    aplicarFiltro()
+  }, [])
 
   const filtradas = useMemo(() => {
     let lista = ventas

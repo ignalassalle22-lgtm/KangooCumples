@@ -182,7 +182,7 @@ function AppInner({ usuario, onLogout }) {
 
   // ── Ventas ──
   const { productos, categorias, loading: prodLoading, saveProducto, deleteProducto, updateStock, updateCosto, bulkUpdatePrecios, saveCategoria } = useProductos()
-  const { ventas, loading: ventasLoading, fetchVentas, saveVenta, anularVenta, updateVenta, editarVenta } = useVentas()
+  const { ventas, loading: ventasLoading, fetchVentas, fetchVentasRango, saveVenta, anularVenta, updateVenta, editarVenta } = useVentas()
   const { compras, loading: comprasLoading, saveCompra, updateCompra, anularCompra } = useCompras()
   const { proveedores, saveProveedor, deleteProveedor } = useProveedores()
   const { cajasAbiertas, historial: cajaHistorial, loading: cajaLoading, abrirCaja, cerrarCaja } = useCaja()
@@ -739,7 +739,7 @@ function AppInner({ usuario, onLogout }) {
             onNueva={() => setTicketModalOpen(true)}
             onAnular={handleAnularVenta}
             onModificar={handleModificarVenta}
-            fetchVentas={fetchVentas}
+            fetchVentasRango={fetchVentasRango}
             empleados={empleados}
             isAdmin={isAdmin}
           />
@@ -787,7 +787,7 @@ function AppInner({ usuario, onLogout }) {
         )}
 
         {activeSection === 'reportes' && (
-          <ReportesVentas ventas={ventas} productos={productos} categorias={categorias} fetchVentas={fetchVentas} />
+          <ReportesVentas ventas={ventas} productos={productos} categorias={categorias} fetchVentasRango={fetchVentasRango} />
         )}
 
         {activeSection === 'cofre' && (

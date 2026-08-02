@@ -27,14 +27,19 @@ function primerDiaMes() {
 }
 function hoy() { return fechaHoyAR() }
 
-export default function ReportesVentas({ ventas, productos = [], categorias = [], fetchVentas }) {
+export default function ReportesVentas({ ventas: ventasGlobal, productos = [], categorias = [], fetchVentasRango }) {
   const [desde, setDesde] = useState(primerDiaMes())
   const [hasta, setHasta] = useState(hoy())
+  const [ventasLocales, setVentasLocales] = useState(null)
 
-  // Pedir a Supabase solo el rango de fechas visible (evita límite de 1000 filas)
+  const ventas = ventasLocales !== null ? ventasLocales : ventasGlobal
+
+  // Pedir a Supabase solo el rango de fechas visible (sin pisar el estado global)
   useEffect(() => {
-    if (fetchVentas) fetchVentas(desde, hasta)
-  }, [desde, hasta, fetchVentas])
+    if (fetchVentasRango) {
+      fetchVentasRango(desde, hasta).then(data => setVentasLocales(data))
+    }
+  }, [desde, hasta, fetchVentasRango])
 
   // Mapa producto_id → categoria
   const prodMap = useMemo(() => {
