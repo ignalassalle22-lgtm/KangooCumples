@@ -30,9 +30,12 @@ export function useEmpleados() {
   }
 
   const toggleEmpleado = async (id, activo) => {
+    const updates = { activo }
+    if (!activo) updates.fecha_baja = new Date().toISOString().slice(0, 10)
+    else updates.fecha_baja = null
     const { data, error } = await supabase
       .from('empleados')
-      .update({ activo })
+      .update(updates)
       .eq('id', id)
       .select()
       .single()

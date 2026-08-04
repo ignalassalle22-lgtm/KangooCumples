@@ -115,7 +115,12 @@ export default function Asistencia({ empleados = [] }) {
   const { asistencias, observaciones, loading, fetchMes, saveAsistencia, saveObs } = useAsistencia()
   const [obsLocal, setObsLocal] = useState({})
 
-  const empleadosActivos = useMemo(() => empleados.filter(e => e.activo !== false), [empleados])
+  const empleadosActivos = useMemo(() => empleados.filter(e => {
+    if (e.activo !== false) return true
+    if (!e.fecha_baja) return false
+    const [bajaAño, bajaMes] = e.fecha_baja.split('-').map(Number)
+    return año < bajaAño || (año === bajaAño && mes <= bajaMes)
+  }), [empleados, año, mes])
   const totalDias = diasEnMes(año, mes)
   const dias = Array.from({ length: totalDias }, (_, i) => i + 1)
   const esActual = año === hoy.getFullYear() && mes === (hoy.getMonth() + 1)
