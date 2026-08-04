@@ -858,7 +858,6 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
   const [turno, setTurno] = useState('')
   const [saldoInicial, setSaldoInicial] = useState('')
   const [saving, setSaving] = useState(false)
-  const [cajaHistorialOpen, setCajaHistorialOpen] = useState(null)
   const [histExpanded, setHistExpanded] = useState({})
   const [ventasPorCaja, setVentasPorCaja] = useState({})
   const [loadingCaja, setLoadingCaja] = useState({})
@@ -1020,10 +1019,7 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                             <td style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
                               <button
                                 className="bp bsm"
-                                onClick={async () => {
-                                  if (!ventasPorCaja[c.id]) await loadVentasCaja(c.id)
-                                  setCajaHistorialOpen(c)
-                                }}
+                                onClick={() => window.open(`/?mode=caja&id=${c.id}`, '_blank')}
                               >
                                 Abrir
                               </button>
@@ -1135,17 +1131,6 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
         </>
       )}
 
-      {cajaHistorialOpen && (
-        <CajaHistorialModal
-          caja={cajaHistorialOpen}
-          ventas={ventasPorCaja[cajaHistorialOpen.id] || []}
-          gastos={gastos.filter(g => g.caja_id === cajaHistorialOpen.id)}
-          empleados={empleados}
-          onAnularVenta={onAnularVenta}
-          onModificarVenta={onModificarVenta}
-          onClose={() => setCajaHistorialOpen(null)}
-        />
-      )}
     </div>
   )
 }
