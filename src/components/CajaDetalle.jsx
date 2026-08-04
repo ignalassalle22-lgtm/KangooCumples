@@ -154,6 +154,7 @@ export default function CajaDetalle() {
   }, [ventasActivas])
 
   const totalVentas = ventasActivas.reduce((s, v) => s + (v.total || 0), 0)
+  const totalEfectivo = desglose['Efectivo'] || 0
 
   const gastosReales = gastos.filter(g => !g.detalle?.startsWith('Traspaso al cofre'))
   const egresosCofre = gastos.filter(g => g.detalle?.startsWith('Traspaso al cofre'))
@@ -194,7 +195,7 @@ export default function CajaDetalle() {
     </div>
   )
 
-  const esperado = (caja.saldo_inicial || 0) + (caja.total_efectivo || 0) - totalGastos
+  const esperado = (caja.saldo_inicial || 0) + totalEfectivo - totalGastos
   const diff = (caja.saldo_final || 0) - esperado
 
   return (
@@ -229,7 +230,7 @@ export default function CajaDetalle() {
           <div className="cc">
             <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>Resumen</div>
             <div className="li"><span className="lin">Saldo inicial</span><span className="lis">{fmt(caja.saldo_inicial)}</span></div>
-            <div className="li"><span className="lin">Total ventas</span><span className="lip">{fmt(caja.total_ventas)}</span></div>
+            <div className="li"><span className="lin">Total ventas</span><span className="lip">{fmt(totalVentas)}</span></div>
             {totalGastosReales > 0 && <div className="li"><span className="lin">Gastos</span><span style={{ fontWeight: 700, color: 'var(--rd)' }}>-{fmt(totalGastosReales)}</span></div>}
             {totalEgresosCofre > 0 && <div className="li"><span className="lin">Egresos al cofre</span><span style={{ fontWeight: 700, color: 'var(--rd)' }}>-{fmt(totalEgresosCofre)}</span></div>}
             <div className="li"><span className="lin">Efectivo contado</span><span className="lip">{fmt(caja.saldo_final)}</span></div>
