@@ -458,6 +458,7 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
 
   async function handleCobrar() {
     if (items.length === 0) { addToast('Agregá al menos un producto', 'err'); return }
+    if (descuentoNum > subtotal) { addToast(`El descuento (${fmt(descuentoNum)}) no puede superar el subtotal (${fmt(subtotal)})`, 'err'); return }
     if (multiMet) {
       if (metsPagados.some(m => !m.monto || parseFloat(m.monto) <= 0)) {
         addToast('Completá el monto de cada método de pago', 'err'); return

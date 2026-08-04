@@ -241,6 +241,7 @@ export default function TicketModal({ productos, categorias = [], cajasAbiertas 
   async function handleGuardar() {
     if (items.length === 0) { addToast('Agregá al menos un producto', 'err'); return }
     if (!empleadoId) { addToast('Seleccioná el empleado que realiza la venta', 'err'); return }
+    if (descuentoNum > subtotal) { addToast(`El descuento (${fmt(descuentoNum)}) no puede superar el subtotal (${fmt(subtotal)})`, 'err'); return }
 
     if (multiMetodo) {
       const vacíos = metodosPagados.some(m => !m.monto || parseFloat(m.monto) <= 0)
