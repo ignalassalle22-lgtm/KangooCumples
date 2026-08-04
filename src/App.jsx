@@ -182,7 +182,7 @@ function AppInner({ usuario, onLogout }) {
 
   // ── Ventas ──
   const { productos, categorias, loading: prodLoading, saveProducto, deleteProducto, updateStock, updateCosto, bulkUpdatePrecios, saveCategoria } = useProductos()
-  const { ventas, loading: ventasLoading, fetchVentas, fetchVentasRango, saveVenta, anularVenta, updateVenta, editarVenta } = useVentas()
+  const { ventas, loading: ventasLoading, fetchVentas, fetchVentasRango, fetchVentasByCaja, saveVenta, anularVenta, updateVenta, editarVenta } = useVentas()
   const { compras, loading: comprasLoading, saveCompra, updateCompra, anularCompra } = useCompras()
   const { proveedores, saveProveedor, deleteProveedor } = useProveedores()
   const { cajasAbiertas, historial: cajaHistorial, loading: cajaLoading, abrirCaja, cerrarCaja } = useCaja()
@@ -770,6 +770,7 @@ function AppInner({ usuario, onLogout }) {
             onAnularVenta={handleAnularVenta}
             onModificarVenta={handleModificarVenta}
             onRefreshVentas={fetchVentas}
+            fetchVentasByCaja={fetchVentasByCaja}
             addToast={addToast}
             askPin={askPin}
           />

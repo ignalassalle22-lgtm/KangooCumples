@@ -31,9 +31,6 @@ export function useVentas() {
     const hoyData = await fetchPaginated(hoy, hoy)
     setVentas(hoyData)
     setLoading(false)
-    // Carga completa en segundo plano (para historial de cajas pasadas)
-    const all = await fetchPaginated()
-    setVentas(all)
   }, [fetchPaginated])
 
   // Consulta independiente para filtros de fecha (no pisa el estado global)
@@ -180,5 +177,15 @@ export function useVentas() {
     setVentas(prev => prev.map(v => v.id === id ? { ...v, estado: 'anulada' } : v))
   }
 
-  return { ventas, loading, fetchVentas, fetchVentasRango, saveVenta, anularVenta, updateVenta, editarVenta }
+  const fetchVentasByCaja = useCallback(async (cajaId) => {
+    const { data, error } = await supabase
+      .from('ventas')
+      .select('*, venta_items(*)')
+      .eq('caja_id', cajaId)
+      .order('created_at', { ascending: false })
+    if (error) { console.warn('ventas caja:', error.message); return [] }
+    return data || []
+  }, [])
+
+  return { ventas, loading, fetchVentas, fetchVentasRango, fetchVentasByCaja, saveVenta, anularVenta, updateVenta, editarVenta }
 }

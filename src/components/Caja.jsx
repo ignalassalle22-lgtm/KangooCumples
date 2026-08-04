@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { imprimirTicket, imprimirTicketBrowser } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
@@ -644,14 +644,10 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
   )
 }
 
-function CajaHistorialModal({ caja, ventas, gastos = [], empleados = [], onAnularVenta, onModificarVenta, onClose }) {
+function CajaHistorialModal({ caja, ventas: ventasCaja, gastos = [], empleados = [], onAnularVenta, onModificarVenta, onClose }) {
   const [ticketDetalle, setTicketDetalle] = useState(null)
   const [tab, setTab] = useState('tickets')
 
-  const ventasCaja = useMemo(() =>
-    ventas.filter(v => v.caja_id === caja.id),
-    [ventas, caja.id]
-  )
   const ventasActivas = ventasCaja.filter(v => v.estado !== 'anulada')
 
   const gastosReales = gastos.filter(g => !g.detalle?.startsWith('Traspaso al cofre'))
@@ -857,13 +853,23 @@ function CajaHistorialModal({ caja, ventas, gastos = [], empleados = [], onAnula
   )
 }
 
-export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos = [], empleados = [], onAbrir, onCerrar, onAddGasto, onAddCofreIngreso, onAnularVenta, onModificarVenta, onRefreshVentas, addToast, askPin }) {
+export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos = [], empleados = [], onAbrir, onCerrar, onAddGasto, onAddCofreIngreso, onAnularVenta, onModificarVenta, onRefreshVentas, fetchVentasByCaja, addToast, askPin }) {
   const [nombre, setNombre] = useState('')
   const [turno, setTurno] = useState('')
   const [saldoInicial, setSaldoInicial] = useState('')
   const [saving, setSaving] = useState(false)
   const [cajaHistorialOpen, setCajaHistorialOpen] = useState(null)
   const [histExpanded, setHistExpanded] = useState({})
+  const [ventasPorCaja, setVentasPorCaja] = useState({})
+  const [loadingCaja, setLoadingCaja] = useState({})
+
+  const loadVentasCaja = useCallback(async (cajaId) => {
+    setLoadingCaja(prev => ({ ...prev, [cajaId]: true }))
+    const data = await fetchVentasByCaja(cajaId)
+    setVentasPorCaja(prev => ({ ...prev, [cajaId]: data }))
+    setLoadingCaja(prev => ({ ...prev, [cajaId]: false }))
+    return data
+  }, [fetchVentasByCaja])
 
   async function handleAbrir() {
     if (saldoInicial === '' || isNaN(parseFloat(saldoInicial)) || parseFloat(saldoInicial) < 0) {
@@ -989,14 +995,7 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                       const esperado = (c.saldo_inicial || 0) + (c.total_efectivo || 0) - totalGastosCaja
                       const diff = (c.saldo_final || 0) - esperado
                       const expanded = histExpanded[c.id]
-                      const ventasCerrada = ventas.filter(v => v.caja_id === c.id && v.estado !== 'anulada')
-                      const desglose = {}
-                      ventasCerrada.forEach(v => {
-                        const metodos = parsearMetodos(v.metodo_pago, v.total || 0)
-                        Object.entries(metodos).forEach(([met, monto]) => {
-                          desglose[met] = (desglose[met] || 0) + monto
-                        })
-                      })
+                      const ventasCargadas = ventasPorCaja[c.id]
                       return (
                         <React.Fragment key={c.id}>
                           <tr>
@@ -1021,38 +1020,56 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                             <td style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
                               <button
                                 className="bp bsm"
-                                onClick={() => setCajaHistorialOpen(c)}
+                                onClick={async () => {
+                                  if (!ventasPorCaja[c.id]) await loadVentasCaja(c.id)
+                                  setCajaHistorialOpen(c)
+                                }}
                               >
                                 Abrir
                               </button>
                               <button
                                 className="bg2 bsm"
-                                onClick={() => setHistExpanded(prev => ({ ...prev, [c.id]: !prev[c.id] }))}
+                                onClick={() => {
+                                  const next = !histExpanded[c.id]
+                                  setHistExpanded(prev => ({ ...prev, [c.id]: next }))
+                                  if (next && !ventasPorCaja[c.id]) loadVentasCaja(c.id)
+                                }}
                               >
                                 {expanded ? '▲' : '▼'}
                               </button>
                               <button
                                 className="bg2 bsm"
                                 title="Reimprimir ticket de cierre"
-                                onClick={() => imprimirCierre({
-                                  caja: c,
-                                  horaCierre: c.hora_cierre || '—',
-                                  empleado: c.empleado_cierre || '',
-                                  ticketsCount: ventasCerrada.length,
-                                  totalVentas: c.total_ventas || 0,
-                                  totalEfectivo: c.total_efectivo || 0,
-                                  desglose,
-                                  gastos: gastosCaja,
-                                  gastosReales: gastosRealesCaja,
-                                  egresosCofre: egresosCofrecaja,
-                                  totalGastosReales: totalGastosRealesCaja,
-                                  totalEgresosCofre: totalEgresosCofreCaja,
-                                  totalGastos: totalGastosCaja,
-                                  efectivoEsperado: esperado,
-                                  saldoFinal: c.saldo_final || 0,
-                                  diferencia: diff,
-                                  obs: c.obs_cierre || '',
-                                })}
+                                onClick={async () => {
+                                  const ventasData = ventasPorCaja[c.id] || await loadVentasCaja(c.id)
+                                  const ventasCerrada = ventasData.filter(v => v.estado !== 'anulada')
+                                  const desglose = {}
+                                  ventasCerrada.forEach(v => {
+                                    const metodos = parsearMetodos(v.metodo_pago, v.total || 0)
+                                    Object.entries(metodos).forEach(([met, monto]) => {
+                                      desglose[met] = (desglose[met] || 0) + monto
+                                    })
+                                  })
+                                  imprimirCierre({
+                                    caja: c,
+                                    horaCierre: c.hora_cierre || '—',
+                                    empleado: c.empleado_cierre || '',
+                                    ticketsCount: ventasCerrada.length,
+                                    totalVentas: c.total_ventas || 0,
+                                    totalEfectivo: c.total_efectivo || 0,
+                                    desglose,
+                                    gastos: gastosCaja,
+                                    gastosReales: gastosRealesCaja,
+                                    egresosCofre: egresosCofrecaja,
+                                    totalGastosReales: totalGastosRealesCaja,
+                                    totalEgresosCofre: totalEgresosCofreCaja,
+                                    totalGastos: totalGastosCaja,
+                                    efectivoEsperado: esperado,
+                                    saldoFinal: c.saldo_final || 0,
+                                    diferencia: diff,
+                                    obs: c.obs_cierre || '',
+                                  })
+                                }}
                               >
                                 🖨
                               </button>
@@ -1060,36 +1077,50 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                           </tr>
                           {expanded && (
                             <tr>
-                              <td colSpan={11} style={{ background: 'var(--bg)', padding: '14px 20px' }}>
-                                <div style={{ display: 'flex', gap: 40, flexWrap: 'wrap' }}>
-                                  <div>
-                                    <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
-                                      Por método de pago
-                                    </div>
-                                    {Object.keys(desglose).length === 0
-                                      ? <span style={{ fontSize: 13, color: 'var(--mu2)' }}>Sin datos de ventas en el período actual</span>
-                                      : Object.keys(desglose).map(m => (
-                                        <div key={m} style={{ display: 'flex', gap: 20, marginBottom: 5 }}>
-                                          <span style={{ fontSize: 13, color: 'var(--mu)', minWidth: 170 }}>{m}</span>
-                                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--nv)' }}>{fmt(desglose[m])}</span>
+                              <td colSpan={12} style={{ background: 'var(--bg)', padding: '14px 20px' }}>
+                                {loadingCaja[c.id] ? (
+                                  <span style={{ fontSize: 13, color: 'var(--mu)' }}>Cargando desglose...</span>
+                                ) : ventasCargadas ? (() => {
+                                  const ventasCerrada = ventasCargadas.filter(v => v.estado !== 'anulada')
+                                  const desglose = {}
+                                  ventasCerrada.forEach(v => {
+                                    const metodos = parsearMetodos(v.metodo_pago, v.total || 0)
+                                    Object.entries(metodos).forEach(([met, monto]) => {
+                                      desglose[met] = (desglose[met] || 0) + monto
+                                    })
+                                  })
+                                  return (
+                                    <div style={{ display: 'flex', gap: 40, flexWrap: 'wrap' }}>
+                                      <div>
+                                        <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+                                          Por método de pago
                                         </div>
-                                      ))
-                                    }
-                                    <div style={{ marginTop: 8, borderTop: '1px solid var(--bd)', paddingTop: 8 }}>
-                                      <div style={{ display: 'flex', gap: 20 }}>
-                                        <span style={{ fontSize: 13, color: 'var(--mu)', minWidth: 170, fontWeight: 700 }}>Total tickets: {ventasCerrada.length}</span>
+                                        {Object.keys(desglose).length === 0
+                                          ? <span style={{ fontSize: 13, color: 'var(--mu2)' }}>Sin ventas en esta caja</span>
+                                          : Object.keys(desglose).map(m => (
+                                            <div key={m} style={{ display: 'flex', gap: 20, marginBottom: 5 }}>
+                                              <span style={{ fontSize: 13, color: 'var(--mu)', minWidth: 170 }}>{m}</span>
+                                              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--nv)' }}>{fmt(desglose[m])}</span>
+                                            </div>
+                                          ))
+                                        }
+                                        <div style={{ marginTop: 8, borderTop: '1px solid var(--bd)', paddingTop: 8 }}>
+                                          <div style={{ display: 'flex', gap: 20 }}>
+                                            <span style={{ fontSize: 13, color: 'var(--mu)', minWidth: 170, fontWeight: 700 }}>Total tickets: {ventasCerrada.length}</span>
+                                          </div>
+                                        </div>
                                       </div>
+                                      {c.obs_cierre && (
+                                        <div>
+                                          <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+                                            Observaciones de cierre
+                                          </div>
+                                          <span style={{ fontSize: 13, color: 'var(--tx)' }}>{c.obs_cierre}</span>
+                                        </div>
+                                      )}
                                     </div>
-                                  </div>
-                                  {c.obs_cierre && (
-                                    <div>
-                                      <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
-                                        Observaciones de cierre
-                                      </div>
-                                      <span style={{ fontSize: 13, color: 'var(--tx)' }}>{c.obs_cierre}</span>
-                                    </div>
-                                  )}
-                                </div>
+                                  )
+                                })() : <span style={{ fontSize: 13, color: 'var(--mu)' }}>Cargando...</span>}
                               </td>
                             </tr>
                           )}
@@ -1107,7 +1138,7 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
       {cajaHistorialOpen && (
         <CajaHistorialModal
           caja={cajaHistorialOpen}
-          ventas={ventas}
+          ventas={ventasPorCaja[cajaHistorialOpen.id] || []}
           gastos={gastos.filter(g => g.caja_id === cajaHistorialOpen.id)}
           empleados={empleados}
           onAnularVenta={onAnularVenta}
