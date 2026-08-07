@@ -857,10 +857,24 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
   const [nombre, setNombre] = useState('')
   const [turno, setTurno] = useState('')
   const [saldoInicial, setSaldoInicial] = useState('')
+  const [saldoSugerido, setSaldoSugerido] = useState(null)
   const [saving, setSaving] = useState(false)
   const [histExpanded, setHistExpanded] = useState({})
   const [ventasPorCaja, setVentasPorCaja] = useState({})
   const [loadingCaja, setLoadingCaja] = useState({})
+
+  // Auto-fill saldo inicial con el último cierre de la misma caja
+  const buscarUltimoCierre = useCallback((nombreCaja) => {
+    if (!nombreCaja.trim() || !historial.length) { setSaldoSugerido(null); return }
+    const norm = nombreCaja.trim().toLowerCase()
+    const ultimo = historial.find(c => (c.nombre || '').toLowerCase() === norm && c.saldo_final != null)
+    if (ultimo) {
+      setSaldoInicial(String(ultimo.saldo_final))
+      setSaldoSugerido(ultimo.saldo_final)
+    } else {
+      setSaldoSugerido(null)
+    }
+  }, [historial])
 
   const loadVentasCaja = useCallback(async (cajaId) => {
     setLoadingCaja(prev => ({ ...prev, [cajaId]: true }))
@@ -878,7 +892,7 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
     setSaving(true)
     try {
       await onAbrir({ saldo_inicial: parseFloat(saldoInicial), nombre: nombre.trim() || 'Caja', turno: turno.trim() })
-      setNombre(''); setTurno(''); setSaldoInicial('')
+      setNombre(''); setTurno(''); setSaldoInicial(''); setSaldoSugerido(null)
       addToast('✓ Caja abierta correctamente')
     } catch (e) { addToast('Error: ' + e.message, 'err') }
     finally { setSaving(false) }
@@ -911,6 +925,7 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                   type="text"
                   value={nombre}
                   onChange={e => setNombre(e.target.value)}
+                  onBlur={() => buscarUltimoCierre(nombre)}
                   placeholder="Ej: Buffet, Saltos, Entrada..."
                   onKeyDown={e => e.key === 'Enter' && handleAbrir()}
                 />
@@ -931,10 +946,11 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                   min="0"
                   step="0.01"
                   value={saldoInicial}
-                  onChange={e => setSaldoInicial(e.target.value)}
+                  onChange={e => { setSaldoInicial(e.target.value); setSaldoSugerido(null) }}
                   placeholder="0"
                   onKeyDown={e => e.key === 'Enter' && handleAbrir()}
                 />
+                {saldoSugerido != null && <small style={{ color: '#10b981', marginTop: 4 }}>Último cierre contado: {fmt(saldoSugerido)}</small>}
               </div>
             </div>
             <button className="bp" onClick={handleAbrir} disabled={saving}>
