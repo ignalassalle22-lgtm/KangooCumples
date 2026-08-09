@@ -90,7 +90,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
         promoId: evento.promoId ? String(evento.promoId) : '',
         pago: evento.pago || 'none',
         monto: evento.monto || 0,
-        met: evento.met || '',
+        met: (config.mets || []).find(m => (evento.met || '').startsWith(m)) || evento.met || '',
         extendido: evento.extendido || false,
         extendido_mins: evento.extendido_mins || 30,
       })
@@ -155,11 +155,12 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
 
   function toggleMultiMet() {
     if (!multiMet) {
-      setMetsPagados([{ id: 1, met: form.met || (config.mets[0] || 'Efectivo'), monto: '' }])
+      const cleanMet = (config.mets || []).find(m => (form.met || '').startsWith(m)) || config.mets[0] || 'Efectivo'
+      setMetsPagados([{ id: 1, met: cleanMet, monto: '' }])
       setMultiMet(true)
     } else {
       setMultiMet(false)
-      setMetsPagados([{ id: 1, met: 'Efectivo', monto: '' }])
+      setMetsPagados([{ id: 1, met: config.mets[0] || 'Efectivo', monto: '' }])
     }
   }
   function addMetPagado() {

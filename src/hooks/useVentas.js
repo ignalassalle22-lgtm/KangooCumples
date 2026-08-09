@@ -45,7 +45,7 @@ export function useVentas() {
       .from('ventas')
       .select('numero')
       .like('numero', 'KF-%')
-      .order('created_at', { ascending: false })
+      .order('numero', { ascending: false })
       .limit(1)
     const nextNum = last?.length > 0
       ? (parseInt(last[0].numero.replace('KF-', '')) || 0) + 1

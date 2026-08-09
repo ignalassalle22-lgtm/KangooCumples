@@ -16,12 +16,14 @@ export default function FinalizarEventoModal({ evento: ev, cajasAbiertas, config
   const [cargando, setCargando] = useState(false)
 
   function toggleMultiMet() {
+    const mets = config?.mets || []
     if (!multiMet) {
-      setMetsPagados([{ id: 1, met: metodoPago, monto: '' }])
+      const cleanMet = mets.find(m => (metodoPago || '').startsWith(m)) || mets[0] || 'Efectivo'
+      setMetsPagados([{ id: 1, met: cleanMet, monto: '' }])
       setMultiMet(true)
     } else {
       setMultiMet(false)
-      setMetsPagados([{ id: 1, met: metodoPago, monto: '' }])
+      setMetsPagados([{ id: 1, met: mets[0] || 'Efectivo', monto: '' }])
     }
   }
   function addMetPagado() {
