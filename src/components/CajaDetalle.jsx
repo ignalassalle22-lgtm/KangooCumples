@@ -215,7 +215,8 @@ export default function CajaDetalle() {
             </div>
             <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>
               {caja.fecha} · {caja.hora_apertura} — {caja.hora_cierre || '?'} hs
-              {caja.empleado_cierre && ` · ${caja.empleado_cierre}`}
+              {caja.empleado_apertura && ` · Abrió: ${caja.empleado_apertura}`}
+              {caja.empleado_cierre && ` · Cerró: ${caja.empleado_cierre}`}
             </div>
           </div>
         </div>

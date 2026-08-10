@@ -89,7 +89,8 @@ ${caja.turno?`<tr><td>Turno</td><td class="r">${caja.turno}</td></tr>`:''}
 <tr><td>Fecha</td><td class="r">${caja.fecha||''}</td></tr>
 <tr><td>Apertura</td><td class="r">${caja.hora_apertura||'—'} hs</td></tr>
 <tr><td>Cierre</td><td class="r">${horaCierre} hs</td></tr>
-${empleado?`<tr><td>Responsable</td><td class="r"><b>${empleado}</b></td></tr>`:''}</table>
+${caja.empleado_apertura?`<tr><td>Abrió</td><td class="r">${caja.empleado_apertura}</td></tr>`:''}
+${empleado?`<tr><td>Cerró</td><td class="r"><b>${empleado}</b></td></tr>`:''}</table>
 <pre>${sep}</pre><div class="section">Ventas</div>
 <table><tr><td>Tickets</td><td class="r">${ticketsCount}</td></tr>
 <tr class="bold"><td>Total ventas</td><td class="r">${fmtP(totalVentas)}</td></tr>
@@ -373,7 +374,7 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
             <span className="badge bpd">● Abierta</span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--mu)', marginTop: 4 }}>
-            {caja.fecha} · apertura {caja.hora_apertura} hs · saldo inicial {fmt(caja.saldo_inicial)}
+            {caja.fecha} · apertura {caja.hora_apertura} hs{caja.empleado_apertura ? ` · ${caja.empleado_apertura}` : ''} · saldo inicial {fmt(caja.saldo_inicial)}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -700,7 +701,8 @@ function CajaHistorialModal({ caja, ventas: ventasCaja, gastos = [], empleados =
           <div>
             <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Resumen</div>
             <div className="li"><span className="lin">Apertura / Cierre</span><span className="lis">{caja.hora_apertura} — {caja.hora_cierre} hs</span></div>
-            {caja.empleado_cierre && <div className="li"><span className="lin">Responsable</span><span className="lis">{caja.empleado_cierre}</span></div>}
+            {caja.empleado_apertura && <div className="li"><span className="lin">Abrió</span><span className="lis">{caja.empleado_apertura}</span></div>}
+            {caja.empleado_cierre && <div className="li"><span className="lin">Cerró</span><span className="lis">{caja.empleado_cierre}</span></div>}
             <div className="li"><span className="lin">Saldo inicial</span><span className="lis">{fmt(caja.saldo_inicial)}</span></div>
             <div className="li"><span className="lin">Total ventas</span><span className="lip">{fmt(caja.total_ventas)}</span></div>
             {totalGastosReales > 0 && <div className="li"><span className="lin">Gastos</span><span style={{ fontWeight: 700, color: 'var(--rd)' }}>−{fmt(totalGastosReales)}</span></div>}
@@ -858,6 +860,7 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
   const [turno, setTurno] = useState('')
   const [saldoInicial, setSaldoInicial] = useState('')
   const [saldoSugerido, setSaldoSugerido] = useState(null)
+  const [empleadoApertura, setEmpleadoApertura] = useState('')
   const [saving, setSaving] = useState(false)
   const [histExpanded, setHistExpanded] = useState({})
   const [ventasPorCaja, setVentasPorCaja] = useState({})
@@ -885,14 +888,18 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
   }, [fetchVentasByCaja])
 
   async function handleAbrir() {
+    if (!empleadoApertura) {
+      addToast('Seleccioná el empleado que abre la caja', 'err')
+      return
+    }
     if (saldoInicial === '' || isNaN(parseFloat(saldoInicial)) || parseFloat(saldoInicial) < 0) {
       addToast('Ingresá un saldo inicial válido (puede ser 0)', 'err')
       return
     }
     setSaving(true)
     try {
-      await onAbrir({ saldo_inicial: parseFloat(saldoInicial), nombre: nombre.trim() || 'Caja', turno: turno.trim() })
-      setNombre(''); setTurno(''); setSaldoInicial(''); setSaldoSugerido(null)
+      await onAbrir({ saldo_inicial: parseFloat(saldoInicial), nombre: nombre.trim() || 'Caja', turno: turno.trim(), empleado_apertura: empleadoApertura })
+      setNombre(''); setTurno(''); setSaldoInicial(''); setSaldoSugerido(null); setEmpleadoApertura('')
       addToast('✓ Caja abierta correctamente')
     } catch (e) { addToast('Error: ' + e.message, 'err') }
     finally { setSaving(false) }
@@ -918,7 +925,7 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
           {/* ── ABRIR NUEVA CAJA ── */}
           <div className="cc" style={{ marginBottom: 24 }}>
             <div className="ct"><div className="ct-icon">🔓</div>Abrir nueva caja</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
               <div className="fgg">
                 <label>Nombre de la caja</label>
                 <input
@@ -937,6 +944,15 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
                   <option value="Mañana">Mañana</option>
                   <option value="Tarde">Tarde</option>
                   <option value="Noche">Noche</option>
+                </select>
+              </div>
+              <div className="fgg">
+                <label>Empleado</label>
+                <select value={empleadoApertura} onChange={e => setEmpleadoApertura(e.target.value)}>
+                  <option value="">Seleccionar...</option>
+                  {empleados.filter(e => e.activo !== false).map(e => (
+                    <option key={e.id} value={e.nombre}>{e.nombre}</option>
+                  ))}
                 </select>
               </div>
               <div className="fgg">

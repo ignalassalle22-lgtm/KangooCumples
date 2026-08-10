@@ -37,12 +37,12 @@ export function useCaja() {
 
   useEffect(() => { fetchCaja() }, [fetchCaja])
 
-  const abrirCaja = async ({ saldo_inicial, nombre, turno }) => {
+  const abrirCaja = async ({ saldo_inicial, nombre, turno, empleado_apertura }) => {
     const hora_apertura = new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hour12: false })
     const fecha = fechaHoyAR()
     const { data, error } = await supabase
       .from('cajas')
-      .insert({ saldo_inicial, hora_apertura, fecha, estado: 'abierta', nombre: nombre || 'Caja', turno: turno || '' })
+      .insert({ saldo_inicial, hora_apertura, fecha, estado: 'abierta', nombre: nombre || 'Caja', turno: turno || '', empleado_apertura: empleado_apertura || null })
       .select()
       .single()
     if (error) throw new Error(error.message)

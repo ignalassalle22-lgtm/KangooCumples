@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS public.cajas (
 -- ALTER TABLE public.cajas ADD COLUMN IF NOT EXISTS nombre TEXT DEFAULT 'Caja';
 -- ALTER TABLE public.cajas ADD COLUMN IF NOT EXISTS turno TEXT;
 -- ALTER TABLE public.cajas ADD COLUMN IF NOT EXISTS empleado_cierre TEXT;
+-- ALTER TABLE public.cajas ADD COLUMN IF NOT EXISTS empleado_apertura TEXT;
 
 -- Empleados
 CREATE TABLE IF NOT EXISTS public.empleados (
