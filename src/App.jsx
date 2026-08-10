@@ -4,8 +4,10 @@ import { fechaHoyAR } from './utils'
 
 function imprimirTicketEvento(ev, config) {
   const items = []
-  if (ev.chi > 0) items.push({ n: `Chicos (${ev.chi})`, qty: ev.chi, total: ev.chi * (config.pChico || 0) })
-  if (ev.adu > 0) items.push({ n: `Adultos (${ev.adu})`, qty: ev.adu, total: ev.adu * (config.pAdulto || 0) })
+  const pChi = ev.precioChico != null ? ev.precioChico : (config.pChico || 0)
+  const pAdu = ev.precioAdulto != null ? ev.precioAdulto : (config.pAdulto || 0)
+  if (ev.chi > 0) items.push({ n: `Chicos (${ev.chi})`, qty: ev.chi, total: ev.chi * pChi })
+  if (ev.adu > 0) items.push({ n: `Adultos (${ev.adu})`, qty: ev.adu, total: ev.adu * pAdu })
   // Menús (siempre incluir aunque no tengan precio)
   if (ev.mrows) ev.mrows.forEach(r => {
     const m = (config.menus || []).find(x => String(x.id) === String(r.mid))

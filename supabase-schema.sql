@@ -34,6 +34,9 @@ CREATE TABLE IF NOT EXISTS public.eventos (
 -- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS consumos_cobrados BOOLEAN DEFAULT FALSE;
 -- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS menus_stock_aplicado BOOLEAN DEFAULT FALSE;
 -- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS articulos JSONB DEFAULT '[]';
+-- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS precio_chico NUMERIC;
+-- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS precio_adulto NUMERIC;
+-- UPDATE public.eventos SET precio_chico = 28000, precio_adulto = 0 WHERE precio_chico IS NULL;
 
 -- ── Tabla de configuración (clave→valor JSON) ──
 CREATE TABLE IF NOT EXISTS public.configuracion (

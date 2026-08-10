@@ -173,11 +173,15 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
     setMetsPagados(prev => prev.map(m => m.id === id ? { ...m, [field]: val } : m))
   }
 
+  // Precio por chico/adulto: si el evento ya tiene precio grabado, usarlo; si es nuevo, usar config
+  const pChicoEv = evento?.precioChico != null ? evento.precioChico : (config.pChico || 0)
+  const pAdultoEv = evento?.precioAdulto != null ? evento.precioAdulto : (config.pAdulto || 0)
+
   // Computed totals
   const calc = useMemo(() => {
     const chi = parseInt(form.chi) || 0
     const adu = parseInt(form.adu) || 0
-    const base = chi * (config.pChico || 0) + adu * (config.pAdulto || 0)
+    const base = chi * pChicoEv + adu * pAdultoEv
     const mTot = mrows.reduce((acc, r) => {
       const m = config.menus.find(x => String(x.id) === String(r.mid))
       return acc + (m && m.p ? m.p * (parseInt(r.qty) || 0) : 0)
@@ -196,7 +200,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
     const total = base + mTot + eTot + artTot - dto
     const monto = parseFloat(form.monto) || 0
     return { base, mTot, eTot, artTot, dto, total, monto, rest: Math.max(0, total - monto) }
-  }, [form.chi, form.adu, form.promoId, form.monto, extraQtys, extraPrices, adHocExtras, articulosEvento, config, mrows])
+  }, [form.chi, form.adu, form.promoId, form.monto, extraQtys, extraPrices, adHocExtras, articulosEvento, config, mrows, pChicoEv, pAdultoEv])
 
   // Duplicate / overlap check
   // - Evento privado nuevo: bloquea si hay CUALQUIER evento en esa fecha/hora (cualquier salón)
@@ -346,6 +350,8 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
       privado: form.privado,
       chi: parseInt(form.chi) || 0,
       adu: parseInt(form.adu) || 0,
+      precioChico: pChicoEv,
+      precioAdulto: pAdultoEv,
       mrows: mrowsSave,
       extras: extrasSave,
       articulos: articulosSave,
@@ -940,7 +946,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
 
         {/* Total box */}
         <div className="tb">
-          <div className="tr"><span className="tl">Precio base (chicos + adultos)</span><span className="tv">{fmt(calc.base)}</span></div>
+          <div className="tr"><span className="tl">Precio base ({parseInt(form.chi)||0} chicos × {fmt(pChicoEv)}{(parseInt(form.adu)||0) > 0 ? ` + ${parseInt(form.adu)||0} adultos × ${fmt(pAdultoEv)}` : ''})</span><span className="tv">{fmt(calc.base)}</span></div>
           {calc.mTot > 0 && (
             <div className="tr"><span className="tl">Menús</span><span className="tv">{fmt(calc.mTot)}</span></div>
           )}
