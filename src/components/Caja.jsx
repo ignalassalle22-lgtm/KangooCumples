@@ -888,6 +888,10 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
   }, [fetchVentasByCaja])
 
   async function handleAbrir() {
+    if (!nombre) {
+      addToast('Seleccioná el nombre de la caja', 'err')
+      return
+    }
     if (!empleadoApertura) {
       addToast('Seleccioná el empleado que abre la caja', 'err')
       return
@@ -928,14 +932,12 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
               <div className="fgg">
                 <label>Nombre de la caja</label>
-                <input
-                  type="text"
-                  value={nombre}
-                  onChange={e => setNombre(e.target.value)}
-                  onBlur={() => buscarUltimoCierre(nombre)}
-                  placeholder="Ej: Buffet, Saltos, Entrada..."
-                  onKeyDown={e => e.key === 'Enter' && handleAbrir()}
-                />
+                <select value={nombre} onChange={e => { setNombre(e.target.value); buscarUltimoCierre(e.target.value) }}>
+                  <option value="">Seleccionar...</option>
+                  <option value="Buffet">Buffet</option>
+                  <option value="Caja 1">Caja 1</option>
+                  <option value="Caja 2">Caja 2</option>
+                </select>
               </div>
               <div className="fgg">
                 <label>Turno</label>
