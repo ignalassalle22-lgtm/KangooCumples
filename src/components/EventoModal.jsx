@@ -289,9 +289,8 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
         .map(([eid, qty]) => {
           const ex = config.extras.find(x => String(x.id) === String(eid))
           const customP = extraPrices[String(eid)]
-          const obj = { eid, qty }
-          if (customP !== undefined && customP !== ex?.p) obj.p = customP
-          return obj
+          const price = customP !== undefined ? customP : (ex?.p || 0)
+          return { eid, qty, p: price }
         }),
       ...adHocExtras
         .filter(r => r.desc.trim() && parseInt(r.qty) > 0)
