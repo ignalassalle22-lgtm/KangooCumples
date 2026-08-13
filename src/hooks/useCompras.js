@@ -67,6 +67,10 @@ export function useCompras() {
         total: compra.total,
         metodo_pago: compra.metodo_pago,
         obs: compra.obs,
+        iva: compra.iva || 0,
+        retenciones: compra.retenciones || 0,
+        impuestos: compra.impuestos || 0,
+        otros_gastos: compra.otros_gastos || 0,
       })
       .eq('id', compra.id)
     if (updError) throw new Error(updError.message)

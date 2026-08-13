@@ -235,6 +235,15 @@ export default function Compras({ compras, loading, onNueva, onEditar, onAnular,
                   <span className="dm-val" style={{ fontWeight: 700 }}>{fmt(it.subtotal)}</span>
                 </div>
               ))}
+              {(showDetalle.iva > 0 || showDetalle.retenciones > 0 || showDetalle.impuestos > 0 || showDetalle.otros_gastos > 0) && (
+                <>
+                  <div className="sdv" style={{ marginTop: 14 }}>Impuestos y gastos</div>
+                  {showDetalle.iva > 0 && <div className="dm-row"><span className="dm-label">IVA</span><span className="dm-val" style={{ fontWeight: 700 }}>{fmt(showDetalle.iva)}</span></div>}
+                  {showDetalle.retenciones > 0 && <div className="dm-row"><span className="dm-label">Retenciones</span><span className="dm-val" style={{ fontWeight: 700 }}>{fmt(showDetalle.retenciones)}</span></div>}
+                  {showDetalle.impuestos > 0 && <div className="dm-row"><span className="dm-label">Impuestos</span><span className="dm-val" style={{ fontWeight: 700 }}>{fmt(showDetalle.impuestos)}</span></div>}
+                  {showDetalle.otros_gastos > 0 && <div className="dm-row"><span className="dm-label">Otros gastos</span><span className="dm-val" style={{ fontWeight: 700 }}>{fmt(showDetalle.otros_gastos)}</span></div>}
+                </>
+              )}
               <div className="tb" style={{ marginTop: 14 }}>
                 <div className="tr big"><span className="tl">TOTAL</span><span className="tv">{fmt(showDetalle.total)}</span></div>
               </div>

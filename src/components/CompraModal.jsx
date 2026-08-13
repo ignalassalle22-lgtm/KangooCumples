@@ -14,6 +14,10 @@ export default function CompraModal({ compra, productos, proveedores = [], metod
   const [obs, setObs] = useState('')
   const [items, setItems] = useState([])
   const [busca, setBusca] = useState('')
+  const [iva, setIva] = useState(0)
+  const [retenciones, setRetenciones] = useState(0)
+  const [impuestos, setImpuestos] = useState(0)
+  const [otrosGastos, setOtrosGastos] = useState(0)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -23,6 +27,10 @@ export default function CompraModal({ compra, productos, proveedores = [], metod
       setRemito(compra.numero_remito || '')
       setMetodo(compra.metodo_pago || 'Efectivo')
       setObs(compra.obs || '')
+      setIva(compra.iva || 0)
+      setRetenciones(compra.retenciones || 0)
+      setImpuestos(compra.impuestos || 0)
+      setOtrosGastos(compra.otros_gastos || 0)
       setItems((compra.compra_items || []).map(it => ({
         producto_id: it.producto_id,
         nombre_producto: it.nombre_producto,
@@ -63,13 +71,14 @@ export default function CompraModal({ compra, productos, proveedores = [], metod
     }))
   }
 
-  const total = items.reduce((s, it) => s + it.subtotal, 0)
+  const subtotalProductos = items.reduce((s, it) => s + it.subtotal, 0)
+  const total = subtotalProductos + (iva || 0) + (retenciones || 0) + (impuestos || 0) + (otrosGastos || 0)
 
   async function handleGuardar() {
     if (items.length === 0) { addToast('Agregá al menos un producto', 'err'); return }
     setSaving(true)
     try {
-      const data = { proveedor, fecha, numero_remito: remito, total, metodo_pago: metodo, obs }
+      const data = { proveedor, fecha, numero_remito: remito, total, metodo_pago: metodo, obs, iva: iva || 0, retenciones: retenciones || 0, impuestos: impuestos || 0, otros_gastos: otrosGastos || 0 }
       if (esEdicion) data.id = compra.id
       await onSave(data, items, esEdicion ? compra.compra_items : null)
     } catch (e) {
@@ -213,7 +222,34 @@ export default function CompraModal({ compra, productos, proveedores = [], metod
           </div>
         )}
 
+        <div className="sdv" style={{ marginTop: 18 }}>Impuestos y otros gastos</div>
+        <div className="fg">
+          <div className="fgg">
+            <label>IVA</label>
+            <input type="number" min="0" step="0.01" value={iva || ''} onChange={e => setIva(parseFloat(e.target.value) || 0)} placeholder="0" />
+          </div>
+          <div className="fgg">
+            <label>Retenciones</label>
+            <input type="number" min="0" step="0.01" value={retenciones || ''} onChange={e => setRetenciones(parseFloat(e.target.value) || 0)} placeholder="0" />
+          </div>
+          <div className="fgg">
+            <label>Impuestos</label>
+            <input type="number" min="0" step="0.01" value={impuestos || ''} onChange={e => setImpuestos(parseFloat(e.target.value) || 0)} placeholder="0" />
+          </div>
+          <div className="fgg">
+            <label>Otros gastos</label>
+            <input type="number" min="0" step="0.01" value={otrosGastos || ''} onChange={e => setOtrosGastos(parseFloat(e.target.value) || 0)} placeholder="0" />
+          </div>
+        </div>
+
         <div className="tb" style={{ marginTop: 16 }}>
+          <div className="tr"><span className="tl">Subtotal productos</span><span className="tv">{fmt(subtotalProductos)}</span></div>
+          {(iva > 0 || retenciones > 0 || impuestos > 0 || otrosGastos > 0) && <>
+            {iva > 0 && <div className="tr"><span className="tl">IVA</span><span className="tv">{fmt(iva)}</span></div>}
+            {retenciones > 0 && <div className="tr"><span className="tl">Retenciones</span><span className="tv">{fmt(retenciones)}</span></div>}
+            {impuestos > 0 && <div className="tr"><span className="tl">Impuestos</span><span className="tv">{fmt(impuestos)}</span></div>}
+            {otrosGastos > 0 && <div className="tr"><span className="tl">Otros gastos</span><span className="tv">{fmt(otrosGastos)}</span></div>}
+          </>}
           <div className="tr big"><span className="tl">TOTAL COMPRA</span><span className="tv">{fmt(total)}</span></div>
         </div>
 

@@ -150,6 +150,10 @@ CREATE TABLE IF NOT EXISTS public.compras (
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 -- Migración: ALTER TABLE public.compras ADD COLUMN IF NOT EXISTS metodo_pago TEXT;
+-- Migración: ALTER TABLE public.compras ADD COLUMN IF NOT EXISTS iva NUMERIC DEFAULT 0;
+-- Migración: ALTER TABLE public.compras ADD COLUMN IF NOT EXISTS retenciones NUMERIC DEFAULT 0;
+-- Migración: ALTER TABLE public.compras ADD COLUMN IF NOT EXISTS impuestos NUMERIC DEFAULT 0;
+-- Migración: ALTER TABLE public.compras ADD COLUMN IF NOT EXISTS otros_gastos NUMERIC DEFAULT 0;
 
 -- Items de compra
 CREATE TABLE IF NOT EXISTS public.compra_items (
