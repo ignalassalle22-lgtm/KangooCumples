@@ -866,6 +866,16 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
   const [ventasPorCaja, setVentasPorCaja] = useState({})
   const [loadingCaja, setLoadingCaja] = useState({})
 
+  // Cargar ventas de cada caja abierta por caja_id (sin filtro de fecha)
+  // para que cajas de días anteriores muestren sus tickets correctamente
+  useEffect(() => {
+    if (!cajasAbiertas.length || !fetchVentasByCaja) return
+    cajasAbiertas.forEach(async (c) => {
+      const data = await fetchVentasByCaja(c.id)
+      setVentasPorCaja(prev => ({ ...prev, [c.id]: data }))
+    })
+  }, [cajasAbiertas, fetchVentasByCaja])
+
   // Auto-fill saldo inicial con el último cierre de la misma caja
   const buscarUltimoCierre = useCallback((nombreCaja) => {
     if (!nombreCaja.trim() || !historial.length) { setSaldoSugerido(null); return }
@@ -983,11 +993,17 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {cajasAbiertas.map(c => (
                   <CajaCard
-                    key={c.id} caja={c} ventas={ventas}
+                    key={c.id} caja={c} ventas={ventasPorCaja[c.id] || ventas}
                     gastos={gastos.filter(g => g.caja_id === c.id)}
                     empleados={empleados}
                     onCerrar={onCerrar} onAddGasto={onAddGasto} onAddCofreIngreso={onAddCofreIngreso}
-                    onRefresh={onRefreshVentas}
+                    onRefresh={async () => {
+                      if (onRefreshVentas) onRefreshVentas()
+                      if (fetchVentasByCaja) {
+                        const data = await fetchVentasByCaja(c.id)
+                        setVentasPorCaja(prev => ({ ...prev, [c.id]: data }))
+                      }
+                    }}
                     addToast={addToast} askPin={askPin}
                   />
                 ))}
