@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { imprimirTicket, imprimirTicketBrowser } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
@@ -257,11 +257,14 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
   const [cofreObs, setCofreObs] = useState('')
 
   // Actualizar ventas al abrir el módulo y cada 30 segundos (para capturar ventas del POS en otra pestaña)
+  // Usa ref para evitar loop infinito cuando onRefresh es una función inline
+  const onRefreshRef = useRef(onRefresh)
+  useEffect(() => { onRefreshRef.current = onRefresh })
   useEffect(() => {
-    if (onRefresh) onRefresh()
-    const interval = setInterval(() => { if (onRefresh) onRefresh() }, 30000)
+    onRefreshRef.current?.()
+    const interval = setInterval(() => onRefreshRef.current?.(), 30000)
     return () => clearInterval(interval)
-  }, [onRefresh])
+  }, [])
 
   const ventasCaja = useMemo(() =>
     ventas.filter(v => v.caja_id === caja.id && v.estado !== 'anulada'),
