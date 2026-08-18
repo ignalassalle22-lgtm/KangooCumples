@@ -868,6 +868,7 @@ function AppInner({ usuario, onLogout }) {
           empleados={empleados}
           ventaEditar={editingVenta}
           onSaveEdicion={handleSaveEdicionVenta}
+          onUpdateVenta={updateVenta}
           itemsIniciales={pedidoParaCobrar ? (pedidoParaCobrar.pedido_items || []).map(it => ({
             producto_id: it.producto_id || null,
             nombre_producto: it.nombre_producto,

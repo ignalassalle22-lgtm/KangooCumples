@@ -5,7 +5,7 @@ const fmt = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('es-AR')
 const hoy = () => fechaHoyAR()
 const hora = () => new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hour12: false })
 
-function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descuento, total, metodoPago, obs }) {
+function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descuento, total, metodoPago, obs, cae }) {
   fetch('http://127.0.0.1:5001/print/venta_caja', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -25,10 +25,19 @@ function imprimirVenta({ numero, fecha, horaStr, cliente, items, subtotal, descu
       total,
       metodo_pago: metodoPago,
       obs,
+      cae: cae || null,
     }),
   }).then(r => { if (!r.ok) throw new Error('servidor respondió error') }).catch((err) => {
     console.error('[PRINT] Error conectando al servidor de impresión:', err.message || err)
     const sep = '--------------------------------'
+    const caeBlock = cae ? `<pre>${sep}</pre>
+<div style="text-align:center;font-size:8px;margin:2px 0">
+<div style="font-weight:bold">FACTURA C</div>
+<div>Pto Vta: ${String(cae.ptoVta).padStart(5,'0')} - Nro: ${String(cae.cbteNumero).padStart(8,'0')}</div>
+<div>CUIT: ${cae.cuit}</div>
+<div>CAE: ${cae.cae}</div>
+<div>Vto CAE: ${cae.caeVto}</div>
+</div>` : ''
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:9px;width:74mm}
 h1{font-size:11px;font-weight:bold;text-align:center;margin-bottom:2px}
@@ -51,6 +60,7 @@ ${cliente ? `<tr><td>Cliente</td><td class="r">${cliente}</td></tr>` : ''}
 ${descuento > 0 ? `<tr><td>Subtotal</td><td class="r">${fmt(subtotal)}</td></tr><tr><td>Descuento</td><td class="r">-${fmt(descuento)}</td></tr>` : ''}
 <tr class="big"><td>TOTAL</td><td class="r">${fmt(total)}</td></tr>
 </table>
+${caeBlock}
 <div class="foot">Gracias por tu visita!</div>
 </body></html>`
     imprimirTicketBrowser(html)
@@ -87,7 +97,7 @@ function parsearMultiMetodo(str) {
   })
 }
 
-export default function TicketModal({ productos, categorias = [], cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, metodosPago, empleados = [], itemsIniciales = [], clienteInicial = '', onSave, onSaveEdicion, ventaEditar = null, onClose, addToast }) {
+export default function TicketModal({ productos, categorias = [], cajasAbiertas = [], cajaSeleccionadaId, onCajaChange, metodosPago, empleados = [], itemsIniciales = [], clienteInicial = '', onSave, onSaveEdicion, onUpdateVenta, ventaEditar = null, onClose, addToast }) {
   const METODOS = metodosPago?.length ? metodosPago : METODOS_DEFAULT
   // Parsear métodos existentes al editar
   const initMetodos = ventaEditar ? parsearMultiMetodo(ventaEditar.metodo_pago) : null
@@ -122,7 +132,16 @@ export default function TicketModal({ productos, categorias = [], cajasAbiertas 
   const [metodosPagados, setMetodosPagados] = useState(initMetodos || [{ id: 1, met: 'Efectivo', monto: '' }])
   const [obs, setObs] = useState(ventaEditar?.obs || '')
   const [saving, setSaving] = useState(false)
+  const [facturar, setFacturar] = useState(() => localStorage.getItem('kangoo_facturar') === '1')
   const buscaRef = useRef()
+
+  function toggleFacturar() {
+    setFacturar(prev => {
+      const next = !prev
+      localStorage.setItem('kangoo_facturar', next ? '1' : '0')
+      return next
+    })
+  }
 
   const empleadosActivos = empleados.filter(e => e.activo !== false)
 
@@ -300,6 +319,34 @@ export default function TicketModal({ productos, categorias = [], cajasAbiertas 
           items
         )
         if (ventaGuardada) {
+          let caeInfo = null
+          // Si facturar está activo, llamar a ARCA para obtener CAE
+          if (facturar) {
+            try {
+              addToast('Facturando en ARCA...', 'info')
+              const resp = await fetch('/api/arca-facturar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ total, fecha: fechaStr }),
+              })
+              const data = await resp.json()
+              if (resp.ok && data.cae) {
+                caeInfo = data
+                if (onUpdateVenta) {
+                  await onUpdateVenta(ventaGuardada.id, {
+                    cae: data.cae,
+                    cae_vto: data.caeVto,
+                    cbte_numero: data.cbteNumero,
+                  })
+                }
+                addToast(`Factura C emitida — CAE: ${data.cae}`)
+              } else {
+                addToast('Error ARCA: ' + (data.error || 'Error desconocido'), 'err')
+              }
+            } catch (e) {
+              addToast('Error al conectar con ARCA: ' + e.message, 'err')
+            }
+          }
           imprimirVenta({
             numero: ventaGuardada.numero,
             fecha: fechaStr,
@@ -311,6 +358,7 @@ export default function TicketModal({ productos, categorias = [], cajasAbiertas 
             total,
             metodoPago: metodoPagoFinal,
             obs,
+            cae: caeInfo,
           })
         }
         onClose()
@@ -709,9 +757,38 @@ export default function TicketModal({ productos, categorias = [], cajasAbiertas 
               <div className="tr big"><span className="tl">TOTAL</span><span className="tv">{fmt(total)}</span></div>
             </div>
 
+            {!ventaEditar && (
+              <div
+                onClick={toggleFacturar}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '10px 14px', borderRadius: 10, cursor: 'pointer', userSelect: 'none',
+                  border: `1.5px solid ${facturar ? 'var(--nv)' : 'var(--bd2)'}`,
+                  background: facturar ? 'var(--nv3)' : 'var(--bg2)',
+                  transition: 'all .2s',
+                }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 700, color: facturar ? 'var(--nv)' : 'var(--mu)' }}>
+                  Facturar (ARCA)
+                </span>
+                <div style={{
+                  width: 38, height: 20, borderRadius: 10, padding: 2,
+                  background: facturar ? 'var(--nv)' : '#ccc',
+                  transition: 'background .2s', display: 'flex', alignItems: 'center',
+                }}>
+                  <div style={{
+                    width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                    transition: 'transform .2s',
+                    transform: facturar ? 'translateX(18px)' : 'translateX(0)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+                  }} />
+                </div>
+              </div>
+            )}
+
             <button className="bp" onClick={handleGuardar} disabled={saving || items.length === 0}
               style={{ width: '100%', padding: '13px', fontSize: 15 }}>
-              {saving ? 'Guardando...' : '✓ Confirmar venta'}
+              {saving ? 'Guardando...' : facturar && !ventaEditar ? '✓ Confirmar y facturar' : '✓ Confirmar venta'}
             </button>
             <button className="bg2" onClick={onClose} style={{ width: '100%' }}>Cancelar</button>
           </div>
