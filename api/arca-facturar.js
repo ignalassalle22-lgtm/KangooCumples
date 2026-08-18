@@ -1,6 +1,23 @@
 // api/arca-facturar.js — Obtiene token WSAA + solicita CAE para factura C (monotributista)
 import { buildTRA, signTRA, callWSAA, callWSFE, xmlTag } from '../lib/arca.js'
 
+// Cache de token WSAA en memoria (persiste mientras la instancia serverless esté caliente)
+let wsaaCache = null // { token, sign, expiration }
+
+async function getWSAAToken(cert, key, ambiente) {
+  // Reusar token si existe y no expiró (con 5 min de margen)
+  if (wsaaCache && new Date(wsaaCache.expiration) > new Date(Date.now() + 5 * 60 * 1000)) {
+    return { token: wsaaCache.token, sign: wsaaCache.sign }
+  }
+
+  const tra = buildTRA('wsfe')
+  const cms = signTRA(tra, cert, key)
+  const result = await callWSAA(cms, ambiente)
+
+  wsaaCache = { token: result.token, sign: result.sign, expiration: result.expiration }
+  return { token: result.token, sign: result.sign }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
@@ -21,10 +38,8 @@ export default async function handler(req, res) {
   if (!cuit) return res.status(500).json({ error: 'ARCA_CUIT no configurado' })
 
   try {
-    // 1. Obtener token WSAA
-    const tra = buildTRA('wsfe')
-    const cms = signTRA(tra, cert, key)
-    const { token, sign } = await callWSAA(cms, ambiente)
+    // 1. Obtener token WSAA (con cache)
+    const { token, sign } = await getWSAAToken(cert, key, ambiente)
 
     // 2. Último comprobante autorizado (Factura C = tipo 11)
     const cbteTipo = 11
