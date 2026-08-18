@@ -10,7 +10,7 @@ import { useEmpleados } from '../hooks/useEmpleados'
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 const fmtT = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('es-AR')
 
-function imprimirVenta({ numero, fecha, hora, cliente, items, subtotal, descuento, total, metodoPago, obs }) {
+function imprimirVenta({ numero, fecha, hora, cliente, items, subtotal, descuento, total, metodoPago, obs, cae }) {
   fetch('http://127.0.0.1:5001/print/venta_caja', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -18,11 +18,19 @@ function imprimirVenta({ numero, fecha, hora, cliente, items, subtotal, descuent
     body: JSON.stringify({
       numero, fecha, hora, cliente,
       venta_items: items.map(it => ({ nombre_producto: it.nombre_producto, cantidad: it.cantidad, subtotal: it.subtotal })),
-      subtotal, descuento, total, metodo_pago: metodoPago, obs,
+      subtotal, descuento, total, metodo_pago: metodoPago, obs, cae: cae || null,
     }),
   }).then(r => { if (!r.ok) throw new Error('servidor respondió error') }).catch((err) => {
     console.error('[PRINT] Error conectando al servidor de impresión:', err.message || err)
     const sep = '--------------------------------'
+    const caeBlock = cae ? `<pre>${sep}</pre>
+<div style="text-align:center;font-size:8px;margin:2px 0">
+<div style="font-weight:bold">FACTURA C</div>
+<div>Pto Vta: ${String(cae.ptoVta).padStart(5,'0')} - Nro: ${String(cae.cbteNumero).padStart(8,'0')}</div>
+<div>CUIT: ${cae.cuit}</div>
+<div>CAE: ${cae.cae}</div>
+<div>Vto CAE: ${cae.caeVto}</div>
+</div>` : ''
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title></title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:9px;width:74mm}
 h1{font-size:11px;font-weight:bold;text-align:center;margin-bottom:2px}
@@ -45,6 +53,7 @@ ${cliente ? `<tr><td>Cliente</td><td class="r">${cliente}</td></tr>` : ''}
 ${descuento > 0 ? `<tr><td>Subtotal</td><td class="r">${fmtT(subtotal)}</td></tr><tr><td>Descuento</td><td class="r">-${fmtT(descuento)}</td></tr>` : ''}
 <tr class="big"><td>TOTAL</td><td class="r">${fmtT(total)}</td></tr>
 </table>
+${caeBlock}
 <div class="foot">Gracias por tu visita!</div>
 </body></html>`
     imprimirTicketBrowser(html)
@@ -281,7 +290,7 @@ function SelectorCaja({ cajasAbiertas, onSelect }) {
 }
 
 // ── Interfaz POS ─────────────────────────────────────────────────────────────
-function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categorias, config, empleados, addToast }) {
+function POSInterface({ caja, ventas, saveVenta, updateVenta, updateStock, productos, categorias, config, empleados, addToast }) {
   const METODOS = config.mets_caja?.length ? config.mets_caja : ['Efectivo', 'Transferencia', 'Tarjeta débito', 'Tarjeta crédito', 'Mercado Pago', 'Otro']
 
   // Ticket state
@@ -301,6 +310,7 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
   const [metsPagados, setMetsPagados] = useState([{ id: 1, met: 'Efectivo', monto: '' }])
   const buscaRef = useRef()
   const [varModal, setVarModal] = useState(null) // producto variable pendiente de opciones
+  const [facturar, setFacturar] = useState(() => localStorage.getItem('kangoo_facturar') === '1')
 
   const empleadosActivos = empleados.filter(e => e.activo !== false)
 
@@ -518,6 +528,35 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
 
       setUltimaVenta({ ...ventaGuardada, venta_items: itemsConOpciones })
       addToast('Venta registrada correctamente')
+
+      let caeInfo = null
+      if (facturar) {
+        try {
+          addToast('Facturando en ARCA...')
+          const resp = await fetch('/api/arca-facturar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ total, fecha }),
+          })
+          const data = await resp.json()
+          if (resp.ok && data.cae) {
+            caeInfo = data
+            if (updateVenta) {
+              await updateVenta(ventaGuardada.id, {
+                cae: data.cae,
+                cae_vto: data.caeVto,
+                cbte_numero: data.cbteNumero,
+              })
+            }
+            addToast(`Factura C emitida — CAE: ${data.cae}`)
+          } else {
+            addToast('Error ARCA: ' + (data.error || 'Error desconocido'), 'err')
+          }
+        } catch (e) {
+          addToast('Error al conectar con ARCA: ' + e.message, 'err')
+        }
+      }
+
       imprimirVenta({
         numero: ventaGuardada.numero,
         fecha,
@@ -529,6 +568,7 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
         total,
         metodoPago: metodoPagoFinal,
         obs,
+        cae: caeInfo,
       })
       limpiarTicket()
     } catch (e) {
@@ -901,13 +941,40 @@ function POSInterface({ caja, ventas, saveVenta, updateStock, productos, categor
               </div>
             )}
 
+            <div
+              onClick={() => setFacturar(prev => { const next = !prev; localStorage.setItem('kangoo_facturar', next ? '1' : '0'); return next })}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '8px 12px', borderRadius: 8, cursor: 'pointer', userSelect: 'none',
+                border: `1.5px solid ${facturar ? 'var(--nv)' : 'var(--bd2)'}`,
+                background: facturar ? 'var(--nv3)' : 'var(--bg2)',
+                transition: 'all .2s', marginBottom: 8,
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 700, color: facturar ? 'var(--nv)' : 'var(--mu)' }}>
+                Facturar (ARCA)
+              </span>
+              <div style={{
+                width: 34, height: 18, borderRadius: 9, padding: 2,
+                background: facturar ? 'var(--nv)' : '#ccc',
+                transition: 'background .2s', display: 'flex', alignItems: 'center',
+              }}>
+                <div style={{
+                  width: 14, height: 14, borderRadius: '50%', background: '#fff',
+                  transition: 'transform .2s',
+                  transform: facturar ? 'translateX(16px)' : 'translateX(0)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+                }} />
+              </div>
+            </div>
+
             <button
               className="bp"
               onClick={handleCobrar}
               disabled={saving || items.length === 0}
               style={{ width: '100%', padding: '14px', fontSize: 16, marginBottom: 8 }}
             >
-              {saving ? 'Registrando...' : `✓ Cobrar ${total > 0 ? fmt(total) : ''}`}
+              {saving ? 'Registrando...' : facturar ? `✓ Cobrar y facturar ${total > 0 ? fmt(total) : ''}` : `✓ Cobrar ${total > 0 ? fmt(total) : ''}`}
             </button>
             {items.length > 0 && (
               <button className="bg2" onClick={limpiarTicket} style={{ width: '100%', fontSize: 13 }}>
@@ -1006,7 +1073,7 @@ export default function POS() {
   }, [])
 
   const { cajasAbiertas } = useCaja()
-  const { ventas, saveVenta } = useVentas()
+  const { ventas, saveVenta, updateVenta } = useVentas()
   const { productos, categorias, updateStock } = useProductos()
   const { config } = useConfig()
   const { empleados } = useEmpleados()
@@ -1031,6 +1098,7 @@ export default function POS() {
             caja={cajaSeleccionada}
             ventas={ventas}
             saveVenta={saveVenta}
+            updateVenta={updateVenta}
             updateStock={updateStock}
             productos={productos}
             categorias={categorias}
