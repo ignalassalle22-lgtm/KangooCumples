@@ -99,9 +99,9 @@ export default async function handler(req, res) {
               <ar:ImpOpEx>0.00</ar:ImpOpEx>
               <ar:ImpIVA>0.00</ar:ImpIVA>
               <ar:ImpTrib>0.00</ar:ImpTrib>
-              <ar:CondicionIVAReceptor>${condIvaReceptor}</ar:CondicionIVAReceptor>
               <ar:MonId>PES</ar:MonId>
               <ar:MonCotiz>1</ar:MonCotiz>
+              <ar:CondicionIVAReceptorId>${condIvaReceptor}</ar:CondicionIVAReceptorId>
             </ar:FECAEDetRequest>
           </ar:FeDetReq>
         </ar:FeCAEReq>
