@@ -65,6 +65,8 @@ export default async function handler(req, res) {
     const docCuit = (clienteCuit || '').replace(/[-\s]/g, '')
     const docTipo = docCuit ? 80 : 99   // 80=CUIT, 99=Consumidor Final
     const docNro  = docCuit || 0
+    // Condición IVA receptor (RG 5616): 5=Consumidor Final, 1=Responsable Inscripto
+    const condIvaReceptor = docCuit ? 1 : 5
 
     // Fecha formato YYYYMMDD
     const fechaStr = (fecha || new Date().toISOString().slice(0, 10)).replace(/-/g, '')
@@ -97,6 +99,7 @@ export default async function handler(req, res) {
               <ar:ImpOpEx>0.00</ar:ImpOpEx>
               <ar:ImpIVA>0.00</ar:ImpIVA>
               <ar:ImpTrib>0.00</ar:ImpTrib>
+              <ar:CondicionIVAReceptor>${condIvaReceptor}</ar:CondicionIVAReceptor>
               <ar:MonId>PES</ar:MonId>
               <ar:MonCotiz>1</ar:MonCotiz>
             </ar:FECAEDetRequest>
