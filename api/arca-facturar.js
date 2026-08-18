@@ -169,6 +169,6 @@ export default async function handler(req, res) {
       cuit,
     })
   } catch (err) {
-    return res.status(500).json({ error: err.message })
+    return res.status(500).json({ error: err.message, stack: err.cause?.message || undefined })
   }
 }
