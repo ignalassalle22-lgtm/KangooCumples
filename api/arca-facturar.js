@@ -1,20 +1,58 @@
 // api/arca-facturar.js — Obtiene token WSAA + solicita CAE para factura C (monotributista)
 import { buildTRA, signTRA, callWSAA, callWSFE, xmlTag } from '../lib/arca.js'
 
-// Cache de token WSAA en memoria (persiste mientras la instancia serverless esté caliente)
-let wsaaCache = null // { token, sign, expiration }
+// Cache en memoria (warm instances) + Supabase (persistente entre deploys)
+let wsaaCache = null
+
+async function supabaseGet(service) {
+  const url = process.env.VITE_SUPABASE_URL
+  const key = process.env.VITE_SUPABASE_ANON_KEY
+  if (!url || !key) return null
+  try {
+    const resp = await fetch(`${url}/rest/v1/arca_tokens?id=eq.${service}&select=token,sign,expiration`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` }
+    })
+    const rows = await resp.json()
+    return rows[0] || null
+  } catch { return null }
+}
+
+async function supabaseSave(service, token, sign, expiration) {
+  const url = process.env.VITE_SUPABASE_URL
+  const key = process.env.VITE_SUPABASE_ANON_KEY
+  if (!url || !key) return
+  try {
+    await fetch(`${url}/rest/v1/arca_tokens?id=eq.${service}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: key, Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json', Prefer: 'return=minimal'
+      },
+      body: JSON.stringify({ token, sign, expiration })
+    })
+  } catch {}
+}
 
 async function getWSAAToken(cert, key, ambiente) {
-  // Reusar token si existe y no expiró (con 5 min de margen)
+  // 1. Cache en memoria
   if (wsaaCache && new Date(wsaaCache.expiration) > new Date(Date.now() + 5 * 60 * 1000)) {
     return { token: wsaaCache.token, sign: wsaaCache.sign }
   }
 
+  // 2. Cache en Supabase
+  const cached = await supabaseGet('wsfe')
+  if (cached?.token && cached?.expiration && new Date(cached.expiration) > new Date(Date.now() + 5 * 60 * 1000)) {
+    wsaaCache = cached
+    return { token: cached.token, sign: cached.sign }
+  }
+
+  // 3. Pedir token nuevo a WSAA
   const tra = buildTRA('wsfe')
   const cms = signTRA(tra, cert, key)
   const result = await callWSAA(cms, ambiente)
 
   wsaaCache = { token: result.token, sign: result.sign, expiration: result.expiration }
+  await supabaseSave('wsfe', result.token, result.sign, result.expiration)
   return { token: result.token, sign: result.sign }
 }
 
