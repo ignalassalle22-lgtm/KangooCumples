@@ -2,7 +2,7 @@
 import { buildTRA, signTRA, callWSAA, callWSFE, xmlTag } from '../lib/arca.js'
 
 // Cache en memoria (warm instances) + Supabase (persistente entre deploys)
-let wsaaCache = null
+let wsaaCache = null // { token, sign, expiration, ambiente }
 
 async function supabaseGet(service) {
   const url = process.env.VITE_SUPABASE_URL
@@ -34,10 +34,11 @@ async function supabaseSave(service, token, sign, expiration) {
 }
 
 async function getWSAAToken(cert, key, ambiente) {
-  // 1. Cache en memoria
-  if (wsaaCache && new Date(wsaaCache.expiration) > new Date(Date.now() + 5 * 60 * 1000)) {
+  // 1. Cache en memoria (verificar que sea del mismo ambiente)
+  if (wsaaCache && wsaaCache.ambiente === ambiente && new Date(wsaaCache.expiration) > new Date(Date.now() + 5 * 60 * 1000)) {
     return { token: wsaaCache.token, sign: wsaaCache.sign }
   }
+  wsaaCache = null
 
   // 2. Cache en Supabase
   const cached = await supabaseGet('wsfe')
@@ -51,7 +52,7 @@ async function getWSAAToken(cert, key, ambiente) {
   const cms = signTRA(tra, cert, key)
   const result = await callWSAA(cms, ambiente)
 
-  wsaaCache = { token: result.token, sign: result.sign, expiration: result.expiration }
+  wsaaCache = { token: result.token, sign: result.sign, expiration: result.expiration, ambiente }
   await supabaseSave('wsfe', result.token, result.sign, result.expiration)
   return { token: result.token, sign: result.sign }
 }
