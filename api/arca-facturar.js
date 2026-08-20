@@ -149,8 +149,13 @@ export default async function handler(req, res) {
     const resultado = xmlTag(caeXml, 'Resultado')
     const cae       = xmlTag(caeXml, 'CAE')
     const caeVto    = xmlTag(caeXml, 'CAEFchVto')
+    // Extraer errores: <Err> (errores de sistema), <Obs> (rechazos en detalle), <faultstring> (SOAP fault)
     const errBlock  = xmlTag(caeXml, 'Err')
-    const errMsg    = (errBlock && xmlTag(errBlock, 'Msg')) || xmlTag(caeXml, 'faultstring') || 'ARCA rechazó el comprobante'
+    const obsBlock  = xmlTag(caeXml, 'Obs')
+    const errMsg    = (errBlock && xmlTag(errBlock, 'Msg'))
+                   || (obsBlock && xmlTag(obsBlock, 'Msg'))
+                   || xmlTag(caeXml, 'faultstring')
+                   || 'ARCA rechazó el comprobante'
 
     if (resultado !== 'A' || !cae) {
       return res.status(400).json({ error: errMsg, raw: caeXml })
