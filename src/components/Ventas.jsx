@@ -199,6 +199,14 @@ export default function Ventas({ ventas: ventasGlobal, loading: loadingGlobal, c
                 <div className="tr big"><span className="tl">TOTAL</span><span className="tv">{fmt(showDetalle.total)}</span></div>
               </div>
               {showDetalle.obs && <p style={{ marginTop: 12, fontSize: 13, color: 'var(--mu)' }}>{showDetalle.obs}</p>}
+              {showDetalle.cae && (
+                <div style={{ marginTop: 14, padding: '10px 12px', background: 'var(--bg2)', borderRadius: 8, fontSize: 12 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 6, color: 'var(--nv)' }}>Factura C</div>
+                  <div className="dm-row"><span className="dm-label">CAE</span><span className="dm-val" style={{ fontFamily: 'monospace' }}>{showDetalle.cae}</span></div>
+                  <div className="dm-row"><span className="dm-label">Vto CAE</span><span className="dm-val">{showDetalle.cae_vto}</span></div>
+                  {showDetalle.cbte_numero && <div className="dm-row"><span className="dm-label">Comprobante</span><span className="dm-val">{showDetalle.cbte_numero}</span></div>}
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
               <button className="bg2" onClick={() => setShowDetalle(null)}>Cerrar</button>

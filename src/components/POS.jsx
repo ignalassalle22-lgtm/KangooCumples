@@ -550,8 +550,7 @@ function POSInterface({ caja, ventas, saveVenta, updateVenta, updateStock, produ
             }
             addToast(`Factura C emitida — CAE: ${data.cae}`)
           } else {
-            addToast('Error ARCA: ' + (data.error || 'Error desconocido') + (data._v ? ` [v${data._v}]` : ' [OLD]'), 'err')
-            console.log('ARCA response:', JSON.stringify(data))
+            addToast('Error ARCA: ' + (data.error || 'Error desconocido'), 'err')
           }
         } catch (e) {
           addToast('Error al conectar con ARCA: ' + e.message, 'err')
