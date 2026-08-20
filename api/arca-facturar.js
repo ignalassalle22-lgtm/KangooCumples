@@ -158,7 +158,7 @@ export default async function handler(req, res) {
                    || 'ARCA rechazó el comprobante'
 
     if (resultado !== 'A' || !cae) {
-      return res.status(400).json({ error: errMsg, raw: caeXml })
+      return res.status(400).json({ error: errMsg, _v: 2, _debug: { resultado, hasErr: !!errBlock, hasObs: !!obsBlock } })
     }
 
     // Formatear vencimiento: YYYYMMDD → YYYY-MM-DD
