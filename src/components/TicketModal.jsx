@@ -337,6 +337,7 @@ export default function TicketModal({ productos, categorias = [], cajasAbiertas 
                     cae: data.cae,
                     cae_vto: data.caeVto,
                     cbte_numero: data.cbteNumero,
+                    pto_vta: data.ptoVta,
                   })
                 }
                 addToast(`Factura C emitida — CAE: ${data.cae}`)

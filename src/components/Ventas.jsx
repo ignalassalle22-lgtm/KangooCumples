@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { fechaHoyAR, imprimirTicketBrowser } from '../utils'
+import { fechaHoyAR, imprimirTicketBrowser, abrirFacturaC } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 const hoy = () => fechaHoyAR()
@@ -202,14 +202,15 @@ export default function Ventas({ ventas: ventasGlobal, loading: loadingGlobal, c
               {showDetalle.cae && (
                 <div style={{ marginTop: 14, padding: '10px 12px', background: 'var(--bg2)', borderRadius: 8, fontSize: 12 }}>
                   <div style={{ fontWeight: 700, marginBottom: 6, color: 'var(--nv)' }}>Factura C</div>
+                  <div className="dm-row"><span className="dm-label">Comprobante</span><span className="dm-val" style={{ fontFamily: 'monospace' }}>{String(showDetalle.pto_vta || '').padStart(4,'0')}-{String(showDetalle.cbte_numero || '').padStart(8,'0')}</span></div>
                   <div className="dm-row"><span className="dm-label">CAE</span><span className="dm-val" style={{ fontFamily: 'monospace' }}>{showDetalle.cae}</span></div>
                   <div className="dm-row"><span className="dm-label">Vto CAE</span><span className="dm-val">{showDetalle.cae_vto}</span></div>
-                  {showDetalle.cbte_numero && <div className="dm-row"><span className="dm-label">Comprobante</span><span className="dm-val">{showDetalle.cbte_numero}</span></div>}
                 </div>
               )}
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
               <button className="bg2" onClick={() => setShowDetalle(null)}>Cerrar</button>
+              {showDetalle.cae && <button className="bg2" onClick={() => abrirFacturaC(showDetalle)}>Ver Factura</button>}
               <button className="bp" onClick={() => {
                 const v = showDetalle
                 const f = (n) => '$' + Math.round(Number(n || 0)).toLocaleString('es-AR')

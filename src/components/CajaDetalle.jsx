@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { supabase } from '../supabase'
-import { imprimirTicketBrowser } from '../utils'
+import { imprimirTicketBrowser, abrirFacturaC } from '../utils'
 
 const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 })
 
@@ -102,14 +102,15 @@ function TicketDetalle({ venta, onClose }) {
           {venta.cae && (
             <div style={{ marginTop: 14, padding: '10px 12px', background: 'var(--bg2)', borderRadius: 8, fontSize: 12 }}>
               <div style={{ fontWeight: 700, marginBottom: 6, color: 'var(--nv)' }}>Factura C</div>
+              <div className="dm-row"><span className="dm-label">Comprobante</span><span className="dm-val" style={{ fontFamily: 'monospace' }}>{String(venta.pto_vta || '').padStart(4,'0')}-{String(venta.cbte_numero || '').padStart(8,'0')}</span></div>
               <div className="dm-row"><span className="dm-label">CAE</span><span className="dm-val" style={{ fontFamily: 'monospace' }}>{venta.cae}</span></div>
               <div className="dm-row"><span className="dm-label">Vto CAE</span><span className="dm-val">{venta.cae_vto}</span></div>
-              {venta.cbte_numero && <div className="dm-row"><span className="dm-label">Comprobante</span><span className="dm-val">{venta.cbte_numero}</span></div>}
             </div>
           )}
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
           <button className="bg2" onClick={onClose}>Cerrar</button>
+          {venta.cae && <button className="bg2" onClick={() => abrirFacturaC(venta)}>Ver Factura</button>}
           <button className="bp" onClick={() => imprimirVentaCaja(venta)}>🖨 Imprimir</button>
         </div>
       </div>

@@ -190,6 +190,110 @@ export function downloadCSV(rows, filename) {
   URL.revokeObjectURL(url)
 }
 
+// Abre una Factura C en nueva pestaña lista para imprimir / guardar como PDF
+export function abrirFacturaC(venta) {
+  const cuit = '20-43967762-8'
+  const razonSocial = 'KANGOO CUMPLES'
+  const condIva = 'Monotributista'
+  const ptoVta = String(venta.pto_vta || '').padStart(4, '0')
+  const cbteNro = String(venta.cbte_numero || '').padStart(8, '0')
+  const fechaFmt = venta.fecha ? venta.fecha.split('-').reverse().join('/') : ''
+  const caeVtoFmt = venta.cae_vto ? venta.cae_vto.split('-').reverse().join('/') : ''
+  const fmtP = n => '$' + Math.round(Number(n || 0)).toLocaleString('es-AR')
+
+  // QR AFIP (RG 4291/2018)
+  const qrData = JSON.stringify({
+    ver: 1, fecha: venta.fecha, cuit: 20439677628,
+    ptoVta: venta.pto_vta || 0, tipoCmp: 11, nroCmp: venta.cbte_numero || 0,
+    importe: parseFloat(Number(venta.total).toFixed(2)),
+    moneda: 'PES', ctz: 1, tipoDocRec: 99, nroDocRec: 0,
+    tipoCodAut: 'E', codAut: parseInt(venta.cae)
+  })
+  const qrUrl = `https://www.afip.gob.ar/fe/qr/?p=${btoa(qrData)}`
+  const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrUrl)}`
+
+  const items = (venta.venta_items || []).map(it => `
+    <tr>
+      <td>${it.nombre_producto}</td>
+      <td class="c">${it.cantidad}</td>
+      <td class="r">${fmtP(it.subtotal / it.cantidad)}</td>
+      <td class="r">${fmtP(it.subtotal)}</td>
+    </tr>`).join('')
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Factura C ${ptoVta}-${cbteNro}</title>
+<style>
+@page{size:A4;margin:12mm}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;font-size:12px;color:#222;max-width:190mm;margin:0 auto}
+.f{border:2px solid #222}
+.hdr{display:flex;position:relative;border-bottom:2px solid #222}
+.hdr-l,.hdr-r{flex:1;padding:14px 16px}
+.hdr-r{text-align:right;border-left:2px solid #222}
+.tipo{position:absolute;left:50%;top:-1px;transform:translateX(-50%);border:2px solid #222;
+  background:#fff;font-size:32px;font-weight:700;padding:6px 18px;z-index:1}
+.tipo small{display:block;font-size:9px;font-weight:400;text-align:center}
+.rs{font-size:18px;font-weight:700;margin-bottom:4px}
+.il{margin:2px 0;font-size:11px}
+.sec{border-bottom:2px solid #222;padding:8px 16px}
+table{width:100%;border-collapse:collapse}
+th{border-bottom:1px solid #999;padding:6px 4px;text-align:left;font-size:11px;font-weight:700}
+td{padding:5px 4px;border-bottom:1px solid #eee;font-size:11px}
+.c{text-align:center}.r{text-align:right}
+.tot{font-size:18px;font-weight:700;text-align:right;padding:12px 16px;border-bottom:2px solid #222}
+.foot{padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-end}
+.cae{font-size:11px}.cae div{margin:3px 0}
+@media print{body{-webkit-print-color-adjust:exact}}
+</style></head><body>
+<div class="f">
+  <div class="hdr">
+    <div class="hdr-l">
+      <div class="rs">${razonSocial}</div>
+      <div class="il">Cond. frente al IVA: ${condIva}</div>
+      <div class="il">CUIT: ${cuit}</div>
+    </div>
+    <div class="tipo">C<small>COD. 11</small></div>
+    <div class="hdr-r">
+      <div class="il" style="font-size:14px;font-weight:700">FACTURA</div>
+      <div class="il"><b>Pto. Vta:</b> ${ptoVta} — <b>Comp. Nro:</b> ${cbteNro}</div>
+      <div class="il"><b>Fecha de Emisión:</b> ${fechaFmt}</div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="il"><b>Condición frente al IVA:</b> Consumidor Final</div>
+    ${venta.cliente ? `<div class="il"><b>Cliente:</b> ${venta.cliente}</div>` : ''}
+    <div class="il"><b>Condición de Venta:</b> Contado</div>
+  </div>
+  <div class="sec">
+    <table><thead><tr>
+      <th>Descripción</th><th class="c">Cant.</th><th class="r">P. Unit.</th><th class="r">Subtotal</th>
+    </tr></thead><tbody>${items}</tbody></table>
+  </div>
+  ${venta.descuento > 0 ? `<div class="sec" style="text-align:right;font-size:12px">
+    <div>Subtotal: ${fmtP(venta.subtotal)}</div>
+    <div>Descuento: -${fmtP(venta.descuento)}</div>
+  </div>` : ''}
+  <div class="tot">TOTAL: ${fmtP(venta.total)}</div>
+  <div class="foot">
+    <div class="cae">
+      <div><b>CAE N°:</b> ${venta.cae}</div>
+      <div><b>Fecha de Vto. de CAE:</b> ${caeVtoFmt}</div>
+    </div>
+    <img src="${qrImg}" width="120" height="120" alt="QR AFIP" />
+  </div>
+</div>
+<script>
+var img=document.querySelector('img');
+function go(){setTimeout(function(){window.print()},300)}
+if(img.complete)go();else{img.onload=go;img.onerror=go}
+</script>
+</body></html>`
+
+  const w = window.open('', '_blank')
+  w.document.write(html)
+  w.document.close()
+}
+
 export const cumpleDisplay = ev =>
   ev.cumple ? (ev.edad ? `${ev.cumple}, ${ev.edad} años` : ev.cumple) : ''
 
