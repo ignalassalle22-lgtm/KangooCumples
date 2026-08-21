@@ -18,6 +18,8 @@ export default function CompraModal({ compra, productos, proveedores = [], metod
   const [retenciones, setRetenciones] = useState(0)
   const [impuestos, setImpuestos] = useState(0)
   const [otrosGastos, setOtrosGastos] = useState(0)
+  const [descuentoTipo, setDescuentoTipo] = useState('monto')
+  const [descuentoValor, setDescuentoValor] = useState(0)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -31,6 +33,8 @@ export default function CompraModal({ compra, productos, proveedores = [], metod
       setRetenciones(compra.retenciones || 0)
       setImpuestos(compra.impuestos || 0)
       setOtrosGastos(compra.otros_gastos || 0)
+      setDescuentoTipo(compra.descuento_tipo || 'monto')
+      setDescuentoValor(compra.descuento_valor || 0)
       setItems((compra.compra_items || []).map(it => ({
         producto_id: it.producto_id,
         nombre_producto: it.nombre_producto,
@@ -72,13 +76,16 @@ export default function CompraModal({ compra, productos, proveedores = [], metod
   }
 
   const subtotalProductos = items.reduce((s, it) => s + it.subtotal, 0)
-  const total = subtotalProductos + (iva || 0) + (retenciones || 0) + (impuestos || 0) + (otrosGastos || 0)
+  const montoDescuento = descuentoTipo === 'porcentaje'
+    ? subtotalProductos * (descuentoValor || 0) / 100
+    : (descuentoValor || 0)
+  const total = subtotalProductos - montoDescuento + (iva || 0) + (retenciones || 0) + (impuestos || 0) + (otrosGastos || 0)
 
   async function handleGuardar() {
     if (items.length === 0) { addToast('Agregá al menos un producto', 'err'); return }
     setSaving(true)
     try {
-      const data = { proveedor, fecha, numero_remito: remito, total, metodo_pago: metodo, obs, iva: iva || 0, retenciones: retenciones || 0, impuestos: impuestos || 0, otros_gastos: otrosGastos || 0 }
+      const data = { proveedor, fecha, numero_remito: remito, total, metodo_pago: metodo, obs, iva: iva || 0, retenciones: retenciones || 0, impuestos: impuestos || 0, otros_gastos: otrosGastos || 0, descuento_tipo: descuentoTipo, descuento_valor: descuentoValor || 0 }
       if (esEdicion) data.id = compra.id
       await onSave(data, items, esEdicion ? compra.compra_items : null)
     } catch (e) {
@@ -222,6 +229,26 @@ export default function CompraModal({ compra, productos, proveedores = [], metod
           </div>
         )}
 
+        <div className="sdv" style={{ marginTop: 18 }}>Descuento</div>
+        <div className="fg">
+          <div className="fgg">
+            <label>Tipo de descuento</label>
+            <select value={descuentoTipo} onChange={e => setDescuentoTipo(e.target.value)}>
+              <option value="monto">Monto fijo ($)</option>
+              <option value="porcentaje">Porcentaje (%)</option>
+            </select>
+          </div>
+          <div className="fgg">
+            <label>{descuentoTipo === 'porcentaje' ? 'Porcentaje (%)' : 'Monto ($)'}</label>
+            <input type="number" min="0" step="0.01" value={descuentoValor || ''} onChange={e => setDescuentoValor(parseFloat(e.target.value) || 0)} placeholder="0" />
+          </div>
+          {descuentoTipo === 'porcentaje' && descuentoValor > 0 && (
+            <div className="fgg" style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <span style={{ fontSize: 13, color: 'var(--mu)', padding: '9px 0' }}>= {fmt(montoDescuento)}</span>
+            </div>
+          )}
+        </div>
+
         <div className="sdv" style={{ marginTop: 18 }}>Impuestos y otros gastos</div>
         <div className="fg">
           <div className="fgg">
@@ -244,6 +271,9 @@ export default function CompraModal({ compra, productos, proveedores = [], metod
 
         <div className="tb" style={{ marginTop: 16 }}>
           <div className="tr"><span className="tl">Subtotal productos</span><span className="tv">{fmt(subtotalProductos)}</span></div>
+          {montoDescuento > 0 && (
+            <div className="tr"><span className="tl">Descuento {descuentoTipo === 'porcentaje' ? `(${descuentoValor}%)` : ''}</span><span className="tv" style={{ color: '#e53e3e' }}>−{fmt(montoDescuento)}</span></div>
+          )}
           {(iva > 0 || retenciones > 0 || impuestos > 0 || otrosGastos > 0) && <>
             {iva > 0 && <div className="tr"><span className="tl">IVA</span><span className="tv">{fmt(iva)}</span></div>}
             {retenciones > 0 && <div className="tr"><span className="tl">Retenciones</span><span className="tv">{fmt(retenciones)}</span></div>}

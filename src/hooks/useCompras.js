@@ -71,6 +71,8 @@ export function useCompras() {
         retenciones: compra.retenciones || 0,
         impuestos: compra.impuestos || 0,
         otros_gastos: compra.otros_gastos || 0,
+        descuento_tipo: compra.descuento_tipo || 'monto',
+        descuento_valor: compra.descuento_valor || 0,
       })
       .eq('id', compra.id)
     if (updError) throw new Error(updError.message)

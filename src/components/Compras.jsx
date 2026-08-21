@@ -235,6 +235,21 @@ export default function Compras({ compras, loading, onNueva, onEditar, onAnular,
                   <span className="dm-val" style={{ fontWeight: 700 }}>{fmt(it.subtotal)}</span>
                 </div>
               ))}
+              {(showDetalle.descuento_valor > 0) && (
+                <>
+                  <div className="sdv" style={{ marginTop: 14 }}>Descuento</div>
+                  <div className="dm-row">
+                    <span className="dm-label">
+                      {showDetalle.descuento_tipo === 'porcentaje' ? `${showDetalle.descuento_valor}%` : 'Monto fijo'}
+                    </span>
+                    <span className="dm-val" style={{ fontWeight: 700, color: '#e53e3e' }}>
+                      −{fmt(showDetalle.descuento_tipo === 'porcentaje'
+                        ? (showDetalle.compra_items || []).reduce((s, it) => s + (it.subtotal || 0), 0) * showDetalle.descuento_valor / 100
+                        : showDetalle.descuento_valor)}
+                    </span>
+                  </div>
+                </>
+              )}
               {(showDetalle.iva > 0 || showDetalle.retenciones > 0 || showDetalle.impuestos > 0 || showDetalle.otros_gastos > 0) && (
                 <>
                   <div className="sdv" style={{ marginTop: 14 }}>Impuestos y gastos</div>
