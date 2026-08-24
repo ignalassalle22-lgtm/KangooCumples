@@ -399,11 +399,15 @@ function AppInner({ usuario, onLogout }) {
   // Función helper: restaura stock de un ítem (y sus componentes si es compuesto)
   const restaurarStockItem = useCallback(async (productoId, qty) => {
     const prod = productos.find(p => p.id === productoId)
-    if (prod?.maneja_stock === false) return
-    await updateStock(productoId, qty)
-    if (prod?.componentes?.length) {
+    if (!prod) return
+    // Descuenta/restaura stock del producto solo si maneja_stock
+    if (prod.maneja_stock !== false) {
+      await updateStock(productoId, qty)
+    }
+    // Siempre procesar componentes (productos compuestos tienen maneja_stock=false pero sus componentes sí)
+    if (prod.componentes?.length) {
       for (const comp of prod.componentes) {
-        await updateStock(comp.producto_id, comp.cantidad * qty)
+        if (comp.producto_id) await updateStock(comp.producto_id, comp.cantidad * qty)
       }
     }
   }, [updateStock, productos])
@@ -515,7 +519,7 @@ function AppInner({ usuario, onLogout }) {
           maneja_stock: false,
         })
       }
-      consumosPendientes.forEach(c => {
+      for (const c of consumosPendientes) {
         items.push({
           producto_id: c.productoId || null,
           nombre_producto: c.nombreProducto,
@@ -524,8 +528,8 @@ function AppInner({ usuario, onLogout }) {
           subtotal: (c.precioUnitario || 0) * c.qty,
           maneja_stock: !!c.productoId,
         })
-        if (c.productoId) restaurarStockItem(c.productoId, -c.qty)
-      })
+        if (c.productoId) await restaurarStockItem(c.productoId, -c.qty)
+      }
 
       const venta = {
         fecha, hora, cliente,

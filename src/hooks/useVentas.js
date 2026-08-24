@@ -72,12 +72,15 @@ export function useVentas() {
 
     // Descontar stock (también para componentes de productos compuestos)
     for (const it of items) {
-      if (it.producto_id && it.maneja_stock !== false && updateStockFn) {
-        await updateStockFn(it.producto_id, -it.cantidad)
-        // Si el producto tiene componentes, descontar de cada componente
+      if (it.producto_id && updateStockFn) {
+        // Descontar stock del producto solo si maneja_stock
+        if (it.maneja_stock !== false) {
+          await updateStockFn(it.producto_id, -it.cantidad)
+        }
+        // Siempre descontar componentes (productos compuestos tienen maneja_stock=false pero sus componentes sí manejan stock)
         if (it.componentes && it.componentes.length > 0) {
           for (const comp of it.componentes) {
-            await updateStockFn(comp.producto_id, -(comp.cantidad * it.cantidad))
+            if (comp.producto_id) await updateStockFn(comp.producto_id, -(comp.cantidad * it.cantidad))
           }
         }
       }
@@ -101,8 +104,9 @@ export function useVentas() {
       for (const it of oldItems) {
         if (!it.producto_id) continue
         const prod = allProductos.find(p => p.id === it.producto_id)
-        if (prod?.maneja_stock === false) continue
-        await updateStockFn(it.producto_id, it.cantidad)
+        if (prod?.maneja_stock !== false) {
+          await updateStockFn(it.producto_id, it.cantidad)
+        }
         if (prod?.componentes?.length > 0) {
           for (const comp of prod.componentes) {
             if (comp.producto_id) await updateStockFn(comp.producto_id, comp.cantidad * it.cantidad)
@@ -140,11 +144,13 @@ export function useVentas() {
     // 4. Aplicar stock nuevo
     if (updateStockFn) {
       for (const it of newItems) {
-        if (it.producto_id && it.maneja_stock !== false) {
-          await updateStockFn(it.producto_id, -it.cantidad)
+        if (it.producto_id) {
+          if (it.maneja_stock !== false) {
+            await updateStockFn(it.producto_id, -it.cantidad)
+          }
           if (it.componentes?.length > 0) {
             for (const comp of it.componentes) {
-              await updateStockFn(comp.producto_id, -(comp.cantidad * it.cantidad))
+              if (comp.producto_id) await updateStockFn(comp.producto_id, -(comp.cantidad * it.cantidad))
             }
           }
         }
@@ -165,8 +171,9 @@ export function useVentas() {
       for (const it of venta.venta_items) {
         if (!it.producto_id) continue
         const prod = allProductos.find(p => p.id === it.producto_id)
-        if (prod?.maneja_stock === false) continue
-        await updateStockFn(it.producto_id, it.cantidad)
+        if (prod?.maneja_stock !== false) {
+          await updateStockFn(it.producto_id, it.cantidad)
+        }
         if (prod?.componentes?.length > 0) {
           for (const comp of prod.componentes) {
             if (comp.producto_id) await updateStockFn(comp.producto_id, comp.cantidad * it.cantidad)
