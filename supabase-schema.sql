@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS public.eventos (
   met         TEXT,
   total       NUMERIC DEFAULT 0,
   promo_id    TEXT,
+  interes     NUMERIC DEFAULT 0,
   mrows                JSONB DEFAULT '[]',    -- [{mid, qty}]
   extras               JSONB DEFAULT '[]',    -- [{eid, qty}]
   consumos             JSONB DEFAULT '[]',    -- [{productoId, nombreProducto, qty, precioUnitario}]
@@ -37,6 +38,7 @@ CREATE TABLE IF NOT EXISTS public.eventos (
 -- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS precio_chico NUMERIC;
 -- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS precio_adulto NUMERIC;
 -- UPDATE public.eventos SET precio_chico = 28000, precio_adulto = 0 WHERE precio_chico IS NULL;
+-- ALTER TABLE public.eventos ADD COLUMN IF NOT EXISTS interes NUMERIC DEFAULT 0;
 
 -- ── Tabla de configuración (clave→valor JSON) ──
 CREATE TABLE IF NOT EXISTS public.configuracion (

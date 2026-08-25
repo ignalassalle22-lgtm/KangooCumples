@@ -8,6 +8,7 @@ const EMPTY_FORM = {
   chi: 0, adu: 0,
   privado: false, obs: '',
   promoId: '',
+  interes: 0,
   pago: 'none', monto: 0, met: '',
   extendido: false,
   extendido_mins: 30,
@@ -88,6 +89,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
         privado: evento.privado || false,
         obs: evento.obs || '',
         promoId: evento.promoId ? String(evento.promoId) : '',
+        interes: evento.interes || 0,
         pago: evento.pago || 'none',
         monto: evento.monto || 0,
         met: (config.mets || []).find(m => (evento.met || '').startsWith(m)) || evento.met || '',
@@ -197,10 +199,13 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
       const pr = config.promos.find(p => String(p.id) === String(form.promoId))
       if (pr) dto = (base + mTot + eTot + artTot) * pr.pct / 100
     }
-    const total = base + mTot + eTot + artTot - dto
+    const subtotalSinInteres = base + mTot + eTot + artTot - dto
+    const intPct = parseFloat(form.interes) || 0
+    const interes = intPct > 0 ? Math.round(subtotalSinInteres * intPct / 100) : 0
+    const total = subtotalSinInteres + interes
     const monto = parseFloat(form.monto) || 0
-    return { base, mTot, eTot, artTot, dto, total, monto, rest: Math.max(0, total - monto) }
-  }, [form.chi, form.adu, form.promoId, form.monto, extraQtys, extraPrices, adHocExtras, articulosEvento, config, mrows, pChicoEv, pAdultoEv])
+    return { base, mTot, eTot, artTot, dto, interes, intPct, total, monto, rest: Math.max(0, total - monto) }
+  }, [form.chi, form.adu, form.promoId, form.interes, form.monto, extraQtys, extraPrices, adHocExtras, articulosEvento, config, mrows, pChicoEv, pAdultoEv])
 
   // Duplicate / overlap check
   // - Evento privado nuevo: bloquea si hay CUALQUIER evento en esa fecha/hora (cualquier salón)
@@ -355,6 +360,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
       extras: extrasSave,
       articulos: articulosSave,
       promoId: form.promoId || null,
+      interes: parseFloat(form.interes) || 0,
       obs: form.obs,
       pago: form.pago,
       monto: montoFinal,
@@ -654,10 +660,10 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
           </div>
         )}
 
-        {/* Promoción */}
-        <div className="sdv">Promoción aplicable</div>
-        <div className="fg" style={{ marginBottom: 6 }}>
-          <div className="fgg">
+        {/* Promoción e Interés */}
+        <div className="sdv">Promoción / Interés</div>
+        <div className="fg" style={{ marginBottom: 6, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <div className="fgg" style={{ flex: 1, minWidth: 180 }}>
             <label>Seleccionar promoción</label>
             <select value={form.promoId} onChange={e => set('promoId', e.target.value)}>
               <option value="">Sin promoción</option>
@@ -665,6 +671,32 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
                 <option key={p.id} value={String(p.id)}>{p.d} ({p.pct}%)</option>
               ))}
             </select>
+          </div>
+          <div className="fgg" style={{ minWidth: 140 }}>
+            <label>Interés tarjeta %</label>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              {[0, 10, 15, 20, 25].map(v => (
+                <button
+                  key={v}
+                  type="button"
+                  className={`bsm${parseFloat(form.interes) === v ? ' bg2' : ''}`}
+                  style={{ padding: '4px 8px', fontSize: 13, opacity: parseFloat(form.interes) === v ? 1 : 0.6 }}
+                  onClick={() => set('interes', v)}
+                >
+                  {v === 0 ? 'Sin' : `${v}%`}
+                </button>
+              ))}
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                value={form.interes || ''}
+                onChange={e => set('interes', parseFloat(e.target.value) || 0)}
+                placeholder="%"
+                style={{ width: 55, textAlign: 'center' }}
+              />
+            </div>
           </div>
         </div>
 
@@ -959,6 +991,12 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
             <div className="tr">
               <span className="tl">Descuento por promoción</span>
               <span className="tv" style={{ color: 'var(--or2)' }}>-{fmt(calc.dto)}</span>
+            </div>
+          )}
+          {calc.interes > 0 && (
+            <div className="tr">
+              <span className="tl">Interés tarjeta ({calc.intPct}%)</span>
+              <span className="tv" style={{ color: '#FFD166' }}>+{fmt(calc.interes)}</span>
             </div>
           )}
           <hr className="tsep" />
