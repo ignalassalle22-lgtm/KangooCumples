@@ -8,7 +8,7 @@ const EMPTY_FORM = {
   chi: 0, adu: 0,
   privado: false, obs: '',
   promoId: '',
-  interes: 0,
+  interes: 0, interesTipo: 'pct',
   pago: 'none', monto: 0, met: '',
   extendido: false,
   extendido_mins: 30,
@@ -90,6 +90,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
         obs: evento.obs || '',
         promoId: evento.promoId ? String(evento.promoId) : '',
         interes: evento.interes || 0,
+        interesTipo: evento.interesTipo || 'pct',
         pago: evento.pago || 'none',
         monto: evento.monto || 0,
         met: (config.mets || []).find(m => (evento.met || '').startsWith(m)) || evento.met || '',
@@ -200,12 +201,15 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
       if (pr) dto = (base + mTot + eTot + artTot) * pr.pct / 100
     }
     const subtotalSinInteres = base + mTot + eTot + artTot - dto
-    const intPct = parseFloat(form.interes) || 0
-    const interes = intPct > 0 ? Math.round(subtotalSinInteres * intPct / 100) : 0
+    const intVal = parseFloat(form.interes) || 0
+    const intTipo = form.interesTipo || 'pct'
+    const interes = intVal > 0
+      ? (intTipo === 'pct' ? Math.round(subtotalSinInteres * intVal / 100) : Math.round(intVal))
+      : 0
     const total = subtotalSinInteres + interes
     const monto = parseFloat(form.monto) || 0
-    return { base, mTot, eTot, artTot, dto, interes, intPct, total, monto, rest: Math.max(0, total - monto) }
-  }, [form.chi, form.adu, form.promoId, form.interes, form.monto, extraQtys, extraPrices, adHocExtras, articulosEvento, config, mrows, pChicoEv, pAdultoEv])
+    return { base, mTot, eTot, artTot, dto, interes, intVal, intTipo, total, monto, rest: Math.max(0, total - monto) }
+  }, [form.chi, form.adu, form.promoId, form.interes, form.interesTipo, form.monto, extraQtys, extraPrices, adHocExtras, articulosEvento, config, mrows, pChicoEv, pAdultoEv])
 
   // Duplicate / overlap check
   // - Evento privado nuevo: bloquea si hay CUALQUIER evento en esa fecha/hora (cualquier salón)
@@ -361,6 +365,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
       articulos: articulosSave,
       promoId: form.promoId || null,
       interes: parseFloat(form.interes) || 0,
+      interesTipo: form.interesTipo || 'pct',
       obs: form.obs,
       pago: form.pago,
       monto: montoFinal,
@@ -672,10 +677,22 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
               ))}
             </select>
           </div>
-          <div className="fgg" style={{ minWidth: 140 }}>
-            <label>Interés tarjeta %</label>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              {[0, 10, 15, 20, 25].map(v => (
+          <div className="fgg" style={{ minWidth: 180 }}>
+            <label>Interés tarjeta</label>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={`bsm${form.interesTipo === 'pct' ? ' bg2' : ''}`}
+                style={{ padding: '4px 8px', fontSize: 13, opacity: form.interesTipo === 'pct' ? 1 : 0.5 }}
+                onClick={() => { set('interesTipo', 'pct'); set('interes', 0) }}
+              >%</button>
+              <button
+                type="button"
+                className={`bsm${form.interesTipo === 'fijo' ? ' bg2' : ''}`}
+                style={{ padding: '4px 8px', fontSize: 13, opacity: form.interesTipo === 'fijo' ? 1 : 0.5 }}
+                onClick={() => { set('interesTipo', 'fijo'); set('interes', 0) }}
+              >$</button>
+              {form.interesTipo === 'pct' && [0, 10, 15, 20, 25].map(v => (
                 <button
                   key={v}
                   type="button"
@@ -689,12 +706,11 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
               <input
                 type="number"
                 min={0}
-                max={100}
-                step={1}
+                step={form.interesTipo === 'pct' ? 1 : 100}
                 value={form.interes || ''}
                 onChange={e => set('interes', parseFloat(e.target.value) || 0)}
-                placeholder="%"
-                style={{ width: 55, textAlign: 'center' }}
+                placeholder={form.interesTipo === 'pct' ? '%' : '$'}
+                style={{ width: 75, textAlign: 'center' }}
               />
             </div>
           </div>
@@ -995,7 +1011,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
           )}
           {calc.interes > 0 && (
             <div className="tr">
-              <span className="tl">Interés tarjeta ({calc.intPct}%)</span>
+              <span className="tl">Interés tarjeta{calc.intTipo === 'pct' ? ` (${calc.intVal}%)` : ''}</span>
               <span className="tv" style={{ color: '#FFD166' }}>+{fmt(calc.interes)}</span>
             </div>
           )}

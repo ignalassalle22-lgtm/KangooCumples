@@ -7,6 +7,7 @@ function fromDB(row) {
   return {
     ...row,
     promoId: row.promo_id,
+    interesTipo: row.interes_tipo,
     precioChico: row.precio_chico,
     precioAdulto: row.precio_adulto,
     menusStockAplicado: row.menus_stock_aplicado,
@@ -16,8 +17,8 @@ function fromDB(row) {
 
 // Map camelCase -> Supabase snake_case
 function toDB(ev) {
-  const { promoId, precioChico, precioAdulto, menusStockAplicado, consumosCobrados, ...rest } = ev
-  const row = { ...rest, promo_id: promoId || null }
+  const { promoId, interesTipo, precioChico, precioAdulto, menusStockAplicado, consumosCobrados, ...rest } = ev
+  const row = { ...rest, promo_id: promoId || null, interes_tipo: interesTipo || 'pct' }
   if (precioChico !== undefined) row.precio_chico = precioChico
   if (precioAdulto !== undefined) row.precio_adulto = precioAdulto
   if (menusStockAplicado !== undefined) row.menus_stock_aplicado = menusStockAplicado
