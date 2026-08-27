@@ -34,7 +34,7 @@ function imprimirTicketEvento(ev, config) {
   const subtotal = items.reduce((s, i) => s + i.total, 0)
   const descuento = promo ? Math.round(subtotal * promo.pct / 100) : 0
   const interesPct = ev.interes || 0
-  const interesVal = interesPct > 0 ? Math.round((subtotal - descuento) * interesPct / 100) : 0
+  const interesVal = interesPct > 0 ? Math.round((ev.monto || 0) * interesPct / 100) : 0
   fetch('http://127.0.0.1:5001/print/venta', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -336,7 +336,7 @@ function AppInner({ usuario, onLogout }) {
 
   const handleSave = useCallback(async (eventoData) => {
     try {
-      const { _cajaId, ...evToSave } = eventoData
+      const { _cajaId, _interesValor = 0, ...evToSave } = eventoData
       // Calcular cuánto pago nuevo hay que acreditar en caja
       const oldEv = eventoData.id ? eventos.find(e => e.id === eventoData.id) : null
       // Backward compat: eventos paid que quedaron guardados con monto=0 (bug previo)
@@ -353,26 +353,27 @@ function AppInner({ usuario, onLogout }) {
       await saveEvento(evToSave)
 
       // Si hay un cobro nuevo (o seña nueva/ampliada) y hay caja seleccionada, crear venta
-      if (deltaMonto > 0 && _cajaId && eventoData.pago !== 'none' && eventoData.pago !== 'cancelado') {
+      const totalCaja = deltaMonto + _interesValor
+      if (totalCaja > 0 && _cajaId && eventoData.pago !== 'none' && eventoData.pago !== 'cancelado') {
         const cliente = eventoData.reservante || eventoData.cumple || 'Evento'
         const label = eventoData.pago === 'sena' ? 'Seña evento' : 'Pago evento'
         await saveVenta({
           fecha: fechaHoyAR(),
           hora: new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hour12: false }),
           cliente,
-          subtotal: deltaMonto,
+          subtotal: totalCaja,
           descuento: 0,
-          total: deltaMonto,
+          total: totalCaja,
           metodo_pago: eventoData.met,
           estado: 'completada',
           caja_id: _cajaId,
-          obs: `${label} — ${cliente}`,
+          obs: `${label}${_interesValor > 0 ? ` (interés $${Math.round(_interesValor).toLocaleString('es-AR')})` : ''} — ${cliente}`,
         }, [{
           producto_id: null,
           nombre_producto: `${label} — ${cliente}`,
-          precio_unitario: deltaMonto,
+          precio_unitario: totalCaja,
           cantidad: 1,
-          subtotal: deltaMonto,
+          subtotal: totalCaja,
         }], null)
       }
 

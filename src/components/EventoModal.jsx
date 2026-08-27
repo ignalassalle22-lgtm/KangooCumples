@@ -201,11 +201,41 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
     }
     const subtotalSinInteres = base + mTot + eTot + artTot - dto
     const intPct = parseFloat(form.interes) || 0
-    const interes = intPct > 0 ? Math.round(subtotalSinInteres * intPct / 100) : 0
-    const total = subtotalSinInteres + interes
+    const total = subtotalSinInteres  // Total del evento SIN interés
+
+    // Calcular interés sobre el monto del pago actual, no sobre el total del evento
+    let montoParaInteres = 0
+    if (intPct > 0) {
+      if (esEdicionSena) {
+        if (form.pago === 'sena') {
+          montoParaInteres = multiMet
+            ? metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+            : adicionalSena
+        } else if (form.pago === 'paid') {
+          montoParaInteres = multiMet
+            ? metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+            : Math.max(0, total - yaCobrado)
+        }
+      } else if (esEdicionPagada && multiMet) {
+        montoParaInteres = metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+      } else {
+        // Evento nuevo
+        if (form.pago === 'paid') {
+          montoParaInteres = multiMet
+            ? metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+            : total
+        } else if (form.pago === 'sena') {
+          montoParaInteres = multiMet
+            ? metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+            : (parseFloat(form.monto) || 0)
+        }
+      }
+    }
+
+    const interes = intPct > 0 ? Math.round(montoParaInteres * intPct / 100) : 0
     const monto = parseFloat(form.monto) || 0
     return { base, mTot, eTot, artTot, dto, interes, intPct, total, monto, rest: Math.max(0, total - monto) }
-  }, [form.chi, form.adu, form.promoId, form.interes, form.monto, extraQtys, extraPrices, adHocExtras, articulosEvento, config, mrows, pChicoEv, pAdultoEv])
+  }, [form.chi, form.adu, form.promoId, form.interes, form.monto, form.pago, extraQtys, extraPrices, adHocExtras, articulosEvento, config, mrows, pChicoEv, pAdultoEv, esEdicionSena, esEdicionPagada, yaCobrado, adicionalSena, multiMet, metsPagados])
 
   // Duplicate / overlap check
   // - Evento privado nuevo: bloquea si hay CUALQUIER evento en esa fecha/hora (cualquier salón)
@@ -366,6 +396,7 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
       monto: montoFinal,
       met: metFinal,
       total: calc.total,
+      _interesValor: calc.interes,
       _cajaId: (form.pago !== 'none' && form.pago !== 'cancelado') ? cajaId : null,
     }
 
@@ -993,12 +1024,6 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
               <span className="tv" style={{ color: 'var(--or2)' }}>-{fmt(calc.dto)}</span>
             </div>
           )}
-          {calc.interes > 0 && (
-            <div className="tr">
-              <span className="tl">Interés tarjeta ({calc.intPct}%)</span>
-              <span className="tv" style={{ color: '#FFD166' }}>+{fmt(calc.interes)}</span>
-            </div>
-          )}
           <hr className="tsep" />
           <div className="tr big"><span className="tl">Total del evento</span><span className="tv">{fmt(calc.total)}</span></div>
           {form.pago !== 'none' && (
@@ -1012,6 +1037,18 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
                       <span className="tv" style={{ color: '#FFD166', fontSize: 18 }}>+{fmt(calc.total - yaCobrado)}</span>
                     </div>
                   )}
+                  {calc.interes > 0 && (
+                    <div className="tr">
+                      <span className="tl">Interés tarjeta ({calc.intPct}%)</span>
+                      <span className="tv" style={{ color: '#FFD166' }}>+{fmt(calc.interes)}</span>
+                    </div>
+                  )}
+                  {calc.interes > 0 && calc.total > yaCobrado && (
+                    <div className="tr">
+                      <span className="tl" style={{ fontWeight: 700 }}>Total a cobrar ahora</span>
+                      <span className="tv" style={{ color: '#FFD166', fontSize: 18 }}>{fmt(calc.total - yaCobrado + calc.interes)}</span>
+                    </div>
+                  )}
                 </>
               ) : esEdicionSena && form.pago === 'sena' ? (
                 <>
@@ -1020,11 +1057,27 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
                     const extra = multiMet
                       ? metsPagados.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
                       : adicionalSena
-                    return extra > 0 && (
-                      <div className="tr">
-                        <span className="tl" style={{ color: 'rgba(255,255,255,0.75)' }}>Seña adicional ahora</span>
-                        <span className="tv" style={{ color: '#FFD166', fontSize: 18 }}>+{fmt(extra)}</span>
-                      </div>
+                    return (
+                      <>
+                        {extra > 0 && (
+                          <div className="tr">
+                            <span className="tl" style={{ color: 'rgba(255,255,255,0.75)' }}>Seña adicional ahora</span>
+                            <span className="tv" style={{ color: '#FFD166', fontSize: 18 }}>+{fmt(extra)}</span>
+                          </div>
+                        )}
+                        {calc.interes > 0 && (
+                          <div className="tr">
+                            <span className="tl">Interés tarjeta ({calc.intPct}%)</span>
+                            <span className="tv" style={{ color: '#FFD166' }}>+{fmt(calc.interes)}</span>
+                          </div>
+                        )}
+                        {extra > 0 && calc.interes > 0 && (
+                          <div className="tr">
+                            <span className="tl" style={{ fontWeight: 700 }}>Total a cobrar ahora</span>
+                            <span className="tv" style={{ color: '#FFD166', fontSize: 18 }}>{fmt(extra + calc.interes)}</span>
+                          </div>
+                        )}
+                      </>
                     )
                   })()}
                   <div className="tr">
@@ -1035,6 +1088,18 @@ export default function EventoModal({ evento, eventos, config, productos = [], c
               ) : (
                 <>
                   <div className="tr"><span className="tl">Abonado / seña</span><span className="tv">{fmt(calc.monto)}</span></div>
+                  {calc.interes > 0 && (
+                    <div className="tr">
+                      <span className="tl">Interés tarjeta ({calc.intPct}%)</span>
+                      <span className="tv" style={{ color: '#FFD166' }}>+{fmt(calc.interes)}</span>
+                    </div>
+                  )}
+                  {calc.interes > 0 && (
+                    <div className="tr">
+                      <span className="tl" style={{ fontWeight: 700 }}>Total a abonar</span>
+                      <span className="tv" style={{ color: '#FFD166', fontSize: 18 }}>{fmt(calc.monto + calc.interes)}</span>
+                    </div>
+                  )}
                   <div className="tr">
                     <span className="tl" style={{ color: 'rgba(255,255,255,0.75)' }}>Restante a cobrar</span>
                     <span className="tv" style={{ color: '#FFD166', fontSize: 18 }}>{fmt(calc.rest)}</span>
