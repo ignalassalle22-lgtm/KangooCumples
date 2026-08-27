@@ -236,7 +236,7 @@ function TicketDetalle({ venta, onClose }) {
   )
 }
 
-function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGasto, onAddCofreIngreso, onRefresh, addToast, askPin }) {
+function CajaCard({ caja, ventas, ventasLoading = false, gastos = [], empleados = [], onCerrar, onAddGasto, onAddCofreIngreso, onRefresh, addToast, askPin }) {
   const [cerrando, setCerrando] = useState(false)
   const [saldoFinal, setSaldoFinal] = useState('')
   const [obs, setObs] = useState('')
@@ -382,7 +382,7 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="bg2 bsm" onClick={() => setVerTickets(!verTickets)}>
-            {verTickets ? '▲ Ocultar tickets' : `🧾 Ver tickets (${ventasCaja.length})`}
+            {verTickets ? '▲ Ocultar tickets' : `🧾 Ver tickets (${ventasLoading ? '...' : ventasCaja.length})`}
           </button>
           {gastos.length > 0 && (
             <button className="bg2 bsm" onClick={() => setVerGastos(f => !f)}>
@@ -407,8 +407,8 @@ function CajaCard({ caja, ventas, gastos = [], empleados = [], onCerrar, onAddGa
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div>
           <div style={{ fontSize: 11, color: 'var(--mu)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Resumen</div>
-          <div className="li"><span className="lin">Tickets registrados</span><span className="lis">{ventasCaja.length}</span></div>
-          <div className="li"><span className="lin">Total facturado</span><span className="lip">{fmt(totalVentas)}</span></div>
+          <div className="li"><span className="lin">Tickets registrados</span><span className="lis">{ventasLoading ? '...' : ventasCaja.length}</span></div>
+          <div className="li"><span className="lin">Total facturado</span><span className="lip">{ventasLoading ? '...' : fmt(totalVentas)}</span></div>
           {totalGastosReales > 0 && (
             <div className="li"><span className="lin">Gastos</span><span style={{ fontWeight: 700, color: 'var(--rd)' }}>−{fmt(totalGastosReales)}</span></div>
           )}
@@ -874,8 +874,10 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
   useEffect(() => {
     if (!cajasAbiertas.length || !fetchVentasByCaja) return
     cajasAbiertas.forEach(async (c) => {
+      setLoadingCaja(prev => ({ ...prev, [c.id]: true }))
       const data = await fetchVentasByCaja(c.id)
       setVentasPorCaja(prev => ({ ...prev, [c.id]: data }))
+      setLoadingCaja(prev => ({ ...prev, [c.id]: false }))
     })
   }, [cajasAbiertas, fetchVentasByCaja])
 
@@ -994,22 +996,28 @@ export default function Caja({ cajasAbiertas, historial, loading, ventas, gastos
             <div style={{ marginBottom: 28 }}>
               <div className="sdv">Cajas abiertas ({cajasAbiertas.length})</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {cajasAbiertas.map(c => (
-                  <CajaCard
-                    key={c.id} caja={c} ventas={ventasPorCaja[c.id] || ventas}
-                    gastos={gastos.filter(g => g.caja_id === c.id)}
-                    empleados={empleados}
-                    onCerrar={onCerrar} onAddGasto={onAddGasto} onAddCofreIngreso={onAddCofreIngreso}
-                    onRefresh={async () => {
-                      if (onRefreshVentas) onRefreshVentas()
-                      if (fetchVentasByCaja) {
-                        const data = await fetchVentasByCaja(c.id)
-                        setVentasPorCaja(prev => ({ ...prev, [c.id]: data }))
-                      }
-                    }}
-                    addToast={addToast} askPin={askPin}
-                  />
-                ))}
+                {cajasAbiertas.map(c => {
+                  const ventasReady = ventasPorCaja[c.id] !== undefined
+                  const isLoading = loadingCaja[c.id]
+                  return (
+                    <CajaCard
+                      key={c.id} caja={c}
+                      ventas={ventasPorCaja[c.id] || []}
+                      ventasLoading={!ventasReady || isLoading}
+                      gastos={gastos.filter(g => g.caja_id === c.id)}
+                      empleados={empleados}
+                      onCerrar={onCerrar} onAddGasto={onAddGasto} onAddCofreIngreso={onAddCofreIngreso}
+                      onRefresh={async () => {
+                        if (onRefreshVentas) onRefreshVentas()
+                        if (fetchVentasByCaja) {
+                          const data = await fetchVentasByCaja(c.id)
+                          setVentasPorCaja(prev => ({ ...prev, [c.id]: data }))
+                        }
+                      }}
+                      addToast={addToast} askPin={askPin}
+                    />
+                  )
+                })}
               </div>
             </div>
           )}
